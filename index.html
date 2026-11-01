@@ -8,10 +8,52 @@
   html, body { margin: 0; height: 100%; background: #14181c; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; }
   #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
   canvas { display: block; cursor: crosshair; box-shadow: 0 0 0 2px #2a3238, 0 12px 40px #000a; border-radius: 4px; }
+  [hidden] { display: none !important; }
+  button { font: 600 15px "Segoe UI", system-ui, sans-serif; color: #eef5e8; background: #2a3a2c; border: 1px solid #4f7a44; border-radius: 8px; padding: 10px 18px; cursor: pointer; }
+  button:hover { background: #355238; }
+  button.ghost { background: #1d2427; border-color: #3a464c; }
+  button.ghost:hover { background: #283236; }
+  #pauseMenu { position: fixed; left: 50%; top: calc(50% + 10px); transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px; width: 260px; }
+  #dev { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(8,10,12,.55); }
+  #devPanel { width: min(760px, calc(100vw - 32px)); max-height: 88vh; overflow: auto; background: #161c1f; border: 1px solid #2f3a40; border-radius: 12px; box-shadow: 0 20px 60px #000c; color: #dde6d8; font: 13px "Segoe UI", system-ui, sans-serif; padding: 16px 20px 20px; }
+  .devHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .devHead b { font-size: 18px; color: #8be06a; }
+  .devActions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+  .devActions button { font-size: 13px; padding: 6px 12px; }
+  #devPanel h3 { margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #9fb39a; }
+  #devPanel table { width: 100%; border-collapse: collapse; }
+  #devPanel th { text-align: left; font-weight: 700; padding: 4px 6px; }
+  #devPanel td { padding: 3px 6px; border-top: 1px solid #222b2f; }
+  #devPanel td.na { color: #4a565c; text-align: center; }
+  #devPanel input[type=number] { width: 100%; box-sizing: border-box; background: #0f1416; color: #eef5e8; border: 1px solid #2f3a40; border-radius: 6px; padding: 5px 6px; font: inherit; }
+  #devPanel input[type=number]:focus { outline: none; border-color: #6cc24a; }
+  #devPanel input[type=checkbox] { width: 18px; height: 18px; accent-color: #6cc24a; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 16px; }
+  .grid label { display: grid; grid-template-columns: 1fr 86px; align-items: center; gap: 8px; color: #c9d4c4; }
+  .note { margin: 16px 0 0; color: #7f8f88; font-size: 12px; }
 </style>
 </head>
 <body>
 <div id="wrap"><canvas id="c" width="960" height="640"></canvas></div>
+<div id="pauseMenu" hidden>
+  <button id="btnResume">Продолжить</button>
+  <button id="btnDev" class="ghost">Настройки разработчика</button>
+</div>
+<div id="dev" hidden>
+  <div id="devPanel">
+    <div class="devHead"><b>Настройки разработчика</b><button id="btnDevClose" class="ghost">Закрыть</button></div>
+    <div class="devActions">
+      <button data-act="heal" class="ghost">Починить танк</button>
+      <button data-act="rail" class="ghost">+1 заряд рельсотрона</button>
+      <button data-act="powerups" class="ghost">Все бонусы</button>
+      <button data-act="kill" class="ghost">Уничтожить врагов</button>
+      <button data-act="skip" class="ghost">Следующая волна</button>
+      <button data-act="reset" class="ghost">Сбросить настройки</button>
+    </div>
+    <div id="devBody"></div>
+    <p class="note">Изменения применяются сразу и сохраняются в браузере. ХП врагов действует на новых врагов, прочность кирпича — на новую карту.</p>
+  </div>
+</div>
 <script>
 'use strict';
 // ---------- базовые константы и утилиты ----------
@@ -34,16 +76,23 @@ function roundRect(c, x, y, w, h, r) {
 }
 
 const KINDS = {
-  player:  { hp: 5, speed: 140, fireRate: .32, color: '#6cc24a', dark: '#2e6b26', bulletSpeed: 560, dmg: 1, scale: 1 },
-  scout:   { hp: 1, speed: 125, fireRate: 1.5, color: '#e9b949', dark: '#8c6a1a', bulletSpeed: 380, dmg: 1, scale: .85, score: 100, wander: .25, hold: 0,   turretSpeed: 4 },
-  soldier: { hp: 2, speed: 85,  fireRate: 1.3, color: '#e0603f', dark: '#7f2d1b', bulletSpeed: 420, dmg: 1, scale: 1,   score: 200, wander: .12, hold: 150, turretSpeed: 3 },
-  heavy:   { hp: 5, speed: 55,  fireRate: 2.0, color: '#9483d6', dark: '#463b80', bulletSpeed: 360, dmg: 2, scale: 1.18, score: 500, wander: .05, hold: 260, turretSpeed: 2 },
+  player:  { hp: 5, speed: 105, fireRate: .32, color: '#6cc24a', dark: '#2e6b26', bulletSpeed: 560, dmg: 1, scale: 1 },
+  scout:   { hp: 1, speed: 90,  fireRate: 1.5, color: '#e9b949', dark: '#8c6a1a', bulletSpeed: 380, dmg: 1, scale: .85, score: 100, scrap: 1, wander: .25, hold: 0,   turretSpeed: 4 },
+  soldier: { hp: 2, speed: 62,  fireRate: 1.3, color: '#e0603f', dark: '#7f2d1b', bulletSpeed: 420, dmg: 1, scale: 1,   score: 200, scrap: 2, wander: .12, hold: 150, turretSpeed: 3 },
+  heavy:   { hp: 5, speed: 40,  fireRate: 2.0, color: '#9483d6', dark: '#463b80', bulletSpeed: 360, dmg: 2, scale: 1.18, score: 500, scrap: 4, wander: .05, hold: 260, turretSpeed: 2 },
 };
 const ITEMS = {
   repair: { color: '#e5484d', glyph: '+',  name: 'Ремонт' },
   rapid:  { color: '#f2c94c', glyph: '»',  name: 'Скорострел' },
   triple: { color: '#4cc3f2', glyph: '3×', name: 'Тройной' },
   shield: { color: '#7be38a', glyph: '◯',  name: 'Щит' },
+  rail:   { color: '#c58cff', glyph: '⌁',  name: 'Рельсотрон' },
+};
+// общие параметры игры (правятся в «Настройках разработчика» в меню паузы)
+const CFG = {
+  dropChance: .22, heavyDropBonus: .3, powerupTime: 10, repairAmount: 2, railMax: 3,
+  waveBase: 6, wavePerLevel: 2, maxAliveBase: 3, maxAliveCap: 7, enemySpeedPerWave: .02, waveBonus: 300, waveHeal: 1,
+  brickHp: 2, invulnTime: .7, enemySight: 460, treeStealth: 90, shake: 1, hitstop: .06, godMode: false,
 };
 const SPAWNS = [{ c: 1, r: 1 }, { c: 14, r: 1 }, { c: 28, r: 1 }];
 const PLAYER_START = { x: W / 2, y: H - 48 };
@@ -76,8 +125,10 @@ function sfx(n) {
       case 'eshoot': tone(300, 90, .09, 'square', .025); break;
       case 'hit': noise(.08, .15, 2200); break;
       case 'brick': noise(.06, .08, 1300); break;
-      case 'ricochet': tone(1500, 700, .07, 'triangle', .04); break;
-      case 'boom': noise(.55, .35, 650); tone(130, 30, .4, 'sawtooth', .07); break;
+      case 'deflect': tone(1500, 700, .07, 'triangle', .04); break;
+      case 'boom': noise(.9, .5, 520); noise(.15, .3, 3500); tone(150, 25, .6, 'sawtooth', .1); break;
+      case 'rail': tone(2200, 180, .4, 'sawtooth', .07); noise(.35, .3, 5000); break;
+      case 'scrap': tone(900, 600, .06, 'square', .05); setTimeout(() => tone(1200, 800, .06, 'square', .05), 70); break;
       case 'hurt': tone(220, 60, .25, 'sawtooth', .1); noise(.2, .2, 900); break;
       case 'pick': tone(520, 1100, .16, 'triangle', .1); break;
       case 'wave': tone(330, 660, .2, 'triangle', .08); setTimeout(() => tone(440, 880, .25, 'triangle', .08), 150); break;
@@ -109,7 +160,7 @@ function genMap(w) {
     if (connected()) break;
   }
   brickHp = new Uint8Array(COLS * ROWS);
-  for (let i = 0; i < grid.length; i++) if (grid[i] === BRICK) brickHp[i] = 2;
+  for (let i = 0; i < grid.length; i++) if (grid[i] === BRICK) brickHp[i] = CFG.brickHp;
   buildGround();
 }
 
@@ -164,8 +215,8 @@ function buildGround() {
 }
 
 // ---------- состояние игры ----------
-let state = 'menu', player = null, enemies = [], bullets = [], parts = [], items = [];
-let score = 0, wave = 0, toSpawn = [], spawnTimer = 0, flowTimer = 0, betweenT = 0, deadT = 0, overT = 0;
+let state = 'menu', player = null, enemies = [], bullets = [], parts = [], items = [], wrecks = [], rails = [];
+let score = 0, scrap = 0, hitstop = 0, wave = 0, toSpawn = [], spawnTimer = 0, flowTimer = 0, betweenT = 0, deadT = 0, overT = 0;
 let shake = 0, time = 0, banner = { text: '', sub: '', t: 0 };
 let best = 0;
 try { best = +localStorage.getItem('ecotank-best') || 0; } catch (e) {}
@@ -175,33 +226,34 @@ function makeTank(x, y, kind) {
   return {
     x, y, kind, r: 13 * K.scale, angle: -Math.PI / 2, turret: -Math.PI / 2,
     hp: K.hp, maxHp: K.hp, cd: rnd(.6, 1.4), vx: 0, vy: 0, tread: 0, trackAcc: 0, recoil: 0, flash: 0,
-    tx: x, ty: y, stuck: 0, decideT: 0, brick: null, spawnT: 0, inv: 0,
+    tx: x, ty: y, stuck: 0, decideT: 0, brick: null, spawnT: 0, inv: 0, rail: 0,
     pw: { rapid: 0, triple: 0, shield: 0 },
   };
 }
 
 function waveList(w) {
-  const n = 4 + w * 2, list = [], pH = Math.min(.07 * w, .35);
+  const n = CFG.waveBase + (w - 1) * CFG.wavePerLevel, list = [], pH = Math.min(.07 * w, .35);
   for (let i = 0; i < n; i++) {
     const r = Math.random();
     list.push(r < pH ? 'heavy' : r < pH + .38 ? 'scout' : 'soldier');
   }
   return list;
 }
-const maxAlive = () => Math.min(3 + Math.floor(wave / 2), 7);
+const maxAlive = () => Math.min(CFG.maxAliveBase + Math.floor(wave / 2), CFG.maxAliveCap);
 
 function startGame() {
-  score = 0; wave = 0; player = null;
+  score = 0; scrap = 0; wave = 0; player = null;
   nextWave();
 }
 
 function nextWave() {
   wave++;
   genMap(wave);
-  const hp = player ? Math.min(KINDS.player.hp, player.hp + 1) : KINDS.player.hp;
+  const hp = player ? Math.min(KINDS.player.hp, player.hp + CFG.waveHeal) : KINDS.player.hp;
+  const rail = player ? player.rail : 0;
   player = makeTank(PLAYER_START.x, PLAYER_START.y, 'player');
-  player.hp = hp; player.cd = .3;
-  enemies = []; bullets = []; items = []; parts = [];
+  player.hp = hp; player.rail = rail; player.cd = .3;
+  enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = [];
   toSpawn = waveList(wave); spawnTimer = 1.2; flowTimer = 0;
   banner = { text: `Волна ${wave}`, sub: `Врагов: ${toSpawn.length}`, t: 2.2 };
   state = 'play';
@@ -212,11 +264,14 @@ function nextWave() {
 const keys = {};
 const mouse = { x: W / 2, y: H / 2, down: false };
 addEventListener('keydown', e => {
+  if (e.code === 'Escape' && devOpen) { devOpen = false; document.activeElement.blur(); return; }
+  if (e.target.tagName === 'INPUT') return;
   keys[e.code] = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   if (e.code === 'Enter' && (state === 'menu' || (state === 'over' && overT > .6))) startGame();
-  else if ((e.code === 'KeyP' || e.code === 'Escape') && (state === 'play' || state === 'pause')) state = state === 'play' ? 'pause' : 'play';
+  else if ((e.code === 'KeyP' || e.code === 'Escape') && (state === 'play' || state === 'pause')) { state = state === 'play' ? 'pause' : 'play'; devOpen = false; }
   else if (e.code === 'KeyM') muted = !muted;
+  else if (e.code === 'KeyE' && (state === 'play' || state === 'between')) fireRail(player);
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (state === 'play') state = 'pause'; });
@@ -225,10 +280,11 @@ cv.addEventListener('mousemove', e => {
   mouse.x = (e.clientX - b.left) * W / b.width; mouse.y = (e.clientY - b.top) * H / b.height;
 });
 cv.addEventListener('mousedown', e => {
+  if (e.button === 2 && (state === 'play' || state === 'between')) { fireRail(player); return; }
   if (e.button !== 0) return;
   mouse.down = true;
   if (state === 'menu' || (state === 'over' && overT > .6)) startGame();
-  else if (state === 'pause') state = 'play';
+  else if (state === 'pause' && !devOpen) state = 'play';
 });
 addEventListener('mouseup', () => { mouse.down = false; });
 cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -302,7 +358,7 @@ function fire(t) {
   for (const da of spread) {
     const a = t.turret + da;
     bullets.push({ x: mx, y: my, vx: Math.cos(a) * K.bulletSpeed, vy: Math.sin(a) * K.bulletSpeed,
-      owner: isP ? 'p' : 'e', dmg: K.dmg, bounces: isP ? 1 : 0, r: t.kind === 'heavy' ? 4 : 3, life: 2.5 });
+      owner: isP ? 'p' : 'e', dmg: K.dmg, r: t.kind === 'heavy' ? 4 : 3, life: 2.5 });
   }
   t.recoil = 5;
   for (let i = 0; i < 6; i++) {
@@ -312,21 +368,57 @@ function fire(t) {
   sfx(isP ? 'shoot' : 'eshoot');
 }
 
+// рельсотрон: мгновенный луч до стали или края карты, пробивает кирпич и всех врагов на пути
+function fireRail(p) {
+  if (!p || p.dead || p.rail <= 0) return;
+  p.rail--;
+  const dx = Math.cos(p.turret), dy = Math.sin(p.turret);
+  const x0 = p.x + dx * 20, y0 = p.y + dy * 20, hit = new Set();
+  let len = 0;
+  for (; len < 1400; len += 4) {
+    const x = x0 + dx * len, y = y0 + dy * len, c = Math.floor(x / T), r = Math.floor(y / T), t = tileAt(c, r);
+    if (t === STEEL) break;
+    if (t === BRICK) hitBrick(c, r, 99);
+    for (const e of enemies) {
+      if (e.dead || e.spawnT > 0 || hit.has(e)) continue;
+      if ((e.x - x) ** 2 + (e.y - y) ** 2 < (e.r + 4) ** 2) { hit.add(e); hitEnemy(e, { x, y, dmg: 99 }); }
+    }
+    for (const b of bullets) if (b.owner === 'e' && (b.x - x) ** 2 + (b.y - y) ** 2 < 64) b.dead = true;
+    if (len % 24 === 0) parts.push({ x, y, vx: rnd(-40, 40) - dy * rnd(-60, 60), vy: rnd(-40, 40) + dx * rnd(-60, 60), life: .5, max: .5, size: rnd(2, 4), color: '#e2c4ff', kind: 'fire' });
+  }
+  rails.push({ x0, y0, x1: x0 + dx * len, y1: y0 + dy * len, life: .45, max: .45 });
+  p.recoil = 9; p.cd = .4;
+  shake = Math.max(shake, 9);
+  sfx('rail');
+}
+
 // ---------- эффекты ----------
-function burst(x, y, n, colors, speed, life, size) {
+function burst(x, y, n, colors, speed, life, size, kind) {
   for (let i = 0; i < n; i++) {
     const a = rnd(0, Math.PI * 2), s = rnd(speed * .2, speed);
     const l = rnd(life * .5, life);
-    parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: l, max: l, size: rnd(size * .5, size), color: colors[ri(0, colors.length - 1)] });
+    const p = { x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: l, max: l, size: rnd(size * .5, size), color: colors[ri(0, colors.length - 1)], kind };
+    if (kind === 'debris') { p.rot = rnd(0, 6); p.vr = rnd(-12, 12); }
+    parts.push(p);
   }
 }
-function explosion(x, y, big) {
-  burst(x, y, big ? 40 : 26, ['#ffe08a', '#ff9a3c', '#e8442c', '#ffcf5a'], big ? 260 : 200, .6, big ? 7 : 5);
-  burst(x, y, big ? 18 : 12, ['#3a3a3a', '#555', '#6b6b6b'], 80, 1.2, big ? 12 : 9);
-  for (let i = parts.length - (big ? 18 : 12); i < parts.length; i++) parts[i].smoke = true;
-  shake = Math.max(shake, big ? 14 : 7);
-  gctx.fillStyle = 'rgba(20,15,10,.35)';
-  gctx.beginPath(); gctx.arc(x, y, big ? 22 : 16, 0, Math.PI * 2); gctx.fill();
+function explosion(x, y, big, color) {
+  const k = big ? 1.4 : 1;
+  parts.push({ x, y, vx: 0, vy: 0, life: .2, max: .2, size: 70 * k, kind: 'flash' });
+  parts.push({ x, y, vx: 0, vy: 0, life: .45, max: .45, size: 80 * k, kind: 'ring' });
+  burst(x, y, 50 * k, ['#fff3c0', '#ffe08a', '#ff9a3c', '#e8442c', '#ffcf5a'], 300 * k, .7, 9 * k, 'fire');
+  burst(x, y, 26 * k, ['#fff', '#ffe9a0', '#ffb24a'], 560, .5, 2, 'spark');
+  burst(x, y, 12 * k, [color || '#666', '#2a2a2a', '#4a4a4a'], 280, 1.1, 7, 'debris');
+  burst(x, y, 22 * k, ['#2e2e2e', '#444', '#5a5a5a'], 90, 1.8, 13 * k, 'smoke');
+  shake = Math.max(shake, big ? 20 : 13);
+  hitstop = Math.max(hitstop, CFG.hitstop);
+  gctx.fillStyle = 'rgba(20,15,10,.4)';
+  gctx.beginPath(); gctx.arc(x, y, 24 * k, 0, Math.PI * 2); gctx.fill();
+  gctx.fillStyle = 'rgba(20,15,10,.2)';
+  for (let i = 0; i < 8; i++) {
+    const a = rnd(0, 6), d = rnd(18, 36) * k;
+    gctx.beginPath(); gctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, rnd(4, 9), 0, Math.PI * 2); gctx.fill();
+  }
   sfx('boom');
 }
 function floatText(x, y, text, color) {
@@ -352,8 +444,9 @@ function hitEnemy(e, b) {
   const K = KINDS[e.kind];
   score += K.score;
   floatText(e.x, e.y - 10, '+' + K.score, '#ffe08a');
-  explosion(e.x, e.y, e.kind === 'heavy');
-  if (Math.random() < .22 + (e.kind === 'heavy' ? .3 : 0)) {
+  explosion(e.x, e.y, e.kind === 'heavy', K.color);
+  wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret + rnd(-.8, .8), age: 0, smokeT: 0 });
+  if (Math.random() < CFG.dropChance + (e.kind === 'heavy' ? CFG.heavyDropBonus : 0)) {
     const types = Object.keys(ITEMS);
     items.push({ x: e.x, y: e.y, type: types[ri(0, types.length - 1)], life: 12 });
   }
@@ -361,12 +454,12 @@ function hitEnemy(e, b) {
 
 function hitPlayer(b) {
   const p = player;
-  if (p.pw.shield > 0) { burst(b.x, b.y, 10, ['#9ff5aa', '#e0ffe4'], 160, .3, 3); sfx('ricochet'); return; }
+  if (p.pw.shield > 0 || CFG.godMode) { burst(b.x, b.y, 10, ['#9ff5aa', '#e0ffe4'], 160, .3, 3); sfx('deflect'); return; }
   if (p.inv > 0) return;
-  p.hp -= b.dmg; p.inv = .7; p.flash = .15;
+  p.hp -= b.dmg; p.inv = CFG.invulnTime; p.flash = .15;
   shake = Math.max(shake, 10);
   sfx('hurt');
-  if (p.hp <= 0) { p.hp = 0; p.dead = true; explosion(p.x, p.y, true); deadT = 1.8; }
+  if (p.hp <= 0) { p.hp = 0; p.dead = true; explosion(p.x, p.y, true, KINDS.player.color); deadT = 1.8; }
 }
 
 function updatePlayer(dt) {
@@ -421,8 +514,8 @@ function updateEnemy(e, dt) {
 
   const p = player, alive = p && !p.dead;
   const dp = alive ? Math.hypot(p.x - e.x, p.y - e.y) : 1e9;
-  const hidden = alive && tileAt(Math.floor(p.x / T), Math.floor(p.y / T)) === TREE && dp > 90;
-  const sees = alive && !hidden && dp < 460 && los(e.x, e.y, p.x, p.y);
+  const hidden = alive && tileAt(Math.floor(p.x / T), Math.floor(p.y / T)) === TREE && dp > CFG.treeStealth;
+  const sees = alive && !hidden && dp < CFG.enemySight && los(e.x, e.y, p.x, p.y);
 
   // движение от клетки к клетке по полю расстояний
   if (e.stuck > .7) { e.stuck = 0; decide(e, true); e.decideT = .5; }
@@ -431,7 +524,7 @@ function updateEnemy(e, dt) {
   const hold = sees && dp < K.hold;
   const mx = e.tx - e.x, my = e.ty - e.y, md = Math.hypot(mx, my);
   if (!hold && md > .5) {
-    const speed = K.speed * (1 + Math.min(wave, 10) * .02);
+    const speed = K.speed * (1 + Math.min(wave, 10) * CFG.enemySpeedPerWave);
     const step = Math.min(md, speed * dt);
     e.angle = turnTo(e.angle, Math.atan2(my, mx), dt * 8);
     const moved = moveTank(e, mx / md * step, my / md * step, dt);
@@ -461,17 +554,9 @@ function updateBullets(dt) {
       const nx = b.x + b.vx * dt / steps, ny = b.y + b.vy * dt / steps;
       const c = Math.floor(nx / T), r = Math.floor(ny / T), t = tileAt(c, r);
       if (blocksBullet(t)) {
-        if (t === BRICK) { hitBrick(c, r, b.dmg); b.dead = true; }
-        else if (b.bounces > 0) {
-          b.bounces--;
-          const hx = blocksBullet(tileAt(Math.floor(nx / T), Math.floor(b.y / T)));
-          const hy = blocksBullet(tileAt(Math.floor(b.x / T), Math.floor(ny / T)));
-          if (hx) b.vx = -b.vx;
-          if (hy) b.vy = -b.vy;
-          if (!hx && !hy) { b.vx = -b.vx; b.vy = -b.vy; }
-          burst(nx, ny, 5, ['#e8eef2', '#b8c4cc'], 120, .2, 2);
-          sfx('ricochet');
-        } else { b.dead = true; burst(nx, ny, 6, ['#e8eef2', '#b8c4cc'], 120, .25, 2.5); }
+        if (t === BRICK) hitBrick(c, r, b.dmg);
+        else burst(nx, ny, 6, ['#e8eef2', '#b8c4cc'], 120, .25, 2.5);
+        b.dead = true;
         continue;
       }
       b.x = nx; b.y = ny;
@@ -502,13 +587,32 @@ function updateItems(dt) {
     it.life -= dt;
     if (player && !player.dead && Math.hypot(player.x - it.x, player.y - it.y) < 24) {
       it.life = 0;
-      if (it.type === 'repair') player.hp = Math.min(KINDS.player.hp, player.hp + 2);
-      else player.pw[it.type] = 10;
+      if (it.type === 'repair') player.hp = Math.min(KINDS.player.hp, player.hp + CFG.repairAmount);
+      else if (it.type === 'rail') player.rail = Math.min(CFG.railMax, player.rail + 1);
+      else player.pw[it.type] = CFG.powerupTime;
       floatText(it.x, it.y - 12, ITEMS[it.type].name, ITEMS[it.type].color);
       sfx('pick');
     }
   }
   items = items.filter(it => it.life > 0);
+}
+
+function updateWrecks(dt) {
+  for (const w of wrecks) {
+    w.age += dt; w.smokeT -= dt;
+    if (w.smokeT <= 0 && w.age < 8) {
+      w.smokeT = .12 + w.age * .05;
+      parts.push({ x: w.x + rnd(-6, 6), y: w.y + rnd(-6, 6), vx: rnd(-8, 8), vy: rnd(-30, -15), life: 1.4, max: 1.4, size: rnd(5, 9), color: '#3d3d3d', kind: 'smoke' });
+    }
+    if (w.age > .4 && player && !player.dead && Math.hypot(player.x - w.x, player.y - w.y) < 24) {
+      const n = KINDS[w.kind].scrap;
+      scrap += n; w.taken = true;
+      floatText(w.x, w.y - 12, `+${n} металлолом`, '#d9c27a');
+      burst(w.x, w.y, 10, ['#8a8a8a', '#b5a27a', '#555'], 140, .5, 4, 'debris');
+      sfx('scrap');
+    }
+  }
+  wrecks = wrecks.filter(w => !w.taken);
 }
 
 function updateSpawns(dt) {
@@ -527,18 +631,24 @@ function updateSpawns(dt) {
 }
 
 function updateParts(dt) {
+  const DRAG = { smoke: .3, spark: .15, debris: .08 };
   for (const p of parts) {
     p.x += p.vx * dt; p.y += p.vy * dt;
-    const drag = p.text ? 1 : Math.pow(p.smoke ? .3 : .05, dt);
+    const drag = p.text ? 1 : Math.pow(DRAG[p.kind] || .05, dt);
     p.vx *= drag; p.vy *= drag;
+    if (p.kind === 'smoke') p.vy -= 25 * dt;
+    if (p.kind === 'debris') p.rot += p.vr * dt;
     p.life -= dt;
   }
   parts = parts.filter(p => p.life > 0);
+  for (const r of rails) r.life -= dt;
+  rails = rails.filter(r => r.life > 0);
 }
 
 function update(dt) {
   time += dt;
   if (state === 'menu' || state === 'pause') return;
+  if (hitstop > 0) { hitstop -= dt; return; }
   updateParts(dt);
   shake = Math.max(0, shake - dt * 30);
   banner.t -= dt;
@@ -560,6 +670,7 @@ function update(dt) {
   updateBullets(dt);
   enemies = enemies.filter(e => !e.dead);
   updateItems(dt);
+  updateWrecks(dt);
 
   if (player.dead) {
     deadT -= dt;
@@ -568,10 +679,10 @@ function update(dt) {
       if (score > best) { best = score; try { localStorage.setItem('ecotank-best', best); } catch (e) {} }
     }
   } else if (state === 'play' && !toSpawn.length && !enemies.length) {
-    const bonus = 300 * wave;
+    const bonus = CFG.waveBonus * wave;
     score += bonus;
-    banner = { text: 'Волна пройдена!', sub: `Бонус +${bonus}`, t: 2.5 };
-    state = 'between'; betweenT = 2.8;
+    banner = { text: 'Волна пройдена!', sub: `Бонус +${bonus}` + (wrecks.length ? ' · собери металлолом!' : ''), t: 2.5 };
+    state = 'between'; betweenT = wrecks.length ? 4.5 : 2.8;
     sfx('wave');
   } else if (state === 'between') {
     betweenT -= dt;
@@ -707,6 +818,50 @@ function drawItems() {
   }
 }
 
+function drawWrecks() {
+  for (const w of wrecks) {
+    const K = KINDS[w.kind], s = K.scale;
+    ctx.save();
+    ctx.translate(w.x, w.y);
+    const pulse = .25 + .2 * Math.sin(time * 4 + w.x);
+    ctx.strokeStyle = `rgba(217,194,122,${pulse})`; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.arc(0, 0, 19 * s, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.scale(s, s);
+    ctx.save();
+    ctx.rotate(w.angle);
+    ctx.fillStyle = '#1b1c1d';
+    ctx.fillRect(-15, -15, 27, 7); ctx.fillRect(-13, 8, 30, 7);
+    ctx.fillStyle = '#3a3532'; roundRect(ctx, -13, -9, 26, 18, 3); ctx.fill();
+    ctx.fillStyle = K.dark; ctx.globalAlpha = .35; ctx.fillRect(-11, -7, 15, 9); ctx.globalAlpha = 1;
+    ctx.restore();
+    ctx.rotate(w.turret);
+    ctx.translate(3, 2);
+    ctx.fillStyle = '#2a2624'; ctx.fillRect(2, -2.5, 12, 5);
+    ctx.fillStyle = '#423b36'; ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    if (w.age < 4) {
+      for (let i = 0; i < 3; i++) {
+        const f = Math.sin(time * 13 + i * 2.1 + w.x) * .5 + .5;
+        ctx.fillStyle = `rgba(255,${120 + f * 80 | 0},40,${(1 - w.age / 4) * f})`;
+        ctx.beginPath(); ctx.arc(w.x + (i - 1) * 6, w.y + Math.sin(i * 3) * 5, 2 + f * 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+}
+
+function drawRails() {
+  ctx.lineCap = 'round';
+  for (const r of rails) {
+    const a = r.life / r.max;
+    ctx.strokeStyle = `rgba(170,110,255,${a * .45})`; ctx.lineWidth = 16 * a + 2;
+    ctx.beginPath(); ctx.moveTo(r.x0, r.y0); ctx.lineTo(r.x1, r.y1); ctx.stroke();
+    ctx.strokeStyle = `rgba(240,225,255,${a})`; ctx.lineWidth = 4 * a + 1;
+    ctx.beginPath(); ctx.moveTo(r.x0, r.y0); ctx.lineTo(r.x1, r.y1); ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+}
+
 function drawBullets() {
   for (const b of bullets) {
     ctx.strokeStyle = b.owner === 'p' ? 'rgba(200,255,170,.35)' : 'rgba(255,170,140,.35)';
@@ -721,17 +876,35 @@ function drawParts() {
   for (const p of parts) {
     const a = clamp(p.life / p.max, 0, 1);
     ctx.globalAlpha = a;
+    ctx.globalCompositeOperation = p.kind === 'fire' || p.kind === 'spark' || p.kind === 'flash' ? 'lighter' : 'source-over';
     if (p.text) {
       ctx.fillStyle = p.color; ctx.font = 'bold 15px "Segoe UI", sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(p.text, p.x, p.y);
+    } else if (p.kind === 'flash') {
+      ctx.fillStyle = '#fff4d0';
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1.2 - a * .4), 0, Math.PI * 2); ctx.fill();
+    } else if (p.kind === 'ring') {
+      ctx.strokeStyle = '#ffe3b0'; ctx.lineWidth = 6 * a;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 - a * a), 0, Math.PI * 2); ctx.stroke();
+    } else if (p.kind === 'spark') {
+      ctx.strokeStyle = p.color; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * .04, p.y - p.vy * .04); ctx.stroke();
+    } else if (p.kind === 'debris') {
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.color; ctx.fillRect(-p.size / 2, -p.size / 3, p.size, p.size * .66);
+      ctx.restore();
+    } else if (p.kind === 'smoke') {
+      ctx.globalAlpha = a * .6;
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (2 - a), 0, Math.PI * 2); ctx.fill();
     } else {
       ctx.fillStyle = p.color;
-      const sz = p.smoke ? p.size * (2 - a) : p.size * a;
-      ctx.beginPath(); ctx.arc(p.x, p.y, sz, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (p.kind === 'fire' ? .4 + .6 * a : a), 0, Math.PI * 2); ctx.fill();
     }
   }
   ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 function text(str, x, y, size, color, align = 'left', weight = '600') {
@@ -743,16 +916,31 @@ function text(str, x, y, size, color, align = 'left', weight = '600') {
 
 function drawHud() {
   ctx.fillStyle = 'rgba(12,16,14,.6)';
-  roundRect(ctx, 8, 8, 420, 32, 8); ctx.fill();
-  for (let i = 0; i < KINDS.player.hp; i++) {
-    ctx.fillStyle = i < player.hp ? '#e5484d' : '#3a3f44';
-    roundRect(ctx, 18 + i * 18, 17, 13, 14, 3); ctx.fill();
+  roundRect(ctx, 8, 8, 570, 32, 8); ctx.fill();
+  const maxHp = KINDS.player.hp;
+  if (maxHp <= 5) {
+    for (let i = 0; i < maxHp; i++) {
+      ctx.fillStyle = i < player.hp ? '#e5484d' : '#3a3f44';
+      roundRect(ctx, 18 + i * 18, 17, 13, 14, 3); ctx.fill();
+    }
+  } else {
+    ctx.fillStyle = '#3a3f44'; roundRect(ctx, 18, 16, 86, 16, 4); ctx.fill();
+    ctx.fillStyle = '#e5484d'; roundRect(ctx, 18, 16, 86 * clamp(player.hp / maxHp, 0, 1), 16, 4); ctx.fill();
+    text(`${player.hp}/${maxHp}`, 61, 24, 11, '#fff', 'center', '700');
   }
   text(`Очки ${score}`, 118, 24, 15, '#eef5e8');
   text(`Волна ${wave}`, 230, 24, 15, '#eef5e8');
   text(`Враги ${toSpawn.length + enemies.length}`, 320, 24, 15, '#eef5e8');
+  text(`Металлолом ${scrap}`, 425, 24, 15, '#d9c27a');
 
   let x = W - 12;
+  if (player.rail > 0) {
+    const I = ITEMS.rail;
+    ctx.fillStyle = 'rgba(12,16,14,.6)'; roundRect(ctx, x - 150, 8, 150, 32, 8); ctx.fill();
+    text(`${I.glyph} ${I.name} ×${player.rail}`, x - 140, 20, 13, I.color);
+    text('ПКМ / E', x - 140, 33, 10, '#b9a6d6', 'left', '400');
+    x -= 158;
+  }
   for (const k of ['shield', 'triple', 'rapid']) {
     const v = player.pw[k];
     if (v <= 0) continue;
@@ -760,7 +948,7 @@ function drawHud() {
     ctx.fillStyle = 'rgba(12,16,14,.6)'; roundRect(ctx, x - 120, 8, 120, 32, 8); ctx.fill();
     text(I.glyph + ' ' + I.name, x - 110, 21, 13, I.color);
     ctx.fillStyle = '#3a3f44'; ctx.fillRect(x - 110, 31, 100, 3);
-    ctx.fillStyle = I.color; ctx.fillRect(x - 110, 31, v * 10, 3);
+    ctx.fillStyle = I.color; ctx.fillRect(x - 110, 31, Math.min(100, v / CFG.powerupTime * 100), 3);
     x -= 128;
   }
   if (muted) text('звук выкл (M)', W - 12, H - 14, 12, '#aab', 'right', '400');
@@ -775,34 +963,39 @@ function drawMenu() {
   const lines = [
     ['WASD / стрелки', 'движение'],
     ['Мышь', 'прицел башни'],
-    ['ЛКМ / Пробел', 'огонь (твои снаряды рикошетят от стали)'],
+    ['ЛКМ / Пробел', 'огонь'],
+    ['ПКМ / E', 'рельсотрон (если есть заряд)'],
     ['P / Esc', 'пауза'],
     ['M', 'звук'],
   ];
-  lines.forEach(([k, v], i) => { text(k, W / 2 - 20, 270 + i * 28, 16, '#ffe08a', 'right'); text(v, W / 2, 270 + i * 28, 16, '#dde6d8', 'left', '400'); });
-  text('Кирпич ломается, сталь и вода — нет. В кронах деревьев враги тебя не видят.', W / 2, 425, 14, '#9fb39a', 'center', '400');
+  lines.forEach(([k, v], i) => { text(k, W / 2 - 20, 260 + i * 27, 16, '#ffe08a', 'right'); text(v, W / 2, 260 + i * 27, 16, '#dde6d8', 'left', '400'); });
+  text('Кирпич ломается, сталь и вода — нет. В кронах деревьев враги тебя не видят.', W / 2, 438, 14, '#9fb39a', 'center', '400');
+  text('Проезжай по обломкам врагов, чтобы собрать металлолом.', W / 2, 460, 14, '#d9c27a', 'center', '400');
   const types = Object.entries(ITEMS);
   types.forEach(([k, I], i) => {
-    const x = W / 2 - 300 + i * 160, y = 470;
+    const x = W / 2 - 370 + i * 160, y = 505;
     ctx.fillStyle = '#1d2226'; roundRect(ctx, x - 12, y - 12, 24, 24, 6); ctx.fill();
     ctx.strokeStyle = I.color; ctx.lineWidth = 2; ctx.stroke();
     text(I.glyph, x, y + 1, 14, I.color, 'center', '700');
     text(I.name, x + 20, y, 14, '#dde6d8', 'left', '400');
   });
-  if (Math.floor(time * 2) % 2 === 0) text('Нажми Enter или кликни, чтобы начать', W / 2, 545, 20, '#fff', 'center');
-  if (best) text(`Рекорд: ${best}`, W / 2, 590, 15, '#ffe08a', 'center', '400');
+  if (Math.floor(time * 2) % 2 === 0) text('Нажми Enter или кликни, чтобы начать', W / 2, 565, 20, '#fff', 'center');
+  if (best) text(`Рекорд: ${best}`, W / 2, 605, 15, '#ffe08a', 'center', '400');
 }
 
 function draw() {
   ctx.save();
-  if (shake > 0) ctx.translate(rnd(-shake, shake) * .5, rnd(-shake, shake) * .5);
+  const sk = shake * CFG.shake * .5;
+  if (sk > 0) ctx.translate(rnd(-sk, sk), rnd(-sk, sk));
   ctx.drawImage(groundCanvas, 0, 0);
   drawTiles();
   if (state !== 'menu') {
+    drawWrecks();
     drawItems();
     for (const e of enemies) drawTank(e);
     if (player && !player.dead) drawTank(player);
     drawBullets();
+    drawRails();
     drawParts();
   }
   drawTrees();
@@ -819,18 +1012,128 @@ function draw() {
   }
   if (state === 'pause') {
     overlay(.55);
-    text('Пауза', W / 2, H / 2 - 10, 52, '#fff', 'center', '800');
-    text('P / Esc / клик — продолжить', W / 2, H / 2 + 35, 17, '#cfe0c6', 'center', '400');
+    text('Пауза', W / 2, H / 2 - 50, 52, '#fff', 'center', '800');
   }
   if (state === 'over') {
     overlay(clamp(overT * 1.5, 0, .7));
     if (overT > .3) {
       text('Танк уничтожен', W / 2, H / 2 - 70, 52, '#ff6b5a', 'center', '800');
-      text(`Очки: ${score}   ·   Волна: ${wave}`, W / 2, H / 2 - 10, 22, '#fff', 'center');
+      text(`Очки: ${score}   ·   Волна: ${wave}   ·   Металлолом: ${scrap}`, W / 2, H / 2 - 10, 22, '#fff', 'center');
       text(score >= best && score > 0 ? 'Новый рекорд!' : `Рекорд: ${best}`, W / 2, H / 2 + 25, 18, '#ffe08a', 'center');
       if (overT > .6 && Math.floor(time * 2) % 2 === 0) text('Enter или клик — ещё раз', W / 2, H / 2 + 80, 18, '#cfe0c6', 'center', '400');
     }
   }
+}
+
+// ---------- настройки разработчика ----------
+const KIND_NAMES = { player: 'Игрок', scout: 'Разведчик', soldier: 'Солдат', heavy: 'Тяжёлый' };
+const TANK_FIELDS = [
+  ['hp', 'ХП', 1, 99, 1],
+  ['speed', 'Скорость танка', 0, 400, 5],
+  ['bulletSpeed', 'Скорость снаряда', 50, 2000, 10],
+  ['fireRate', 'Перезарядка, с', .05, 10, .05],
+  ['dmg', 'Урон снаряда', 0, 20, 1],
+  ['turretSpeed', 'Поворот башни', .5, 20, .5],
+  ['hold', 'Дистанция стоянки', 0, 600, 10],
+  ['wander', 'Случайность пути', 0, 1, .05],
+  ['score', 'Очки за уничтожение', 0, 5000, 50],
+  ['scrap', 'Металлолом', 0, 50, 1],
+];
+const CFG_FIELDS = [
+  ['Бонусы', [
+    ['dropChance', 'Шанс выпадения', 0, 1, .05],
+    ['heavyDropBonus', 'Доп. шанс с тяжёлого', 0, 1, .05],
+    ['powerupTime', 'Длительность бонусов, с', 1, 60, 1],
+    ['repairAmount', 'Ремонт, ХП', 1, 20, 1],
+    ['railMax', 'Макс. зарядов рельсотрона', 1, 20, 1],
+  ]],
+  ['Волны', [
+    ['waveBase', 'Врагов в 1-й волне', 1, 50, 1],
+    ['wavePerLevel', 'Прирост врагов за волну', 0, 20, 1],
+    ['maxAliveBase', 'Врагов одновременно (база)', 1, 20, 1],
+    ['maxAliveCap', 'Врагов одновременно (макс.)', 1, 30, 1],
+    ['enemySpeedPerWave', 'Ускорение врагов за волну', 0, .2, .01],
+    ['waveBonus', 'Бонус за волну (× номер)', 0, 5000, 50],
+    ['waveHeal', 'Лечение между волнами', 0, 20, 1],
+  ]],
+  ['Мир и эффекты', [
+    ['brickHp', 'Прочность кирпича', 1, 10, 1],
+    ['invulnTime', 'Неуязвимость после урона, с', 0, 5, .1],
+    ['enemySight', 'Дальность обзора врагов', 50, 1500, 10],
+    ['treeStealth', 'Видят в кронах ближе чем', 0, 500, 10],
+    ['shake', 'Тряска экрана (×)', 0, 3, .1],
+    ['hitstop', 'Стоп-кадр при взрыве, с', 0, .3, .01],
+    ['godMode', 'Режим бога', 'bool'],
+  ]],
+];
+const DEV_DEFAULTS = JSON.stringify({ KINDS, CFG });
+let devOpen = false;
+const pauseMenu = document.getElementById('pauseMenu'), devEl = document.getElementById('dev'), devBody = document.getElementById('devBody');
+
+function applyDev(s) {
+  for (const k in s.KINDS) if (KINDS[k]) Object.assign(KINDS[k], s.KINDS[k]);
+  Object.assign(CFG, s.CFG);
+}
+function saveDev() { try { localStorage.setItem('ecotank-dev', JSON.stringify({ KINDS, CFG })); } catch (e) {} }
+try { const s = JSON.parse(localStorage.getItem('ecotank-dev')); if (s) applyDev(s); } catch (e) {}
+
+function numInput(obj, key, min, max, step, value) {
+  return `<input type="number" data-obj="${obj}" data-key="${key}" min="${min}" max="${max}" step="${step}" value="${value}">`;
+}
+function buildDev() {
+  const kinds = Object.keys(KINDS);
+  let h = '<h3>Танки</h3><table><tr><th></th>' + kinds.map(k => `<th style="color:${KINDS[k].color}">${KIND_NAMES[k]}</th>`).join('') + '</tr>';
+  for (const [key, label, min, max, step] of TANK_FIELDS) {
+    h += `<tr><td>${label}</td>` + kinds.map(k => key in KINDS[k] ? `<td>${numInput(k, key, min, max, step, KINDS[k][key])}</td>` : '<td class="na">—</td>').join('') + '</tr>';
+  }
+  h += '</table>';
+  for (const [title, fields] of CFG_FIELDS) {
+    h += `<h3>${title}</h3><div class="grid">`;
+    for (const [key, label, min, max, step] of fields) {
+      h += `<label>${label}` + (min === 'bool'
+        ? `<input type="checkbox" data-obj="CFG" data-key="${key}"${CFG[key] ? ' checked' : ''}>`
+        : numInput('CFG', key, min, max, step, CFG[key])) + '</label>';
+    }
+    h += '</div>';
+  }
+  devBody.innerHTML = h;
+}
+devBody.addEventListener('input', e => {
+  const el = e.target, k = el.dataset.obj, obj = k === 'CFG' ? CFG : KINDS[k];
+  if (!obj) return;
+  if (el.type === 'checkbox') obj[el.dataset.key] = el.checked;
+  else {
+    const v = parseFloat(el.value);
+    if (isNaN(v)) return;
+    obj[el.dataset.key] = clamp(v, +el.min, +el.max);
+  }
+  if (player && k === 'player' && el.dataset.key === 'hp') { player.maxHp = KINDS.player.hp; player.hp = Math.min(player.hp, KINDS.player.hp); }
+  saveDev();
+});
+devEl.querySelector('.devActions').addEventListener('click', e => {
+  const act = e.target.dataset.act;
+  if (!act) return;
+  const alive = player && !player.dead;
+  if (act === 'heal' && alive) player.hp = KINDS.player.hp;
+  else if (act === 'rail' && alive) player.rail = Math.min(CFG.railMax, player.rail + 1);
+  else if (act === 'powerups' && alive) for (const k in player.pw) player.pw[k] = CFG.powerupTime;
+  else if (act === 'kill') { for (const e of enemies) if (e.spawnT <= 0) hitEnemy(e, { x: e.x, y: e.y, dmg: 999 }); enemies = enemies.filter(e => !e.dead); }
+  else if (act === 'skip' && alive) { nextWave(); state = 'pause'; }
+  else if (act === 'reset') {
+    applyDev(JSON.parse(DEV_DEFAULTS));
+    try { localStorage.removeItem('ecotank-dev'); } catch (e) {}
+    if (player) player.hp = Math.min(player.hp, KINDS.player.hp);
+    buildDev();
+  }
+});
+document.getElementById('btnResume').addEventListener('click', e => { e.currentTarget.blur(); state = 'play'; });
+document.getElementById('btnDev').addEventListener('click', e => { e.currentTarget.blur(); devOpen = true; buildDev(); });
+document.getElementById('btnDevClose').addEventListener('click', e => { e.currentTarget.blur(); devOpen = false; });
+
+function syncUI() {
+  const pm = state === 'pause' && !devOpen, dv = state === 'pause' && devOpen;
+  if (pauseMenu.hidden === pm) pauseMenu.hidden = !pm;
+  if (devEl.hidden === dv) devEl.hidden = !dv;
 }
 
 // ---------- запуск ----------
@@ -841,6 +1144,7 @@ function frame(now) {
   last = now;
   update(dt);
   draw();
+  syncUI();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
