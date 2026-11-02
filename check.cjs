@@ -61,18 +61,18 @@ musicOff=false;muted=false;state='play';syncMusic();if(music.paused||Math.abs(mu
 state='over';syncMusic();if(music.paused)throw Error('Game over music');muted=true;
 grid[100]=BRICK;brickHp[100]=4;brickMask[100]=1023;hitBrick(10,3,1);if(brickShake[100]<=0)throw Error('Brick shake');updateParts(.3);if(brickShake[100]!==0)throw Error('Brick shake decay');
 startGame();if(player.armor)throw Error('New game reset');draw();
-if(Math.abs(KINDS.heavy.scale-1.18*1.15)>1e-8||Math.abs(KINDS.scout.scale-.85*.9)>1e-8)throw Error('Tank scales');
+if(Math.abs(KINDS.heavy.scale-1.18*1.15)>1e-8||Math.abs(KINDS.scout.scale-.85*.9*1.1)>1e-8)throw Error('Tank scales');
 grid.fill(EMPTY);enemies=[];base=null;
 for(const c of [5,6]){const i=5*COLS+c;grid[i]=BRICK;brickHp[i]=4;brickMask[i]=1023;}
 const piercing={x:150,y:176,vx:1200,vy:0,life:2,r:3,dmg:2,armor:true,trail:[],owner:'p'};
 bullets=[piercing];updateBullets(.06);
 if(grid[5*COLS+5]!==EMPTY||brickHp[5*COLS+6]!==3||!piercing.dead)throw Error('AP one block penetration');
-startGame();if(base.hp!==5||grid[17*COLS+15]!==BRICK||Math.hypot(player.x-base.x,player.y-base.y)<50)throw Error('Base layout');
+startGame();if(base.hp!==5||grid[18*COLS+15]!==BRICK||Math.hypot(player.x-base.x,player.y-base.y)<50)throw Error('Base layout');
 hitBase(1);nextWave();if(base.hp!==4)throw Error('Base wave persistence');
 grid.fill(EMPTY);player.x=100;player.y=100;enemies=[];
 bullets=[{x:base.x,y:base.y-25,vx:0,vy:300,life:1,r:3,dmg:1,owner:'e'}];updateBullets(.1);
 if(base.hp!==3||bullets.length)throw Error('Base projectile collision');
-hitBase(3);toSpawn=[];hitstop=0;update(2.1);if(state!=='over'||!base.dead)throw Error('Base defeat');
+hitBase(3);toSpawn=[];hitstop=0;for(let t=0;t<240;t++)update(.033);if(state!=='over'||!base.dead)throw Error('Base defeat');
 startGame();if(base.hp!==5||base.dead)throw Error('Base restart');draw();
 grid.fill(EMPTY);player.x=100;player.y=100;enemies=[];
 bullets=[{x:base.x,y:base.y-25,vx:0,vy:300,life:1,r:3,dmg:1,owner:'p'}];updateBullets(.1);if(base.hp!==4)throw Error('Friendly base damage');
@@ -86,6 +86,75 @@ const ambusher=makeTank(144,176,'soldier');updateCover(ambusher,player,.1);
 if(!ambusher.cover||los(ambusher.cover.x,ambusher.cover.y,player.x,player.y)||!los(ambusher.cover.px,ambusher.cover.py,player.x,player.y))throw Error('Corner cover');
 ambusher.retreat=true;ambusher.cd=2;updateCover(ambusher,player,.1);if(ambusher.tx!==ambusher.cover.x||ambusher.ty!==ambusher.cover.y)throw Error('Cover retreat');
 updateEnemy(ambusher,.1);drawTank(player);
+// Boost timing, release-to-rearm, and sand apply to both sides.
+grid.fill(EMPTY);sand.fill(0);base=null;enemies=[];player=makeTank(400,400,'player');player.angle=0;keys.KeyW=true;keys.ShiftLeft=true;updatePlayer(.1);
+if(Math.abs(player.x-412)>1e-6||player.boostLeft!==2)throw Error('Boost x2');
+keys.KeyW=false;updatePlayer(2);if(player.boostLeft!==0||player.boostCooldown!==10)throw Error('Boost duration/cooldown');
+updatePlayer(10);if(player.boostLeft)throw Error('Boost hold retrigger');keys.ShiftLeft=false;updatePlayer(.01);keys.ShiftLeft=true;updatePlayer(.01);if(player.boostLeft!==2)throw Error('Boost rearm');
+keys.ShiftLeft=false;keys.KeyW=false;player.boostLeft=0;player.boostCooldown=0;
+player.x=400;player.y=400;sand[12*COLS+12]=1;moveTank(player,10,0,.1);if(player.x!==405)throw Error('Sand player');
+const sandyEnemy=makeTank(400,400,'soldier');moveTank(sandyEnemy,10,0,.1);if(sandyEnemy.x!==405)throw Error('Sand enemy');
+// Surviving masonry defines bullet and tank collision, not the old tile rectangle.
+sand.fill(0);grid.fill(EMPTY);const wall=5*COLS+5;grid[wall]=BRICK;brickHp[wall]=3;brickMask[wall]=1<<9;
+if(bulletBlocked(164,164,1)||!bulletBlocked(188,188,1))throw Error('Masonry holes');
+const smallTank={x:164,y:164,r:2};collideTiles(smallTank);if(smallTank.x!==164||smallTank.y!==164)throw Error('Tank hole collision');
+player.x=600;player.y=400;bullets=[{x:140,y:164,vx:300,vy:0,life:2,r:1,dmg:1,owner:'p'}];updateBullets(.2);if(!bullets.length||bullets[0].x<195)throw Error('Shoot through hole');
+grid.fill(EMPTY);grid[5*COLS+5]=BRICK;brickMask[5*COLS+5]=1023;brickHp[5*COLS+5]=4;
+const clearing=makeTank(144,176,'heavy');player.x=300;player.y=176;clearing.cd=0;clearing.turret=0;enemies=[clearing];updateEnemy(clearing,.01);if(!clearing.brick||!bullets.some(b=>b.owner==='e'))throw Error('Heavy wall clearing');
+// AP wins against a regular shell, then loses AP state and bonuses.
+grid.fill(EMPTY);enemies=[];player.x=700;player.y=500;
+for(const owner of ['p','e']){const ap={x:400,y:300,vx:1500,vy:0,r:3,dmg:2,armor:true,trail:[],life:2,owner};const normal={x:450,y:300,vx:-300,vy:0,r:3,dmg:1,life:2,owner:owner==='p'?'e':'p'};bullets=[ap,normal];updateBullets(.06);if(bullets.length!==1||ap.dead||ap.armor||ap.dmg!==1||ap.vx!==1000||!normal.dead)throw Error('AP shell intercept');}
+const originalRandom=Math.random;Math.random=()=>.5;wrecks=[];
+let victim=makeTank(400,300,'scout');hitEnemy(victim,{x:400,y:300,dmg:99});const regularDelay=wrecks[0].detonateAt;
+victim=makeTank(400,300,'scout');hitEnemy(victim,{x:400,y:300,dmg:99,blast:true});if(wrecks[1].detonateAt!==regularDelay/2)throw Error('Chain fuse half');
+grid[100]=TREE;foliageMask[100]=31;Math.random=()=>.01;parts=[];hitFoliage(10,3,336,112,{});if(!parts.some(p=>p.kind==='bird'))throw Error('Bird chance');Math.random=originalRandom;
+drawParts();drawBase();drawTank(player);keys.KeyW=false;
+player.boostLeft=0;player.boostCooldown=10;if(boostProgress(player)!==0)throw Error('Boost bar empty');player.boostCooldown=5;if(boostProgress(player)!==.5)throw Error('Boost bar half');player.boostCooldown=0;if(boostProgress(player)!==1)throw Error('Boost bar ready');
+player.cd=1;player.reloadDuration=1;player.recoilMax=5;if(recoilOffset(player)!==5)throw Error('Full recoil');player.cd=.5;if(recoilOffset(player)!==2.5)throw Error('Reload recoil half');player.cd=0;if(recoilOffset(player)!==0)throw Error('Reload recoil ready');
+startGame();grid.fill(EMPTY);enemies=[];player.x=100;player.y=100;parts=[];
+if(base.y+16!==H||grid[19*COLS+15]!==EMPTY)throw Error('Base bottom');
+hitBase(5);if(base.collapseCount!==1)throw Error('First base explosion');const firstFlash=parts.find(p=>p.kind==='flash');if(!firstFlash||firstFlash.size!==196)throw Error('Double base radius');
+updateBaseCollapse(.49);if(base.collapseCount!==1)throw Error('Base explosion too early');updateBaseCollapse(.01);if(base.collapseCount!==2)throw Error('Second base explosion');updateBaseCollapse(.5);if(base.collapseCount!==3)throw Error('Third base explosion');
+const flashes=parts.filter(p=>p.kind==='flash');if(flashes.length!==3||new Set(flashes.map(p=>p.x+','+p.y)).size!==3)throw Error('Offset base explosions');updateBaseCollapse(10);if(base.collapseCount!==3||parts.filter(p=>p.kind==='flash').length!==3)throw Error('Base explosion count');
+base=null;grid.fill(EMPTY);grid[100]=TREE;foliageMask[100]=31;const oldLeaves=foliageMask[100];blastDamage(336,112,30);if(foliageMask[100]===oldLeaves)throw Error('Blast foliage');
+grid.fill(EMPTY);parts=[];const apSpark={x:400,y:300,vx:100,vy:0,r:3,armor:true,dmg:2,trail:[],owner:'p'},regularSpark={x:401,y:300,vx:-100,vy:0,r:3,dmg:1,owner:'e'};bullets=[apSpark,regularSpark];collideShells();if(!parts.some(p=>p.kind==='spark'&&p.size>2))throw Error('Shell sparks');
+const randomBirds=Math.random;Math.random=()=>.01;grid[100]=TREE;foliageMask[100]=31;parts=[];hitFoliage(10,3,336,112,{});Math.random=randomBirds;const flock=parts.filter(p=>p.kind==='bird'),whites=flock.filter(p=>p.color==='#f0f0e5');if(whites.length<1||whites.length>2||!flock.some(p=>p.color==='#1c2927'))throw Error('White birds');
+grid.fill(EMPTY);player=makeTank(600,400,'player');const idle=makeTank(400,300,'soldier');idle.cover={};idle.leader={};idle.retreat=true;
+reconsiderRoute(idle,4.9);if(idle.repaths)throw Error('Early repath');reconsiderRoute(idle,.11);if(idle.repaths!==1||idle.cover||idle.leader||idle.retreat||idle.detourTime<=0||Math.hypot(idle.tx-idle.x,idle.ty-idle.y)<10)throw Error('Idle repath');
+idle.x+=10;reconsiderRoute(idle,.1);if(idle.idleTime!==0)throw Error('Idle move reset');drawTank(player);drawParts();
+player.boostLeft=2;if(boostProgress(player)!==1)throw Error('Full active boost');player.boostLeft=1;if(boostProgress(player)!==.5)throw Error('Boost consumption');player.boostLeft=0;player.boostCooldown=10;if(boostProgress(player)!==0)throw Error('Boost empty cooldown');
+startGame();grid.fill(EMPTY);enemies=[];base=null;parts=[];player.hp=1;player.inv=0;player.pw.shield=0;hitPlayer({x:player.x,y:player.y,dmg:1});
+const dyingPlayer=wrecks[0],fuse=dyingPlayer.detonateAt;updateWrecks(fuse+.001);if(dyingPlayer.blastCount!==1||dyingPlayer.exploded!==false)throw Error('First player blast');
+updateWrecks(.5);if(dyingPlayer.blastCount!==2)throw Error('Second player blast');updateWrecks(.5);if(dyingPlayer.blastCount!==3||!dyingPlayer.exploded)throw Error('Third player blast');
+const playerFlashes=parts.filter(p=>p.kind==='flash');if(playerFlashes.length!==3||playerFlashes.some(p=>p.size!==70))throw Error('Normal player blast size');
+const initialCols=COLS;CFG.mapSize=45;if(COLS!==initialCols)throw Error('Immediate map resize');
+for(const size of [45,60,30]) {
+  CFG.mapSize=size;startGame();
+  if(COLS!==size||ROWS!==size*2/3||W!==size*T||cv.width!==W||cv.height!==H)throw Error('Map dimensions');
+  for(const arr of [grid,brickHp,brickMask,brickVariant,foliageMask,foliageShake,sand,flow])if(arr.length!==COLS*ROWS)throw Error('Map arrays');
+  if(!connected()||base.y+16!==H||Math.abs(base.x-W/2)>T||player.y!==H-48)throw Error('Dynamic map layout');
+  const bc=Math.floor(COLS/2);if(grid[(ROWS-2)*COLS+bc]!==BRICK||grid[(ROWS-1)*COLS+bc]!==EMPTY)throw Error('Dynamic base walls');
+  toSpawn=['scout'];enemies=[];spawnTimer=0;updateSpawns(.1);if(!enemies.length||enemies[0].x>=W)throw Error('Dynamic spawns');
+  nextWave();if(COLS!==size||grid.length!==size*(size*2/3))throw Error('Map wave persistence');
+  buildFlow(Math.floor(base.x/T),Math.floor(base.y/T));draw();
+}
+const curves=[];roundedPolygon({moveTo(){},lineTo(){},closePath(){},quadraticCurveTo(...args){curves.push(args);}},[[-5,-12],[5,-12],[11,4],[7,12],[-7,12],[-11,4]],.22);if(curves.length!==6)throw Error('Rounded hexagon');
+grid.fill(EMPTY);const fragmentWall=5*COLS+5;grid[fragmentWall]=BRICK;brickHp[fragmentWall]=4;brickMask[fragmentWall]=1023;parts=[];
+hitBrick(5,5,1,160,161);const removed=1023^brickMask[fragmentWall],chunks=parts.filter(p=>p.brickFragment);
+const removedBricks=masonry(0).filter((b,q)=>removed&(1<<q));
+if(chunks.length!==removedBricks.length*4)throw Error('Fragments per removed brick');
+for(const p of chunks)if(!removedBricks.some(b=>p.x>=160+b.x&&p.x<=160+b.x+b.w&&p.y>=160+b.y&&p.y<=168+b.y))throw Error('Fragment origin');
+updateParts(.2);if(chunks.some(p=>p.life>=p.max||p.life<=0))throw Error('Fragment fade');drawParts();updateParts(2);if(parts.some(p=>p.brickFragment))throw Error('Fragment cleanup');
+for(const size of [30,45,60]){CFG.mapSize=size;startGame();if(SPAWNS.length!==5||new Set(SPAWNS.map(s=>s.c)).size!==5||SPAWNS.some(s=>s.r!==1||s.c<1||s.c>COLS-2)||!connected())throw Error('Five spawn lanes');
+const randomSpawn=Math.random;for(let k=0;k<5;k++){enemies=[];toSpawn=['scout'];spawnTimer=0;Math.random=()=>(k+.1)/5;updateSpawns(.1);if(enemies[0].x!==SPAWNS[k].c*T+16||enemies[0].y>=0)throw Error('All top lanes usable');}Math.random=randomSpawn;}
+CFG.mapSize=30;startGame();
+grid.fill(STEEL);grid[5*COLS+5]=EMPTY;grid[5*COLS+4]=EMPTY;grid[5*COLS+3]=EMPTY;
+for(let n=0;n<15;n++){const exit=fragmentEscape(176,176,1.4);if(Math.cos(exit.angle)>-.9||exit.clearance<60)throw Error('Fragments choose left opening');}
+grid[5*COLS+4]=STEEL;grid[5*COLS+3]=STEEL;grid[5*COLS+6]=EMPTY;grid[5*COLS+7]=EMPTY;
+for(let n=0;n<15;n++){const exit=fragmentEscape(176,176,1.4);if(Math.cos(exit.angle)<.9||exit.clearance<60)throw Error('Fragments choose right opening');}
+grid[5*COLS+5]=BRICK;brickMask[5*COLS+5]=1023;brickHp[5*COLS+5]=4;parts=[];hitBrick(5,5,1,160,161);
+const escapingChunks=parts.filter(p=>p.brickFragment);for(const chunk of escapingChunks){const clearance=fragmentEscape(chunk.x,chunk.y,1).clearance;if(Math.hypot(chunk.vx,chunk.vy)>clearance*2+10)throw Error('Fragment confined speed');}
+startGame();
 `,box);
 assert(!code.includes("tone(420, 110"));
 console.log('PASS: screenshot defaults, storage migration, turret rate/wrap, four-hit brick damage, density, 20 dense connected maps, asymmetry, render calls, settings persistence');
