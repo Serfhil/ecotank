@@ -1,13 +1,15 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
 const code=fs.readFileSync(__dirname+'/index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
-const context=new Proxy({}, {get:(o,k)=>k in o?o[k]:(()=>context)});
+const makeContext=()=>{const c=new Proxy({}, {get:(o,k)=>k in o?o[k]:(()=>c)});return c;},context=makeContext();
 const element={style:{},addEventListener(){},getContext:()=>context,querySelector:()=>element,querySelectorAll:()=>[],blur(){}};
 const store=new Map([['ecotank-dev',JSON.stringify({KINDS:{player:{speed:999}},CFG:{brickHp:2}})]]);
-const box={console,document:{getElementById:()=>({...element}),createElement:()=>({...element}),activeElement:element},window:{},innerWidth:960,innerHeight:640,addEventListener(){},requestAnimationFrame(){},performance:{now:()=>0},setTimeout(){},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)}};
+const box={console,document:{getElementById:()=>({...element}),createElement:()=>({...element,getContext:makeContext}),activeElement:element},window:{},innerWidth:960,innerHeight:640,addEventListener(){},requestAnimationFrame(){},performance:{now:()=>0},setTimeout(){},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)}};
 box.Audio=class {play(){this.paused=false;return Promise.resolve();} pause(){this.paused=true;}};
 vm.createContext(box);vm.runInContext(fs.readFileSync(__dirname+'/maps.js','utf8'),box);vm.runInContext(code,box);
 vm.runInContext(`
 muted=true;
+// очередь поиска маршрутов работает по кадрам; в проверках дожидаемся появления
+const spawnWait=(n=600)=>{const before=enemies.length;for(let k=0;k<n&&enemies.length===before;k++){navStep();updateSpawns(.05);}};
 if(KINDS.player.speed!==60||KINDS.player.bulletSpeed!==1200||KINDS.heavy.hp!==3)throw Error('Defaults or legacy settings');
 player=makeTank(480,592,'player');player.turret=0;mouse.x=480;mouse.y=100;updatePlayer(.1);
 if(Math.abs(player.turret+.1)>1e-8)throw Error('Turret rate');
@@ -77,14 +79,12 @@ startGame();if(base.hp!==5||base.dead)throw Error('Base restart');draw();
 grid.fill(EMPTY);player.x=100;player.y=100;enemies=[];
 bullets=[{x:base.x,y:base.y-25,vx:0,vy:300,life:1,r:3,dmg:1,owner:'p'}];updateBullets(.1);if(base.hp!==4)throw Error('Friendly base damage');
 const h=makeTank(400,200,'heavy');bullets=[];fire(h);if(!bullets[0].armor||bullets[0].dmg!==2||Math.abs(Math.hypot(bullets[0].vx,bullets[0].vy)-3000)>1e-8)throw Error('Heavy AP');
-enemies=[h,makeTank(410,250,'scout'),makeTank(420,280,'soldier'),makeTank(440,300,'scout')];formColumns();if(enemies.filter(e=>e.leader===h).length!==2||h.leader)throw Error('Columns');
 if(enemyInterval('scout')!==1/.33||enemyInterval('soldier')!==2||enemyInterval('heavy')!==5)throw Error('Enemy rates');
-enemies=[];toSpawn=['scout'];spawnTimer=0;updateSpawns(.1);if(enemies.length!==1||enemies[0].y>=0||!enemies[0].entering)throw Error('Offscreen entrance');
+enemies=[];toSpawn=['scout'];spawnTimer=0;spawnWait();if(enemies.length!==1||enemies[0].y>=0||!enemies[0].entering)throw Error('Offscreen entrance');
 const entrant=enemies[0];updateEnemy(entrant,.2);if(entrant.y<=-32||entrant.spawnT)throw Error('Rolling entrance');
-grid.fill(EMPTY);enemies=[];base=null;player=makeTank(300,176,'player');grid[5*COLS+5]=STEEL;
-const ambusher=makeTank(144,176,'soldier');updateCover(ambusher,player,.1);
-if(!ambusher.cover||los(ambusher.cover.x,ambusher.cover.y,player.x,player.y)||!los(ambusher.cover.px,ambusher.cover.py,player.x,player.y))throw Error('Corner cover');
-ambusher.retreat=true;ambusher.cd=2;updateCover(ambusher,player,.1);if(ambusher.tx!==ambusher.cover.x||ambusher.ty!==ambusher.cover.y)throw Error('Cover retreat');
+grid.fill(EMPTY);navReset();enemies=[];squads=[];base=null;player=makeTank(300,176,'player');grid[5*COLS+5]=STEEL;
+const ambusher=makeTank(144,176,'soldier'),ambushSquad=soloSquad(ambusher),cover=findCover(ambusher,ambushSquad,player);
+if(!cover||los(cover.x,cover.y,player.x,player.y)||!los(cover.px,cover.py,player.x,player.y)||!segFree(cover.x,cover.y,cover.px,cover.py,navR(ambusher)))throw Error('Corner cover');
 updateEnemy(ambusher,.1);drawTank(player);
 // Boost timing, release-to-rearm, and sand apply to both sides.
 grid.fill(EMPTY);sand.fill(0);base=null;enemies=[];player=makeTank(400,400,'player');player.angle=0;keys.KeyW=true;keys.ShiftLeft=true;updatePlayer(.1);
@@ -100,7 +100,6 @@ if(bulletBlocked(164,164,1)||!bulletBlocked(188,188,1))throw Error('Masonry hole
 const smallTank={x:164,y:164,r:2};collideTiles(smallTank);if(smallTank.x!==164||smallTank.y!==164)throw Error('Tank hole collision');
 player.x=600;player.y=400;bullets=[{x:140,y:164,vx:300,vy:0,life:2,r:1,dmg:1,owner:'p'}];updateBullets(.2);if(!bullets.length||bullets[0].x<195)throw Error('Shoot through hole');
 grid.fill(EMPTY);grid[5*COLS+5]=BRICK;brickMask[5*COLS+5]=1023;brickHp[5*COLS+5]=4;
-const clearing=makeTank(144,176,'heavy');player.x=300;player.y=176;clearing.cd=0;clearing.turret=0;enemies=[clearing];updateEnemy(clearing,.01);if(!clearing.brick||!bullets.some(b=>b.owner==='e'))throw Error('Heavy wall clearing');
 // AP wins against a regular shell, then loses AP state and bonuses.
 grid.fill(EMPTY);enemies=[];player.x=700;player.y=500;
 for(const owner of ['p','e']){const ap={x:400,y:300,vx:1500,vy:0,r:3,dmg:2,armor:true,trail:[],life:2,owner};const normal={x:450,y:300,vx:-300,vy:0,r:3,dmg:1,life:2,owner:owner==='p'?'e':'p'};bullets=[ap,normal];updateBullets(.06);if(bullets.length!==1||ap.dead||ap.armor||ap.dmg!==1||ap.vx!==1000||!normal.dead)throw Error('AP shell intercept');}
@@ -117,11 +116,9 @@ hitBase(5);if(base.collapseCount!==1)throw Error('First base explosion');const f
 updateBaseCollapse(.49);if(base.collapseCount!==1)throw Error('Base explosion too early');updateBaseCollapse(.01);if(base.collapseCount!==2)throw Error('Second base explosion');updateBaseCollapse(.5);if(base.collapseCount!==3)throw Error('Third base explosion');
 const flashes=parts.filter(p=>p.kind==='flash');if(flashes.length!==3||new Set(flashes.map(p=>p.x+','+p.y)).size!==3)throw Error('Offset base explosions');updateBaseCollapse(10);if(base.collapseCount!==3||parts.filter(p=>p.kind==='flash').length!==3)throw Error('Base explosion count');
 base=null;grid.fill(EMPTY);grid[100]=TREE;foliageMask[100]=31;const oldLeaves=foliageMask[100];blastDamage(336,112,30);if(foliageMask[100]===oldLeaves)throw Error('Blast foliage');
-grid.fill(EMPTY);parts=[];const apSpark={x:400,y:300,vx:100,vy:0,r:3,armor:true,dmg:2,trail:[],owner:'p'},regularSpark={x:401,y:300,vx:-100,vy:0,r:3,dmg:1,owner:'e'};bullets=[apSpark,regularSpark];collideShells();if(!parts.some(p=>p.kind==='spark'&&p.size>2))throw Error('Shell sparks');
+grid.fill(EMPTY);parts=[];const apSpark={x:400,y:300,vx:100,vy:0,r:3,armor:true,dmg:2,trail:[],owner:'p'},regularSpark={x:401,y:300,vx:-100,vy:0,r:3,dmg:1,owner:'e'};bullets=[apSpark,regularSpark];updateBullets(.001);if(!parts.some(p=>p.kind==='spark'&&p.size>2))throw Error('Shell sparks');
 const randomBirds=Math.random;Math.random=()=>.01;grid[100]=TREE;foliageMask[100]=31;parts=[];hitFoliage(10,3,336,112,{});Math.random=randomBirds;const flock=parts.filter(p=>p.kind==='bird'),whites=flock.filter(p=>p.color==='#f0f0e5');if(whites.length<1||whites.length>2||!flock.some(p=>p.color==='#1c2927'))throw Error('White birds');
-grid.fill(EMPTY);player=makeTank(600,400,'player');const idle=makeTank(400,300,'soldier');idle.cover={};idle.leader={};idle.retreat=true;
-reconsiderRoute(idle,4.9);if(idle.repaths)throw Error('Early repath');reconsiderRoute(idle,.11);if(idle.repaths!==1||idle.cover||idle.leader||idle.retreat||idle.detourTime<=0||Math.hypot(idle.tx-idle.x,idle.ty-idle.y)<10)throw Error('Idle repath');
-idle.x+=10;reconsiderRoute(idle,.1);if(idle.idleTime!==0)throw Error('Idle move reset');drawTank(player);drawParts();
+grid.fill(EMPTY);player=makeTank(600,400,'player');drawTank(player);drawParts();
 player.boostLeft=2;if(boostProgress(player)!==1)throw Error('Full active boost');player.boostLeft=1;if(boostProgress(player)!==.5)throw Error('Boost consumption');player.boostLeft=0;player.boostCooldown=10;if(boostProgress(player)!==0)throw Error('Boost empty cooldown');
 startGame();grid.fill(EMPTY);enemies=[];base=null;parts=[];player.hp=1;player.inv=0;player.pw.shield=0;hitPlayer({x:player.x,y:player.y,dmg:1});
 const dyingPlayer=wrecks[0],fuse=dyingPlayer.detonateAt;updateWrecks(fuse+.001);if(dyingPlayer.blastCount!==1||dyingPlayer.exploded!==false)throw Error('First player blast');
@@ -131,12 +128,12 @@ const initialCols=COLS;CFG.mapSize=45;if(COLS!==initialCols)throw Error('Immedia
 for(const size of [45,60,30]) {
   CFG.mapSize=size;startGame();
   if(COLS!==size||ROWS!==size*2/3||W!==size*T||cv.width!==W||cv.height!==H)throw Error('Map dimensions');
-  for(const arr of [grid,brickHp,brickMask,brickVariant,foliageMask,foliageShake,sand,flow])if(arr.length!==COLS*ROWS)throw Error('Map arrays');
+  for(const arr of [grid,brickHp,brickMask,brickVariant,foliageMask,foliageShake,sand])if(arr.length!==COLS*ROWS)throw Error('Map arrays');
   if(!connected()||base.y+16!==H||Math.abs(base.x-W/2)>T||player.y!==H-48)throw Error('Dynamic map layout');
   const bc=Math.floor(COLS/2);if(grid[(ROWS-2)*COLS+bc]!==BRICK||grid[(ROWS-1)*COLS+bc]!==EMPTY)throw Error('Dynamic base walls');
-  toSpawn=['scout'];enemies=[];spawnTimer=0;updateSpawns(.1);if(!enemies.length||enemies[0].x>=W)throw Error('Dynamic spawns');
+  toSpawn=['scout'];enemies=[];spawnTimer=0;spawnWait();if(!enemies.length||enemies[0].x>=W)throw Error('Dynamic spawns');
   nextWave();if(COLS!==size||grid.length!==size*(size*2/3))throw Error('Map wave persistence');
-  buildFlow(Math.floor(base.x/T),Math.floor(base.y/T));draw();
+  draw();
 }
 const curves=[];roundedPolygon({moveTo(){},lineTo(){},closePath(){},quadraticCurveTo(...args){curves.push(args);}},[[-5,-12],[5,-12],[11,4],[7,12],[-7,12],[-11,4]],.22);if(curves.length!==6)throw Error('Rounded hexagon');
 grid.fill(EMPTY);const fragmentWall=5*COLS+5;grid[fragmentWall]=BRICK;brickHp[fragmentWall]=4;brickMask[fragmentWall]=1023;parts=[];
@@ -146,7 +143,7 @@ if(chunks.length!==removedBricks.length*4)throw Error('Fragments per removed bri
 for(const p of chunks)if(!removedBricks.some(b=>p.x>=160+b.x&&p.x<=160+b.x+b.w&&p.y>=160+b.y&&p.y<=168+b.y))throw Error('Fragment origin');
 updateParts(.2);if(chunks.some(p=>p.life>=p.max||p.life<=0))throw Error('Fragment fade');drawParts();updateParts(2);if(parts.some(p=>p.brickFragment))throw Error('Fragment cleanup');
 for(const size of [30,45,60]){CFG.mapSize=size;startGame();if(SPAWNS.length!==5||new Set(SPAWNS.map(s=>s.c)).size!==5||SPAWNS.some(s=>s.r!==1||s.c<1||s.c>COLS-2)||!connected())throw Error('Five spawn lanes');
-const randomSpawn=Math.random;for(let k=0;k<5;k++){enemies=[];toSpawn=['scout'];spawnTimer=0;Math.random=()=>(k+.1)/5;updateSpawns(.1);if(enemies[0].x!==SPAWNS[k].c*T+16||enemies[0].y>=0)throw Error('All top lanes usable');}Math.random=randomSpawn;}
+const randomSpawn=Math.random;for(let k=0;k<5;k++){enemies=[];pendingSpawn=null;toSpawn=['scout'];spawnTimer=0;Math.random=()=>(k+.1)/5;spawnWait();if(enemies[0].x!==SPAWNS[k].c*T+16||enemies[0].y>=0)throw Error('All top lanes usable');}Math.random=randomSpawn;}
 CFG.mapSize=30;startGame();
 grid.fill(STEEL);grid[5*COLS+5]=EMPTY;grid[5*COLS+4]=EMPTY;grid[5*COLS+3]=EMPTY;
 for(let n=0;n<15;n++){const exit=fragmentEscape(176,176,1.4);if(Math.cos(exit.angle)>-.9||exit.clearance<60)throw Error('Fragments choose left opening');}
@@ -264,6 +261,130 @@ toSpawn=[];enemies=[];player.inv=0;player.pw.shield=0;player.hp=1;hitPlayer({x:p
 for(let t=0;t<200&&state!=='over';t++){hitstop=0;update(.05);}if(state!=='over'||victory||CFG.campaignStart!==1)throw Error('Campaign retry level');draw();
 window.ECOTANK_CAMPAIGN=undefined;if(campaignMaps().length!==claudeMaps().length)throw Error('Campaign fallback order');
 window.ECOTANK_CAMPAIGN=realCampaign;localStorage.removeItem(CAMPAIGN_KEY);CFG.mapMode='original';CFG.campaignStart=0;
+startGame();
+// Enemy navigation: hull-aware passages and turns, planned breach, persistent columns, squad detection, cover, hunters, route lines.
+if(CFG.enemySightCells!==20||CFG.columnRatio!==2||CFG.hunterEvery!==10||CFG.showRoutes)throw Error('Enemy defaults');
+const carve=cells=>{grid.fill(STEEL);brickHp.fill(0);brickMask.fill(0);sand.fill(0);for(const [c,r] of cells)grid[r*COLS+c]=EMPTY;navReset();};
+const plan=(kind,from,to,soft=false)=>{navBudget=1e9;const it=astar(from.x,from.y,kindR(kind),KINDS[kind].speed,kind,soft,nodeGoal(nodeAt(to.x,to.y)));let r;do r=it.next();while(!r.done);return r.value;};
+const cellPt=(c,r)=>({x:c*T+16,y:r*T+16});
+const pathFits=(path,R)=>path.every((n,k)=>navStatus(n,R)!==3&&(!k||circleStatus((nodeXY(n).x+nodeXY(path[k-1]).x)/2,(nodeXY(n).y+nodeXY(path[k-1]).y)/2,R)!==3));
+base=null;enemies=[];squads=[];bullets=[];player=makeTank(W-16,H-16,'player');
+// L-shaped corridor one cell wide: light and medium tanks fit, the heavy hull does not; two cells wide fits all.
+const narrow=[];for(let c=2;c<=20;c++)narrow.push([c,5]);for(let r=5;r<=12;r++)narrow.push([20,r]);carve(narrow);
+for(const kind of ['scout','soldier']){const path=plan(kind,cellPt(2,5),cellPt(20,12));if(!path||!pathFits(path,kindR(kind))||path.some(n=>navStatus(n,kindR(kind))!==1))throw Error('Narrow turn '+kind);}
+if(plan('heavy',cellPt(2,5),cellPt(20,12)))throw Error('Heavy must not fit one cell');
+const wide=[];for(let c=2;c<=21;c++)wide.push([c,5],[c,6]);for(let r=5;r<=12;r++)wide.push([20,r],[21,r]);carve(wide);
+const widePath=plan('heavy',{x:3*T,y:6*T},{x:21*T,y:12*T});if(!widePath||!pathFits(widePath,kindR('heavy')))throw Error('Heavy two-cell turn');
+// Brick wall across the corridor: route only as a planned breach, cost grows with remaining masonry.
+const wallCells=[[10,5],[10,6]];for(const [c,r] of wallCells){const i=r*COLS+c;grid[i]=BRICK;brickHp[i]=4;brickMask[i]=1023;}navReset();
+if(plan('soldier',cellPt(3,5),cellPt(16,5)))throw Error('Wall blocks without breach');
+const breachPath=plan('soldier',cellPt(3,5),cellPt(16,5),true);if(!breachPath||!breachPath.some(n=>navStatus(n,kindR('soldier'))===2))throw Error('Planned breach route');
+if(!(breakTime(5*COLS+10,'soldier')>breakTime(5*COLS+10,'heavy')))throw Error('Breach cost by weapon');
+let breacher=makeTank(cellPt(3,5).x,cellPt(3,5).y,'soldier');let bq=soloSquad(breacher);bq.route=makeRoute(breachPath);breacher.angle=0;breacher.cd=0;enemies=[breacher];state='play';
+let sawBreach=false;for(let t=0;t<60*40&&breacher.x<12*T;t++){hitstop=0;update(1/60);if(breacher.mode==='breach'){sawBreach=true;if(Math.abs(breacher.wall.x-10*T-16)>16)throw Error('Breach target');}}
+if(!sawBreach||breacher.x<12*T||grid[5*COLS+10]===BRICK&&grid[6*COLS+10]===BRICK)throw Error('Breach and continue');
+// A wall destroyed before arrival is skipped.
+carve(wide);for(const [c,r] of wallCells){const i=r*COLS+c;grid[i]=BRICK;brickHp[i]=4;brickMask[i]=1023;}navReset();
+const oldWall=plan('soldier',cellPt(3,5),cellPt(16,5),true);for(const [c,r] of wallCells)hitBrick(c,r,99);
+squads=[];bullets=[];breacher=makeTank(cellPt(3,5).x,cellPt(3,5).y,'soldier');bq=soloSquad(breacher);bq.route=makeRoute(oldWall);breacher.angle=0;enemies=[breacher];
+for(let t=0;t<60*20&&breacher.x<12*T;t++){hitstop=0;update(1/60);if(breacher.mode==='breach'||bullets.length)throw Error('Skip destroyed wall');}if(breacher.x<12*T)throw Error('Drive through opened wall');
+// Spawn events: two columns per single by default, the ratio counts events; hunters every N-th column.
+CFG.mapSize=30;startGame();enemies=[];squads=[];spawnSeq=0;columnSeq=0;
+const events=[];toSpawn=Array(7).fill('scout');while(toSpawn.length){const p=prepareSpawn();p.task.cancel=true;events.push(p.n);toSpawn.splice(-p.n);}
+if(events.join()!=='3,3,1')throw Error('Column to single ratio');
+CFG.columnRatio=0;spawnSeq=0;toSpawn=['scout','scout'];const solo=prepareSpawn();solo.task.cancel=true;if(solo.n!==1)throw Error('Ratio zero singles');CFG.columnRatio=2;pendingSpawn=null;
+// Column: strongest leads, order kept, no overlap on entry, full size counts against the limit.
+grid.fill(EMPTY);brickMask.fill(0);brickHp.fill(0);sand.fill(0);const bc=Math.floor(COLS/2);
+for(let r=ROWS-2;r<ROWS;r++)for(let c=bc-1;c<=bc+1;c++){const i=r*COLS+c,wall=r===ROWS-2||c!==bc;grid[i]=wall?BRICK:EMPTY;brickHp[i]=wall?4:0;brickMask[i]=wall?1023:0;}
+navReset();player.x=-400;player.y=-400;spawnSeq=0;columnSeq=0;toSpawn=['scout','heavy','soldier'];spawnTimer=0;spawnWait();
+if(enemies.length!==3||squads.length!==1)throw Error('Column spawn');const col=squads[0];
+if(col.members.map(e=>e.kind).join()!=='heavy,soldier,scout'||leaderOf(col)!==col.members[0]||new Set(enemies.map(e=>e.x)).size!==1)throw Error('Column order');
+toSpawn=['scout','scout','scout'];spawnTimer=0;const limitBefore=CFG.maxAliveBase;CFG.maxAliveBase=4;wave=1;for(let k=0;k<60;k++){navStep();updateSpawns(.05);}if(enemies.length!==3)throw Error('Column counts fully against limit');CFG.maxAliveBase=limitBefore;toSpawn=[];pendingSpawn=null;
+for(let t=0;t<60*12;t++){hitstop=0;player.x=-400;player.y=-400;update(1/60);
+  for(let i=0;i<enemies.length;i++)for(let j=i+1;j<enemies.length;j++){const a=enemies[i],b=enemies[j];if((a.entering||b.entering)&&Math.hypot(a.x-b.x,a.y-b.y)<a.r+b.r)throw Error('Entry overlap');}}
+const [lead,f1,f2]=col.members;if(lead.entering||f1.entering||f2.entering||!(lead.rp.s>f1.rp.s&&f1.rp.s>f2.rp.s))throw Error('Column follows one route in order');
+if(f1.rp.s>lead.rp.s-(lead.r+f1.r+10)||f2.rp.s>f1.rp.s-(f1.r+f2.r+10))throw Error('Column spacing');
+if(lead.mode==='fire'||lead.rp.s<7*T)throw Error('Column still on route after 12 s');
+f2.x=col.route.pts[0].x;f2.y=col.route.pts[0].y;f2.rp={s:0,wp:0,off:0};const s0=lead.rp.s;for(let t=0;t<10;t++){player.x=-400;player.y=-400;update(1/60);}if(lead.mode!=='wait'||Math.abs(lead.rp.s-s0)>3)throw Error('Leader waits for laggard');
+hitEnemy(lead,{x:lead.x,y:lead.y,dmg:99});update(1/60);if(leaderOf(col)!==f1||queueOf(col)[1]!==f2)throw Error('Strongest survivor leads');
+for(let t=0;t<60*40&&f1.mode!=='fire';t++){hitstop=0;player.x=-400;player.y=-400;update(1/60);}
+if(f1.mode!=='fire'||Math.hypot(f1.x-base.x,f1.y-base.y)>6*T+8||!hardLos(f1.x,f1.y,base.x,base.y))throw Error('Firing position near base, not inside it');
+// Detection: one member seeing the player switches the whole column to combat; walls and foliage hide; last known position kept.
+grid.fill(EMPTY);navReset();wrecks=[];bullets=[];enemies=[];squads=[];base=null;
+const d1=makeTank(5*T+16,5*T+16,'soldier'),d2=makeTank(5*T+16,9*T+16,'soldier'),dq=soloSquad(d1);joinSquad(d2,dq);dq.members=[d1,d2];enemies=[d1,d2];
+for(let r=8;r<=10;r++)grid[r*COLS+7]=STEEL;navReset();
+player=makeTank(24*T+16,5*T+16,'player');dq.thinkT=0;thinkSquad(dq,.01);if(!dq.combat||!d1.sees||d2.sees||!COMBAT.has(d1.mode)||!COMBAT.has(d2.mode))throw Error('Column combat from one sighting');
+player.x=(5+21)*T+16;const far=makeTank(5*T+16,5*T+16,'scout'),fq=soloSquad(far);fq.thinkT=0;thinkSquad(fq,.01);if(fq.combat)throw Error('Sight 20 cells');
+player.x=(5+19)*T;fq.thinkT=0;thinkSquad(fq,.01);if(!fq.combat)throw Error('Sight within 20 cells');
+grid[5*COLS+20]=TREE;player.x=20*T+16;const hid=makeTank(5*T+16,5*T+16,'scout'),hq=soloSquad(hid);hq.thinkT=0;thinkSquad(hq,.01);if(hq.combat)throw Error('Foliage stealth');grid[5*COLS+20]=EMPTY;
+const seenAt={...dq.last};player.x=24*T+16;player.y=15*T+16;grid.fill(EMPTY);for(let c=0;c<COLS;c++)grid[12*COLS+c]=STEEL;navReset();dq.thinkT=0;thinkSquad(dq,.01);
+if(dq.last.x!==seenAt.x||dq.last.y!==seenAt.y||!dq.combat)throw Error('Hold last known position');
+d2.cd=0;d2.turret=Math.atan2(dq.last.y-d2.y,dq.last.x-d2.x);d2.sees=false;bullets=[];updateEnemy(d2,.01);if(bullets.length)throw Error('No shot without own line of fire');
+for(let t=0;t<Math.ceil(ENEMY_MEMORY/THINK)+2;t++){dq.thinkT=0;thinkSquad(dq,THINK);}if(dq.combat||d1.mode!=='return')throw Error('Return after combat');
+dq.route=makeRoute(Array.from({length:19},(_,k)=>(4+k)*NC+11));d2.x+=80;
+for(let t=0;t<60*6&&(d1.mode!=='route'||d2.mode!=='route');t++){navStep();for(const e of [d1,d2])updateEnemy(e,1/60);}if(d1.mode!=='route'||d2.mode!=='route')throw Error('Back on route');
+// Hunters: closed patrol inside a reachable 10x10 area, never target the base.
+CFG.mapSize=30;startGame();grid.fill(EMPTY);brickMask.fill(0);sand.fill(0);navReset();enemies=[];squads=[];player.x=-400;player.y=-400;
+CFG.hunterEvery=1;spawnSeq=0;columnSeq=0;toSpawn=['soldier','soldier'];spawnTimer=0;spawnWait();CFG.hunterEvery=10;
+const hunt=squads[0];if(!hunt||!hunt.hunter||!hunt.loop||!hunt.area)throw Error('Hunter column');
+const lp=hunt.loop.pts,ha=hunt.area;if(lp[0].x!==lp.at(-1).x||lp[0].y!==lp.at(-1).y||lp.some(p=>p.x<ha.x0||p.x>ha.x1||p.y<ha.y0||p.y>ha.y1)||ha.x1-ha.x0!==10*T||ha.y1-ha.y0!==10*T)throw Error('Hunter patrol loop');
+const entryEnd=hunt.route.pts[hunt.entryEnd];if(entryEnd.x!==lp[0].x||entryEnd.y!==lp[0].y)throw Error('Hunter area reachable');
+const baseHp=base.hp;for(let t=0;t<60*60;t++){hitstop=0;player.x=-400;player.y=-400;update(1/60);if(hunt.members.some(e=>e.shot))throw Error('Hunters ignore base');}
+if(base.hp!==baseHp||!(hunt.members[0].rp.s>hunt.loop.len.at(-1)+hunt.route.len[hunt.entryEnd]))throw Error('Hunters keep patrolling');
+// Route lines show the data the tanks drive along: one shared line per column, the hunter loop, local connectors.
+CFG.showRoutes=true;const lines=routeLines();if(lines.length<2||lines[0].pts[0]!==hunt.route.pts[0]||lines[1].pts!==hunt.loop.pts)throw Error('Route lines');draw();CFG.showRoutes=false;
+// Planning goes through a per-frame budget, reuses cached routes, and the cache follows map changes.
+startGame();const expandedBefore=navStats.expanded;navRequest(planMain(["heavy"],[0],kindR("heavy")));navStep(50);if(navStats.expanded-expandedBefore>51)throw Error('Navigation budget');navStep(1e9);
+const hits=navStats.cacheHits,cached=navRequest(planMain(['heavy'],[0],kindR('heavy')));navStep(1e9);if(navStats.cacheHits!==hits+1||!cached.result)throw Error('Route cache');
+const bi=grid.findIndex(t=>t===BRICK);hitBrick(bi%COLS,bi/COLS|0,1);if(routeCache.size)throw Error('Cache follows map changes');
+startGame();
+// Projectile collisions: continuous sweep, radius, time order, relative motion, no tunnelling, no double damage.
+CFG.mapSize=30;startGame();grid.fill(EMPTY);brickMask.fill(0);brickHp.fill(0);navReset();buildTileLayer();base=null;enemies=[];squads=[];wrecks=[];player=makeTank(900,600,'player');player.pw.shield=0;player.inv=0;
+const setBrick=(c,r)=>{const i=r*COLS+c;grid[i]=BRICK;brickHp[i]=4;brickMask[i]=1023;};
+const shell=o=>({life:2,r:3,dmg:1,owner:'p',trail:[],...o});
+// a 6000 px/s shell crosses 300 px per frame and still stops at a single fence rail or masonry row
+grid[5*COLS+10]=FENCE;shapeFences();bullets=[shell({x:10*T+16,y:2*T,vx:0,vy:6000})];updateBullets(.05);if(grid[5*COLS+10]===FENCE||bullets.length)throw Error('Fast shell vs fence');
+setBrick(10,5);bullets=[shell({x:10*T+16,y:2*T,vx:0,vy:6000})];updateBullets(.05);if(brickHp[5*COLS+10]!==3||bullets.length)throw Error('Fast shell vs brick');
+grid.fill(EMPTY);
+let target=makeTank(10*T+16,8*T,'soldier');enemies=[target];bullets=[shell({x:10*T+16,y:T,vx:0,vy:8000})];updateBullets(.05);if(target.hp!==KINDS.soldier.hp-1||bullets.length)throw Error('Fast shell vs tank');
+const sx={x:5*T,y:5*T,vx:7000,vy:0},sy={x:5*T+300,y:5*T,vx:-7000,vy:0};enemies=[];bullets=[shell(sx),shell({...sy,owner:'e'})];updateBullets(.05);if(bullets.length)throw Error('Fast head-on shells');
+// paths that cross at different moments do not collide
+bullets=[shell({x:100,y:300,vx:4000,vy:0}),shell({x:200,y:100,vx:0,vy:4000,owner:'e'})];updateBullets(.05);if(bullets.length!==2)throw Error('Crossing at different times');
+bullets=[shell({x:100,y:300,vx:4000,vy:0}),shell({x:200,y:200,vx:0,vy:4000,owner:'e'})];updateBullets(.05);if(bullets.length)throw Error('Crossing at the same time');
+// radius counts: grazing contact hits, a slightly wider pass does not
+setBrick(10,5);const edge=5*T;bullets=[shell({x:8*T,y:edge-3,vx:900,vy:0})];updateBullets(.1);if(bullets.length||brickHp[5*COLS+10]!==3)throw Error('Grazing contact');
+setBrick(10,5);bullets=[shell({x:8*T,y:edge-3.2,vx:900,vy:0})];updateBullets(.1);if(!bullets.length||brickHp[5*COLS+10]!==4)throw Error('Near miss');
+// nearest first: a tank behind a brick is safe, a tank in front of it is hit and the brick stays intact
+grid.fill(EMPTY);setBrick(10,5);target=makeTank(13*T,5*T+16,'soldier');enemies=[target];bullets=[shell({x:6*T,y:5*T+16,vx:3000,vy:0})];updateBullets(.1);
+if(target.hp!==KINDS.soldier.hp||brickHp[5*COLS+10]!==3)throw Error('Brick before tank');
+setBrick(10,5);target.x=8*T;bullets=[shell({x:6*T,y:5*T+16,vx:3000,vy:0})];updateBullets(.1);if(target.hp!==KINDS.soldier.hp-1||brickHp[5*COLS+10]!==4)throw Error('Tank before brick');
+// several events in one frame, in order: fence passed, first brick pierced, second brick takes one normal hit
+grid.fill(EMPTY);grid[5*COLS+6]=FENCE;shapeFences();setBrick(9,5);setBrick(12,5);enemies=[];
+const ap=shell({x:3*T,y:5*T+16,vx:9000,vy:0,armor:true,dmg:2});bullets=[ap];updateBullets(.1);
+if(grid[5*COLS+6]!==EMPTY||grid[5*COLS+9]!==EMPTY||brickHp[5*COLS+12]!==3||bullets.length)throw Error('Ordered multi-hit AP');
+// two shells hitting one tank in the same frame each deal damage once; a shell is not counted twice
+target=makeTank(20*T,10*T,'heavy');enemies=[target];bullets=[shell({x:20*T-200,y:10*T,vx:4000,vy:0}),shell({x:20*T+200,y:10*T,vx:-4000,vy:0})];updateBullets(.1);
+if(target.hp!==KINDS.heavy.hp-2||bullets.length)throw Error('Two hits once each');
+// after an AP shell is downgraded mid-frame the rest of its path uses the new speed
+grid.fill(EMPTY);enemies=[];const apMid=shell({x:100,y:300,vx:1500,vy:0,armor:true,dmg:2}),reg=shell({x:200,y:300,vx:0,vy:0,owner:'e'});bullets=[apMid,reg];updateBullets(.1);
+const tHit=(200-8-100)/1500;if(!reg.dead||apMid.armor||Math.abs(apMid.x-(100+1500*tHit+1000*(.1-tHit)))>1e-6)throw Error('Recompute after speed change');
+// a tank that crosses the shell path during the frame is hit (tank motion over the same interval)
+target=makeTank(400,200,'soldier');target.px=400;target.py=100;enemies=[target];bullets=[shell({x:300,y:150,vx:2000,vy:0})];tankMotion=true;updateBullets(.1);tankMotion=false;
+if(target.hp!==KINDS.soldier.hp-1)throw Error('Moving tank');
+target=makeTank(400,200,'soldier');target.px=400;target.py=100;enemies=[target];bullets=[shell({x:300,y:150,vx:2000,vy:0})];updateBullets(.1);if(target.hp!==KINDS.soldier.hp)throw Error('Static tank outside update');
+// Map cache: static layer reused, dirty cells merged per frame, shaking bricks moved out of the cache without duplicates.
+CFG.mapSize=30;startGame();draw();const calls=[];const wrap=n=>{const f=globalThis[n];globalThis[n]=function(g,...a){calls.push({n,cache:g===tctx,x:a[0],y:a[1]});return f.call(this,g,...a);};return f;};
+const realBrick=wrap('drawBrick'),realSteel=wrap('drawSteel'),realFence=wrap('drawFence');let paints=0;const realPaint=paintTiles;paintTiles=function(...a){paints++;return realPaint.apply(this,a);};
+draw();if(calls.length||paints)throw Error('No full map redraw per frame');
+grid.fill(EMPTY);const ci=8*COLS+12;setBrick(12,8);buildTileLayer();paints=0;calls.length=0;
+hitBrick(12,8,1);hitBrick(12,8,1);draw();
+const own=calls.filter(c=>c.n==='drawBrick'&&c.x===12*T&&c.y===8*T);if(paints!==1||own.length!==1||own[0].cache)throw Error('Shaking brick drawn once, outside cache');
+calls.length=0;paints=0;draw();if(paints||calls.filter(c=>c.n==='drawBrick').length!==1)throw Error('Shake keeps dynamic only');
+updateParts(1);calls.length=0;draw();const back=calls.filter(c=>c.n==='drawBrick'&&c.x===12*T&&c.y===8*T);if(paints!==1||back.length!==1||!back[0].cache)throw Error('Brick returns to cache');
+hitBrick(12,8,99);calls.length=0;draw();if(calls.some(c=>c.n==='drawBrick'&&c.x===12*T))throw Error('Destroyed brick gone');
+const ground=groundCanvas;hitBrick(12,8,1);draw();if(groundCanvas!==ground)throw Error('Track marks layer kept');
+drawBrick=realBrick;drawSteel=realSteel;drawFence=realFence;paintTiles=realPaint;
+for(const size of [45,60,30]){CFG.mapSize=size;startGame();if(tileCanvas.width!==W||tileCanvas.height!==H||waterCells.some(i=>grid[i]!==WATER))throw Error('Cache rebuilt for map size');draw();}
 startGame();
 `,box);
 assert(!code.includes("tone(420, 110"));

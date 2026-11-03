@@ -152,9 +152,9 @@ function roundedPolygon(c,points,amount) {
 }
 const KINDS = {
   player:  { hp: 5, speed: 60, turretSpeed: 1, fireRate: 1, color: '#6cc24a', dark: '#2e6b26', bulletSpeed: 1200, dmg: 1, scale: 1 },
-  scout:   { hp: 1, speed: 80,  fireRate: 1/.33, color: '#e9b949', dark: '#8c6a1a', bulletSpeed: 380, dmg: 1, scale: .8415, score: 100, scrap: 1, wander: .25, hold: 0,   turretSpeed: 1 },
-  soldier: { hp: 2, speed: 50,  fireRate: 2, color: '#e0603f', dark: '#7f2d1b', bulletSpeed: 420, dmg: 1, scale: 1,   score: 200, scrap: 2, wander: .12, hold: 150, turretSpeed: 1 },
-  heavy:   { hp: 3, speed: 35,  fireRate: 5, color: '#9483d6', dark: '#463b80', bulletSpeed: 600, dmg: 2, scale: 1.357, score: 500, scrap: 4, wander: .05, hold: 260, turretSpeed: 1 },
+  scout:   { hp: 1, speed: 80,  fireRate: 1/.33, color: '#e9b949', dark: '#8c6a1a', bulletSpeed: 380, dmg: 1, scale: .8415, score: 100, scrap: 1, turretSpeed: 1 },
+  soldier: { hp: 2, speed: 50,  fireRate: 2, color: '#e0603f', dark: '#7f2d1b', bulletSpeed: 420, dmg: 1, scale: 1,   score: 200, scrap: 2, turretSpeed: 1 },
+  heavy:   { hp: 3, speed: 35,  fireRate: 5, color: '#9483d6', dark: '#463b80', bulletSpeed: 600, dmg: 2, scale: 1.357, score: 500, scrap: 4, turretSpeed: 1 },
 };
 const ITEMS = {
   armor: { color:'#ffb45e', glyph:'AP', name:'Бронебойные' },
@@ -168,7 +168,8 @@ const ITEMS = {
 const CFG = {
   dropChance: .22, heavyDropBonus: .3, powerupTime: 10, repairAmount: 2, railMax: 3,
   waveBase: 6, wavePerLevel: 2, maxAliveBase: 3, maxAliveCap: 7, enemySpeedPerWave: .02, waveBonus: 300, waveHeal: 1,
-  mapSize:30, mapMode:'original', mapPick:'', campaignStart:0, mapElements: 42, brickHp: 4, invulnTime: .7, enemySight: 460, treeStealth: 90, shake: 1, hitstop: .06, godMode: false,
+  mapSize:30, mapMode:'original', mapPick:'', campaignStart:0, mapElements: 42, brickHp: 4, invulnTime: .7, treeStealth: 90, shake: 1, hitstop: .06, godMode: false,
+  enemySightCells: 20, columnRatio: 2, hunterEvery: 10, showRoutes: false,
 };
 const SPAWNS = Array.from({length:5},(_,i)=>({c:1+Math.round(27*i/4),r:1}));
 const PLAYER_START = { x: W / 2 - 80, y: H - 48 };
@@ -262,7 +263,9 @@ function sfx(n) {
 
 // ---------- карта ----------
 let grid, brickHp, brickMask, brickVariant, fenceArms, foliageMask, foliageShake, brickShake, sand, groundCanvas, gctx;
-let flow = new Int32Array(COLS * ROWS);
+// навигация врагов: кэши статусов узлов по радиусу корпуса, готовые маршруты, очередь поисков; отряды и подготовка появления
+let NC = COLS * 2 + 1, NR = ROWS * 2 + 1, navCache = new Map(), routeCache = new Map(), navQueue = [], navBudget = 0;
+let squads = [], squadSeq = 0, pendingSpawn = null, spawnSeq = 0, columnSeq = 0;
 const tileAt = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS) ? STEEL : grid[r * COLS + c];
 
 const MAP_SIZES = [30, 45, 60];
@@ -279,7 +282,7 @@ function configureMap(size) {
   SPAWNS.splice(0,SPAWNS.length,...spawnCols(COLS).map(c=>({c,r:1})));
   Object.assign(BASE_POS,{x:center*T+16,y:H-16});
   Object.assign(PLAYER_START,{x:center*T-80,y:H-48});
-  cv.width=W;cv.height=H;flow=new Int32Array(COLS*ROWS);fit();
+  cv.width=W;cv.height=H;navReset();fit();
 }
 // режим декораций фиксируется в начале игры, как и размер карты
 let mapMode = CFG.mapMode;
@@ -489,7 +492,7 @@ function genMap(w) {
     // на готовой карте песок только нарисованный, без случайного
     sand[r*COLS+c]=sandMark[r*COLS+c]||(mapMode!=='map'&&Math.random()<(near?.7:.035))?1:0;
   }
-  buildGround();
+  buildGround(); navReset(); buildTileLayer();
 }
 
 function connected() {
@@ -504,22 +507,6 @@ function connected() {
     }
   }
   return SPAWNS.every(s => seen[s.r * COLS + s.c]);
-}
-
-// поле расстояний до игрока: враги идут по убыванию, кирпич «дороже» (его надо прострелить)
-function buildFlow(tc, tr) {
-  flow.fill(1e9);
-  const s = tr * COLS + tc, q = [s];
-  flow[s] = 0;
-  for (let h = 0; h < q.length; h++) {
-    const i = q[h], c = i % COLS, r = (i / COLS) | 0;
-    for (const [dc, dr] of DIRS) {
-      const nc = c + dc, nr = r + dr, t = tileAt(nc, nr);
-      if (t === STEEL || t === WATER) continue;
-      const j = nr * COLS + nc, nd = flow[i] + (t === BRICK ? 4 : t === FENCE ? 2 : 1);
-      if (nd < flow[j]) { flow[j] = nd; q.push(j); }
-    }
-  }
 }
 
 function buildGround() {
@@ -553,7 +540,7 @@ function drawSandGround() {
 // ---------- состояние игры ----------
 let state = 'menu', player = null, enemies = [], bullets = [], parts = [], items = [], wrecks = [], rails = [];
 let base = null;
-let score = 0, scrap = 0, hitstop = 0, wave = 0, toSpawn = [], spawnTimer = 0, flowTimer = 0, betweenT = 0, deadT = 0, overT = 0;
+let score = 0, scrap = 0, hitstop = 0, wave = 0, toSpawn = [], spawnTimer = 0, betweenT = 0, deadT = 0, overT = 0;
 let shake = 0, time = 0, banner = { text: '', sub: '', t: 0 };
 let best = 0;
 try { best = +localStorage.getItem('ecotank-best') || 0; } catch (e) {}
@@ -563,7 +550,7 @@ function makeTank(x, y, kind) {
   return {
     x, y, kind, r: 13 * K.scale, angle: -Math.PI / 2, turret: -Math.PI / 2,
     hp: K.hp, maxHp: K.hp, cd: rnd(.6, 1.4), vx: 0, vy: 0, tread: 0, trackAcc: 0, recoil: 0, flash: 0,
-    tx: x, ty: y, stuck: 0, decideT: 0, brick: null, spawnT: 0, inv: 0, rail: 0, armor: false, boostLeft:0, boostCooldown:0, shiftHeld:false,
+    spawnT: 0, inv: 0, rail: 0, armor: false, boostLeft:0, boostCooldown:0, shiftHeld:false,
     pw: { rapid: 0, triple: 0, shield: 0 },
   };
 }
@@ -579,7 +566,7 @@ function waveList(w) {
 const maxAlive = () => Math.min(CFG.maxAliveBase + Math.floor(wave / 2), CFG.maxAliveCap);
 
 function startGame() {
-  applyMapChoice();score = 0; scrap = 0; wave = campaign ? CFG.campaignStart : 0; player = null; victory = false;
+  applyMapChoice();score = 0; scrap = 0; wave = campaign ? CFG.campaignStart : 0; player = null; victory = false; columnSeq = 0;
   base = { ...BASE_POS, hp: 5, maxHp: 5, dead: false };
   nextWave(); syncMusic();
 }
@@ -613,7 +600,7 @@ function nextWave() {
   player = makeTank(PLAYER_START.x, PLAYER_START.y, 'player');
   player.hp = hp; player.rail = rail; player.armor=armor; Object.assign(player,boostState); player.cd = .3;
   enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = [];
-  toSpawn = waveList(wave); spawnTimer = 1.2; flowTimer = 0;
+  toSpawn = waveList(wave); spawnTimer = 1.2; squads = []; spawnSeq = 0; navReset(); buildTileLayer();
   banner = campaign
     ? { text: `Уровень ${wave} из ${campaign.length}`, sub: `${activeMap.name} · Врагов: ${toSpawn.length}`, t: 2.4 }
     : { text: `Волна ${wave}`, sub: `Врагов: ${toSpawn.length}`, t: 2.2 };
@@ -857,7 +844,7 @@ function fragmentEscape(x,y,radius) {
 function hitBrick(c, r, dmg, hx = c*T+16, hy = r*T+16) {
   const i = r * COLS + c;
   if (grid[i] !== BRICK) return;
-  brickShake[i]=.25;
+  brickShake[i]=.25;shaking.add(i);markTile(i);
   const previousMask=brickMask[i];
   if (dmg >= 99) { brickHp[i] = 0; brickMask[i] = 0; }
   else {
@@ -880,9 +867,10 @@ function hitBrick(c, r, dmg, hx = c*T+16, hy = r*T+16) {
   });
   burst(hx, hy, 10, ['#b3633a', '#8c4a2b', '#d08a5c'], 120, .4, 4);
   if (brickHp[i] <= 0) {
-    grid[i] = EMPTY; flowTimer = 0;
+    grid[i] = EMPTY;
     burst(c*T+16, r*T+16, 14, ['#b3633a', '#8c4a2b'], 160, .6, 5);
   }
+  navMapChanged(c, r);
   sfx('brick');
 }
 // забор слабее кирпича: ломается с одного попадания и разлетается щепой
@@ -894,7 +882,7 @@ function hitFence(c, r, hx = c*T+16, hy = r*T+16) {
     parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life, max: life, w: rnd(5, 9), h: 2, size: 6, rot: rnd(0, 6), vr: rnd(-10, 10), color: ['#8a6338', '#a57a46', '#6f4d2b'][k % 3], kind: 'debris' });
   }
   burst(hx, hy, 8, ['#c49a62', '#8a6338'], 110, .35, 3);
-  grid[i] = EMPTY; fenceArms[i] = 0; flowTimer = 0;
+  grid[i] = EMPTY; fenceArms[i] = 0; navMapChanged(c, r); markTile(i);
   sfx('fence');
 }
 
@@ -949,136 +937,482 @@ function updatePlayer(dt) {
   }
 }
 
-function decide(e, random) {
-  const K = KINDS[e.kind], c = Math.floor(e.x / T), r = Math.floor(e.y / T);
-  const opts = [];
-  for (const [dc, dr] of DIRS) {
-    const nc = c + dc, nr = r + dr, t = tileAt(nc, nr);
-    if (t === STEEL || t === WATER) continue;
-    if (random && breakable(t) && e.kind!=='heavy') continue;
-    opts.push({ nc, nr, t, v: flow[nr * COLS + nc] });
-  }
-  e.brick = null;
-  if (!opts.length) { e.tx = c * T + 16; e.ty = r * T + 16; return; }
-  let pick = opts.reduce((a, b) => b.v < a.v ? b : a);
-  if (random || Math.random() < K.wander) pick = opts[ri(0, opts.length - 1)];
-  if (breakable(pick.t)) {
-    e.brick = { x: pick.nc * T + 16, y: pick.nr * T + 16 };
-    e.tx = c * T + 16; e.ty = r * T + 16;
-  } else {
-    e.tx = pick.nc * T + 16; e.ty = pick.nr * T + 16;
-  }
-}
-
 const enemyInterval=kind=>({scout:1/.33,soldier:2,heavy:5}[kind]);
-function enemyGoal(e) {
-  const choices=[player,base].filter(t=>t&&!t.dead);
-  return choices.sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0]||PLAYER_START;
+
+// ---------- навигация врагов ----------
+// Узлы через полклетки: (i*NS, j*NS), центр клетки c — узел 2c+1. Корпус — круг радиуса R.
+// Статус узла: 1 — свободно, 2 — мешает только кирпич или забор (план пролома), 3 — непроходимо.
+const NS=T/2,NAV_BUDGET=2500,NAV_DIRS=[[1,0,NS],[-1,0,NS],[0,1,NS],[0,-1,NS],[1,1,NS*Math.SQRT2],[1,-1,NS*Math.SQRT2],[-1,1,NS*Math.SQRT2],[-1,-1,NS*Math.SQRT2]];
+const RANK={heavy:3,soldier:2,scout:1},ENEMY_MEMORY=4,THINK=.2;
+const COMBAT=new Set(['position','peek','fire','retreat','hide']);
+const navStats={searches:0,expanded:0,ms:0,cacheHits:0};
+function navReset(){NC=COLS*2+1;NR=ROWS*2+1;navCache.clear();routeCache.clear();navQueue.length=0;pendingSpawn=null;}
+// клетка изменилась: сбросить узлы, которых может касаться корпус, и кэш маршрутов
+function navMapChanged(c,r){
+  routeCache.clear();
+  for(const [R,st] of navCache){const m=Math.ceil(R/NS)+1;
+    for(let j=Math.max(0,2*r-m);j<=Math.min(NR-1,2*r+2+m);j++)for(let i=Math.max(0,2*c-m);i<=Math.min(NC-1,2*c+2+m);i++)st[j*NC+i]=0;}
 }
-function formColumns() {
-  const rank={heavy:3,soldier:2,scout:1},pool=enemies.filter(e=>!e.dead&&!e.entering&&!(e.detourTime>0)).sort((a,b)=>rank[b.kind]-rank[a.kind]);
-  for(const e of pool){e.leader=null;e.columnSlot=0;}
-  while(pool.length) {
-    const lead=pool.shift();
-    const near=pool.filter(e=>Math.hypot(e.x-lead.x,e.y-lead.y)<220).sort((a,b)=>Math.hypot(a.x-lead.x,a.y-lead.y)-Math.hypot(b.x-lead.x,b.y-lead.y)).slice(0,2);
-    near.forEach((e,i)=>{e.leader=lead;e.columnSlot=i+1;pool.splice(pool.indexOf(e),1);});
+function circleStatus(x,y,R) {
+  let soft=false;
+  for(let r=Math.floor((y-R)/T);r<=Math.floor((y+R)/T);r++)for(let c=Math.floor((x-R)/T);c<=Math.floor((x+R)/T);c++) {
+    const t=tileAt(c,r);if(!blocksTank(t))continue;
+    if(tileRects(c,r,t).some(b=>Math.hypot(x-clamp(x,b.x,b.x+b.w),y-clamp(y,b.y,b.y+b.h))<R)){if(!breakable(t))return 3;soft=true;}
   }
+  if(base&&!base.dead&&Math.hypot(x-base.x,y-base.y)<R+base.r)return 3;
+  return soft?2:1;
 }
-function coverClear(x,y,r) {
-  return [[0,0],[-r,-r],[r,-r],[-r,r],[r,r]].every(([dx,dy])=>!blocksTank(tileAt(Math.floor((x+dx)/T),Math.floor((y+dy)/T))));
+function navStatus(n,R){let st=navCache.get(R);if(!st)navCache.set(R,st=new Uint8Array(NC*NR));return st[n]||(st[n]=circleStatus(n%NC*NS,(n/NC|0)*NS,R));}
+const nodeAt=(x,y)=>clamp(Math.round(y/NS),1,NR-2)*NC+clamp(Math.round(x/NS),1,NC-2);
+const nodeXY=n=>({x:n%NC*NS,y:(n/NC|0)*NS});
+const navR=e=>Math.ceil(e.r)+1, kindR=k=>Math.ceil(13*KINDS[k].scale)+1;
+function softCells(x,y,R) {
+  const out=[];
+  for(let r=Math.floor((y-R)/T);r<=Math.floor((y+R)/T);r++)for(let c=Math.floor((x-R)/T);c<=Math.floor((x+R)/T);c++){const t=tileAt(c,r);
+    if(breakable(t)&&tileRects(c,r,t).some(b=>Math.hypot(x-clamp(x,b.x,b.x+b.w),y-clamp(y,b.y,b.y+b.h))<R))out.push(r*COLS+c);}
+  return out;
 }
-function updateCover(e,goal,dt) {
-  e.coverSearch=(e.coverSearch||0)-dt;
-  if(e.cover && (Math.hypot(goal.x-e.cover.gx,goal.y-e.cover.gy)>96 || e.stuck>.6))e.cover=null;
-  if(!e.cover && e.coverSearch<=0 && !e.leader) {
-    e.coverSearch=1.5;
-    const c=Math.floor(e.x/T),r=Math.floor(e.y/T);
-    outer:for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++) {
-      const x=(c+dc)*T+16,y=(r+dr)*T+16;
-      if(!coverClear(x,y,e.r)||los(x,y,goal.x,goal.y)||Math.hypot(x-e.x,y-e.y)>100)continue;
-      for(const [dx,dy] of DIRS) {
-        const px=x+dx*64,py=y+dy*64;
-        if(!coverClear(px,py,e.r)||!coverClear((x+px)/2,(y+py)/2,e.r)||!los(px,py,goal.x,goal.y))continue;
-        e.cover={x,y,px,py,gx:goal.x,gy:goal.y};e.retreat=false;break outer;
-      }
+// ожидаемое время пролома: попадания × перезарядка; бронебойный тяжёлого сносит блок за выстрел
+const breakTime=(i,shooter)=>(grid[i]===FENCE||shooter==='heavy'?1:brickHp[i])*enemyInterval(shooter)+.5;
+function hardLos(x0,y0,x1,y1) {
+  const n=Math.ceil(Math.hypot(x1-x0,y1-y0)/8);
+  for(let i=1;i<n;i++)if(tileAt(Math.floor((x0+(x1-x0)*i/n)/T),Math.floor((y0+(y1-y0)*i/n)/T))===STEEL)return false;
+  return true;
+}
+// огневая позиция у базы: свободный узел в пределах 6 клеток, линия огня не перекрыта сталью
+function baseGoal(R) {
+  const b=base&&!base.dead?base:BASE_POS,lo=b.r+R+4,hi=6*T;
+  return {test:n=>{const {x,y}=nodeXY(n),d=Math.hypot(x-b.x,y-b.y);return d>=lo&&d<=hi&&navStatus(n,R)===1&&hardLos(x,y,b.x,b.y);},h:(x,y)=>Math.max(0,Math.hypot(x-b.x,y-b.y)-hi)};
+}
+const nodeGoal=g=>{const p=nodeXY(g);return {test:n=>n===g,h:(x,y)=>Math.hypot(x-p.x,y-p.y)};};
+// A* по времени: путь/скорость (песок ×2) + ожидаемое время пролома впервые задетых клеток.
+// Раскрытия списываются с общего бюджета кадра; при исчерпании поиск уступает кадр (yield).
+function* astar(sx,sy,R,speed,shooter,soft,goal,box) {
+  navStats.searches++;
+  const N=NC*NR,g=new Float32Array(N).fill(Infinity),prev=new Int32Array(N).fill(-1),done=new Uint8Array(N),hn=[],hf=[];
+  const i0=Math.max(1,box?box[0]:1),j0=Math.max(1,box?box[1]:1),i1=Math.min(NC-2,box?box[2]:NC),j1=Math.min(NR-2,box?box[3]:NR);
+  const push=(n,f)=>{let k=hn.length;hn.push(n);hf.push(f);while(k){const p=(k-1)>>1;if(hf[p]<=f)break;hn[k]=hn[p];hf[k]=hf[p];k=p;}hn[k]=n;hf[k]=f;};
+  const pop=()=>{const n=hn[0],ln=hn.pop(),lf=hf.pop();if(hn.length){let k=0;for(;;){let c=2*k+1;if(c>=hn.length)break;if(c+1<hn.length&&hf[c+1]<hf[c])c++;if(hf[c]>=lf)break;hn[k]=hn[c];hf[k]=hf[c];k=c;}hn[k]=ln;hf[k]=lf;}return n;};
+  const s=nodeAt(sx,sy);g[s]=0;push(s,goal.h(s%NC*NS,(s/NC|0)*NS)/speed);
+  while(hn.length) {
+    if(--navBudget<0)yield;
+    const n=pop();if(done[n])continue;done[n]=1;navStats.expanded++;
+    if(goal.test(n)){const path=[];for(let k=n;k>=0;k=prev[k])path.push(k);return path.reverse();}
+    const ci=n%NC,cj=n/NC|0,nSoft=soft&&navStatus(n,R)===2?softCells(ci*NS,cj*NS,R):null;
+    for(const [di,dj,len] of NAV_DIRS) {
+      const i=ci+di,j=cj+dj;if(i<i0||j<j0||i>i1||j>j1)continue;
+      const m=j*NC+i;if(done[m])continue;
+      const st=navStatus(m,R);if(st===3||st===2&&!soft)continue;
+      const ms=circleStatus((ci+i)*NS/2,(cj+j)*NS/2,R);if(ms===3||ms===2&&!soft)continue;
+      const x=i*NS,y=j*NS;
+      let cost=len/speed*(sand[Math.min(ROWS-1,Math.floor(y/T))*COLS+Math.min(COLS-1,Math.floor(x/T))]?2:1);
+      if(st===2)for(const k of softCells(x,y,R))if(!nSoft||!nSoft.includes(k))cost+=breakTime(k,shooter);
+      const ng=g[n]+cost;
+      if(ng<g[m]){g[m]=ng;prev[m]=n;push(m,ng+goal.h(x,y)/speed);}
     }
   }
-  if(e.cover) {
-    const q=e.cover;
-    if(e.retreat&&Math.hypot(e.x-q.x,e.y-q.y)<5&&e.cd<.5)e.retreat=false;
-    e.tx=e.retreat?q.x:q.px;e.ty=e.retreat?q.y:q.py;e.brick=null;
-  }
-}
-function blockingBrick(e,goal) {
-  const n=Math.ceil(Math.hypot(goal.x-e.x,goal.y-e.y)/6);
-  for(let j=1;j<n;j++) {const x=e.x+(goal.x-e.x)*j/n,y=e.y+(goal.y-e.y)*j/n,c=Math.floor(x/T),r=Math.floor(y/T),t=tileAt(c,r);
-    if(t===STEEL||t===WATER)return null;if(breakable(t)&&bulletBlocked(x,y))return {x,y};}
   return null;
 }
-function reconsiderRoute(e,dt) {
-  if(e.watchX===undefined){e.watchX=e.x;e.watchY=e.y;e.idleTime=0;}
-  if(Math.hypot(e.x-e.watchX,e.y-e.watchY)>6){e.watchX=e.x;e.watchY=e.y;e.idleTime=0;}
-  else e.idleTime+=dt;
-  e.detourTime=Math.max(0,(e.detourTime||0)-dt);
-  if(e.idleTime>=5) {
-    e.idleTime=0;e.watchX=e.x;e.watchY=e.y;e.cover=null;e.retreat=false;e.leader=null;e.stuck=0;
-    const goal=enemyGoal(e);buildFlow(Math.floor(goal.x/T),Math.floor(goal.y/T));
-    const c=Math.floor(e.x/T),r=Math.floor(e.y/T),options=DIRS.map(([dx,dy])=>({x:(c+dx)*T+16,y:(r+dy)*T+16})).filter(q=>coverClear(q.x,q.y,e.r));
-    if(options.length){const q=options[ri(0,options.length-1)];e.tx=q.x;e.ty=q.y;e.brick=null;e.detourTime=1.5;e.decideT=1.5;}
-    else {decide(e,false);e.detourTime=1.5;}
-    e.repaths=(e.repaths||0)+1;
+function navRequest(it){const task={it,done:false,result:null,cancel:false};navQueue.push(task);return task;}
+function navStep(budget=NAV_BUDGET) {
+  const t0=performance.now();navBudget=budget;
+  while(navQueue.length&&navBudget>0) {
+    const task=navQueue[0];
+    if(task.cancel){navQueue.shift();continue;}
+    const r=task.it.next();
+    if(r.done){task.done=true;task.result=r.value;navQueue.shift();}
+  }
+  navStats.ms+=performance.now()-t0;
+}
+function snapFree(x,y,R,box) {
+  const ci=Math.round(x/NS),cj=Math.round(y/NS);let best=-1,bd=1e9;
+  for(let dj=-3;dj<=3;dj++)for(let di=-3;di<=3;di++){const i=ci+di,j=cj+dj;
+    if(i<1||j<1||i>NC-2||j>NR-2||box&&(i<box[0]||j<box[1]||i>box[2]||j>box[3]))continue;
+    const n=j*NC+i,d=di*di+dj*dj;if(d<bd&&navStatus(n,R)===1){bd=d;best=n;}}
+  return best;
+}
+// маршрут: узлы, точки и накопленная длина; ведомые хранят только свой прогресс вдоль него
+function makeRoute(nodes) {
+  const pts=nodes.map(nodeXY),len=[0];
+  for(let k=1;k<pts.length;k++)len.push(len[k-1]+Math.hypot(pts[k].x-pts[k-1].x,pts[k].y-pts[k-1].y));
+  return {nodes,pts,len};
+}
+const lineRoute=(a,b)=>({nodes:[nodeAt(a.x,a.y),nodeAt(b.x,b.y)],pts:[{x:a.x,y:a.y},{x:b.x,y:b.y}],len:[0,Math.hypot(b.x-a.x,b.y-a.y)]});
+function wpAt(rt,s){let k=0;while(k<rt.len.length-2&&rt.len[k+1]<=s)k++;return k;}
+function pointAt(rt,s,k=0) {
+  const L=rt.len,last=L.length-1;
+  if(!last||s<=0)return rt.pts[0];if(s>=L[last])return rt.pts[last];
+  k=clamp(k,0,last-1);while(k>0&&L[k]>s)k--;while(k<last-1&&L[k+1]<s)k++;
+  const a=rt.pts[k],b=rt.pts[k+1],t=(s-L[k])/((L[k+1]-L[k])||1);
+  return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};
+}
+// прогресс вдоль маршрута: проекция на ближайший отрезок рядом с прошлым
+function trackRoute(p,x,y,rt) {
+  let best=1e9;
+  for(let k=Math.max(0,p.wp-2);k<Math.min(rt.pts.length-1,p.wp+8);k++) {
+    const a=rt.pts[k],b=rt.pts[k+1],L=rt.len[k+1]-rt.len[k],t=L?clamp(((x-a.x)*(b.x-a.x)+(y-a.y)*(b.y-a.y))/(L*L),0,1):0;
+    const d=Math.hypot(x-a.x-(b.x-a.x)*t,y-a.y-(b.y-a.y)*t);
+    if(d<best-1e-6){best=d;p.s=rt.len[k]+L*t;p.wp=k;}
+  }
+  p.off=rt.pts.length>1?best:Math.hypot(x-rt.pts[0].x,y-rt.pts[0].y);
+}
+
+// ---------- подготовка появления ----------
+function* planMain(kinds,lanes,R) {
+  const speed=Math.min(...kinds.map(k=>KINDS[k].speed)),shooter=kinds[0];
+  for(const lane of lanes) {
+    const s=SPAWNS[lane],key=[lane,R,shooter,speed].join();
+    let rt=routeCache.get(key);
+    if(rt)navStats.cacheHits++;
+    else {const nodes=yield* astar(s.c*T+16,s.r*T+16,R,speed,shooter,true,baseGoal(R));if(!nodes)continue;rt=makeRoute(nodes);routeCache.set(key,rt);}
+    return {lane,route:rt};
+  }
+  return null;
+}
+// охотники: район 10×10 клеток, замкнутый обход по углам внутри района и подъезд к нему от точки въезда
+function* planHunt(kinds,lanes,R) {
+  const speed=Math.min(...kinds.map(k=>KINDS[k].speed)),shooter=kinds[0],aw=Math.min(10,COLS-2),ah=Math.min(10,ROWS-8);
+  for(let a=0;a<4;a++) {
+    const c0=ri(1,COLS-1-aw),r0=ri(3,Math.max(3,ROWS-5-ah)),box=[2*c0+1,2*r0+1,2*(c0+aw)-1,2*(r0+ah)-1];
+    const corners=[[c0+2,r0+2],[c0+aw-3,r0+2],[c0+aw-3,r0+ah-3],[c0+2,r0+ah-3]].map(([c,r])=>snapFree(c*T+16,r*T+16,R,box));
+    if(corners.some(n=>n<0)||new Set(corners).size<3)continue;
+    let loop=[corners[0]];
+    for(let k=0;k<4&&loop;k++){const p=nodeXY(corners[k]),leg=yield* astar(p.x,p.y,R,speed,shooter,false,nodeGoal(corners[(k+1)%4]),box);loop=leg&&loop.concat(leg.slice(1));}
+    if(!loop)continue;
+    for(const lane of lanes) {
+      const s=SPAWNS[lane],entry=yield* astar(s.c*T+16,s.r*T+16,R,speed,shooter,true,nodeGoal(corners[0]));
+      if(entry)return {lane,route:makeRoute(entry.concat(loop.slice(1))),loop:makeRoute(loop),entryEnd:entry.length-1,area:{x0:c0*T,y0:r0*T,x1:(c0+aw)*T,y1:(r0+ah)*T}};
+    }
+  }
+  // запасной вариант без района: патруль «туда-обратно» под точкой въезда
+  const s=SPAWNS[lanes[0]],sx=s.c*T+16,sy=s.r*T+16,start=nodeAt(sx,sy),down=snapFree(sx,sy+4*T,R,null);
+  const si=start%NC,sj=start/NC|0,leg=down<0?null:yield* astar(sx,sy,R,speed,shooter,false,nodeGoal(down),[si-8,sj-2,si+8,sj+12]);
+  const nodes=leg?leg.concat(leg.slice(0,-1).reverse()):[start];
+  return {lane:lanes[0],route:makeRoute(nodes),loop:makeRoute(nodes),entryEnd:0,area:{x0:sx-4*T,y0:0,x1:sx+4*T,y1:sy+6*T}};
+}
+// событие появления: колонна до трёх танков или одиночка; соотношение считается по событиям, не по машинам
+function prepareSpawn() {
+  const ratio=Math.round(CFG.columnRatio),every=Math.round(CFG.hunterEvery),column=ratio>0&&spawnSeq%(ratio+1)!==ratio;spawnSeq++;
+  if(column)columnSeq++;
+  const n=Math.min(column?3:1,toSpawn.length),first=ri(0,SPAWNS.length-1);
+  const p={n,kinds:toSpawn.slice(-n).sort((a,b)=>RANK[b]-RANK[a]),hunter:column&&every>0&&columnSeq%every===0,lanes:[0,1,2].map(k=>(first+k)%SPAWNS.length),retries:0,retryT:2};
+  p.task=navRequest(planFor(p));
+  return p;
+}
+function planFor(p) {
+  if(p.retries>1)return planMain(p.kinds,p.lanes,6); // запасной габарит, чтобы волна не встала
+  const R=Math.max(...p.kinds.map(kindR));
+  return p.hunter?planHunt(p.kinds,p.lanes,R):planMain(p.kinds,p.lanes,R);
+}
+function laneFree(lane) {
+  const x=SPAWNS[lane].c*T+16;
+  return !enemies.concat(player&&!player.dead?[player]:[]).some(t=>Math.hypot(t.x-x,t.y-48)<40||t.entering&&Math.abs(t.x-x)<30);
+}
+function updateSpawns(dt) {
+  spawnTimer -= dt;
+  if (!toSpawn.length) return;
+  if (!pendingSpawn) pendingSpawn = prepareSpawn();
+  const p = pendingSpawn;
+  if (!p.task.done) return;
+  if (!p.task.result) {
+    // ни одна из проверенных точек не дала маршрута: ждём, пробуем снова, затем запасной вариант
+    if ((p.retryT -= dt) > 0) return;
+    p.retries++; p.retryT = 2;
+    const s = SPAWNS[p.lanes[0]];
+    p.task = p.retries > 2 ? { done: true, result: { lane: p.lanes[0], route: makeRoute([nodeAt(s.c * T + 16, s.r * T + 16)]) } } : navRequest(planFor(p));
+    return;
+  }
+  const n = Math.min(p.n, toSpawn.length);
+  if (spawnTimer > 0 || (enemies.length && enemies.length + n > maxAlive()) || !laneFree(p.task.result.lane)) return;
+  spawnSquad(p, p.task.result, toSpawn.splice(-n, n).sort((a, b) => RANK[b] - RANK[a]));
+  pendingSpawn = null;
+  spawnTimer = rnd(1.2, 2.4);
+}
+function joinSquad(e,q) {
+  q.members.push(e);
+  Object.assign(e,{squad:q,mode:'route',rp:{s:0,wp:0,off:0},lp:null,local:null,req:null,post:null,sees:false,shot:null,wall:null,
+    cmdT:0,progS:0,waitT:0,pushT:0,peekT:0,unstickT:0,retT:0,retFails:0,breachT:0,holdT:0,postT:0,routeS:0,rejoinK:0,rejoinMin:null});
+}
+function spawnSquad(p,plan,kinds) {
+  const x=SPAWNS[plan.lane].c*T+16;
+  const q={id:++squadSeq,members:[],route:plan.route,loop:plan.loop||null,entryEnd:plan.entryEnd||0,area:plan.area||null,hunter:p.hunter,combat:false,last:null,lostT:0,formRef:null,thinkT:squadSeq%5*THINK/5};
+  let y=-32;
+  kinds.forEach((kind,k)=>{
+    if(k)y-=kindR(kinds[k-1])+kindR(kind)+12;
+    const e=makeTank(x,y,kind);e.angle=e.turret=Math.PI/2;e.spawnT=0;e.entering=true;joinSquad(e,q);enemies.push(e);
+  });
+  squads.push(q);
+  return q;
+}
+// танк вне колонны (например, созданный вручную) получает отряд из одного себя и маршрут из текущей точки
+function soloSquad(e) {
+  const q={id:++squadSeq,members:[],route:makeRoute([nodeAt(e.x,e.y)]),loop:null,entryEnd:0,area:null,hunter:false,combat:false,last:null,lostT:0,formRef:null,thinkT:0};
+  joinSquad(e,q);squads.push(q);return q;
+}
+
+// ---------- поведение отряда ----------
+const liveMembers=q=>q.members.filter(e=>!e.dead);
+function leaderOf(q){let lead=null;for(const e of q.members)if(!e.dead&&(!lead||RANK[e.kind]>RANK[lead.kind]))lead=e;return lead;}
+// порядок колонны: лидер (сильнейший выживший), затем остальные в исходном порядке
+function queueOf(q){const lead=leaderOf(q);return lead?[lead,...q.members.filter(e=>e!==lead&&!e.dead)]:[];}
+function canSee(e,p) {
+  const dp=Math.hypot(p.x-e.x,p.y-e.y);
+  if(dp>=CFG.enemySightCells*T)return false;
+  if(tileAt(Math.floor(p.x/T),Math.floor(p.y/T))===TREE&&dp>CFG.treeStealth)return false;
+  return los(e.x,e.y,p.x,p.y);
+}
+function wallOnLine(e,goal) {
+  const n=Math.ceil(Math.hypot(goal.x-e.x,goal.y-e.y)/6);
+  for(let j=1;j<n;j++){const x=e.x+(goal.x-e.x)*j/n,y=e.y+(goal.y-e.y)*j/n,t=tileAt(Math.floor(x/T),Math.floor(y/T));
+    if(t===STEEL)return null;if(breakable(t)&&bulletBlocked(x,y))return {x,y};}
+  return null;
+}
+// цель по базе: прямая видимость или, на огневой позиции, первая преграда на линии огня
+function baseShot(e) {
+  if(!base||base.dead)return null;
+  if(los(e.x,e.y,base.x,base.y))return base;
+  return e.mode==='fire'&&!e.squad.combat?wallOnLine(e,base):null;
+}
+function inArea(q,x,y){const a=q.area;if(!q.hunter||!a)return true;return x>=a.x0-2*T&&x<=a.x1+2*T&&y>=a.y0-2*T&&y<=a.y1+2*T;}
+function segFree(x0,y0,x1,y1,R){const n=Math.ceil(Math.hypot(x1-x0,y1-y0)/6);for(let i=0;i<=n;i++)if(circleStatus(x0+(x1-x0)*i/n,y0+(y1-y0)*i/n,R)!==1)return false;return true;}
+function nearNodes(x,y,cells,step=2) {
+  const ci=Math.round(x/NS),cj=Math.round(y/NS),out=[];
+  for(let dj=-2*cells;dj<=2*cells;dj+=step)for(let di=-2*cells;di<=2*cells;di+=step){const i=ci+di,j=cj+dj;
+    if(i>=1&&j>=1&&i<=NC-2&&j<=NR-2)out.push({n:j*NC+i,x:i*NS,y:j*NS});}
+  return out;
+}
+const segDist=(px,py,a,b)=>{const dx=b.x-a.x,dy=b.y-a.y,L=dx*dx+dy*dy,t=L?clamp(((px-a.x)*dx+(py-a.y)*dy)/L,0,1):0;return Math.hypot(px-a.x-dx*t,py-a.y-dy*t);};
+// место не занято союзником и не перекрывает союзникам линию огня
+function postClear(e,q,x,y,ref) {
+  const R=navR(e);
+  return q.members.every(o=>{if(o===e||o.dead)return true;const p=o.post||o;
+    return Math.hypot(p.x-x,p.y-y)>=R+o.r+6&&segDist(x,y,p,ref)>R+4;});
+}
+// укрытие поблизости без видимости на игрока и точка выезда, путь между ними проверен корпусом
+function findCover(e,q,ref) {
+  const R=navR(e),by=a=>(o,p)=>Math.hypot(o.x-a.x,o.y-a.y)-Math.hypot(p.x-a.x,p.y-a.y);
+  const covers=nearNodes(e.x,e.y,4).filter(o=>Math.hypot(o.x-e.x,o.y-e.y)<=4.5*T&&inArea(q,o.x,o.y)&&navStatus(o.n,R)===1&&!los(o.x,o.y,ref.x,ref.y)).sort(by(e));
+  for(const c of covers.slice(0,10)) {
+    const peek=nearNodes(c.x,c.y,2,1).filter(o=>(o.x!==c.x||o.y!==c.y)&&inArea(q,o.x,o.y)&&navStatus(o.n,R)===1&&los(o.x,o.y,ref.x,ref.y)&&segFree(c.x,c.y,o.x,o.y,R)).sort(by(c))[0];
+    if(peek)return {x:c.x,y:c.y,px:peek.x,py:peek.y,cover:true};
+  }
+  return null;
+}
+function firePos(e,q,ref) {
+  const R=navR(e);
+  return nearNodes(e.x,e.y,5).filter(o=>inArea(q,o.x,o.y)&&navStatus(o.n,R)===1&&Math.hypot(o.x-ref.x,o.y-ref.y)<CFG.enemySightCells*T&&los(o.x,o.y,ref.x,ref.y)&&postClear(e,q,o.x,o.y,ref))
+    .sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0]||null;
+}
+function baseFirePos(e,q) {
+  const R=navR(e);
+  return nearNodes(e.x,e.y,6).filter(o=>Math.hypot(o.x-base.x,o.y-base.y)<=6*T&&navStatus(o.n,R)===1&&hardLos(o.x,o.y,base.x,base.y)&&postClear(e,q,o.x,o.y,base))
+    .sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0]||null;
+}
+// ведомые: разнесённые места позади лидера поперёк направления на игрока
+function slotPos(e,q,lead,ref) {
+  const R=navR(e),a=lead.post||lead,d=Math.hypot(ref.x-a.x,ref.y-a.y)||1,ux=(ref.x-a.x)/d,uy=(ref.y-a.y)/d;
+  const side=queueOf(q).indexOf(e)%2?-1:1,sx=a.x-ux*1.5*T-uy*side*1.5*T,sy=a.y-uy*1.5*T+ux*side*1.5*T;
+  const o=nearNodes(sx,sy,2,1).filter(o=>inArea(q,o.x,o.y)&&navStatus(o.n,R)===1&&postClear(e,q,o.x,o.y,ref)).sort((a,b)=>Math.hypot(a.x-sx,a.y-sy)-Math.hypot(b.x-sx,b.y-sy))[0];
+  return o?{x:o.x,y:o.y}:null;
+}
+function* localPath(e,tx,ty) {
+  const R=navR(e),ai=Math.round(e.x/NS),aj=Math.round(e.y/NS),bi=Math.round(tx/NS),bj=Math.round(ty/NS);
+  // область и длина соединительного поиска ограничены
+  if(Math.abs(ai-bi)>40||Math.abs(aj-bj)>40)return null;
+  const goal=snapFree(tx,ty,R,null);if(goal<0)return null;
+  const nodes=yield* astar(e.x,e.y,R,KINDS[e.kind].speed,e.kind,false,nodeGoal(goal),[Math.min(ai,bi)-6,Math.min(aj,bj)-6,Math.max(ai,bi)+6,Math.max(aj,bj)+6]);
+  return nodes&&makeRoute(nodes);
+}
+function dropPath(e){if(e.req){e.req.cancel=true;e.req=null;}e.local=null;}
+function thinkSquad(q,dt) {
+  q.members=liveMembers(q);
+  if(!q.members.length)return false;
+  if((q.thinkT-=dt)>0)return true;
+  q.thinkT+=THINK;
+  const p=player,on=p&&!p.dead;let seen=false;
+  for(const e of q.members){e.sees=!e.entering&&on&&canSee(e,p);seen=seen||e.sees;}
+  if(seen){q.combat=true;q.last={x:p.x,y:p.y};q.lostT=0;}
+  else if(q.combat&&(q.lostT+=THINK)>=ENEMY_MEMORY)endCombat(q);
+  if(q.combat) {
+    // строй меняется только при заметном смещении игрока
+    if(!q.formRef||Math.hypot(q.last.x-q.formRef.x,q.last.y-q.formRef.y)>4*T){q.formRef={...q.last};for(const e of q.members){e.post=null;if(e.mode==='position')dropPath(e);}}
+    const lead=leaderOf(q);
+    for(const e of q.members)if(!e.entering)thinkCombat(q,e,lead);
+  }
+  for(const e of q.members)e.shot=q.hunter||q.combat||e.entering?null:baseShot(e);
+  return true;
+}
+function thinkCombat(q,e,lead) {
+  if(!COMBAT.has(e.mode)){e.routeS=e.rp.s;dropPath(e);e.post=null;e.mode='fire';}
+  if(e.post&&e.post.hold&&!e.sees&&(e.holdT+=THINK)>2){e.post=null;e.holdT=0;}
+  if(e.post||e.req)return;
+  const post=e===lead?findCover(e,q,q.last)||(e.sees?null:firePos(e,q,q.last)):slotPos(e,q,lead,q.last);
+  if(!post){e.post={x:e.x,y:e.y,hold:true};e.mode='fire';return;}
+  e.post=post;
+  if(Math.hypot(post.x-e.x,post.y-e.y)<6){e.mode=post.cover?'hide':'fire';return;}
+  e.mode='position';e.req=navRequest(localPath(e,post.x,post.y));
+}
+function endCombat(q) {
+  q.combat=false;q.last=null;q.formRef=null;
+  for(const e of q.members)if(!e.entering){dropPath(e);e.post=null;e.mode='return';e.retFails=0;e.retT=0;}
+}
+// ---------- движение ----------
+// корпус сначала доворачивает к цели, затем едет вдоль своего направления
+function drive(e,x,y,dt,mul=1) {
+  const dx=x-e.x,dy=y-e.y,d=Math.hypot(dx,dy);if(d<.5)return;
+  const want=Math.atan2(dy,dx);e.angle=turnTo(e.angle,want,dt*8);
+  const off=Math.abs(angDiff(e.angle,want));if(off>.8)return;
+  const step=Math.min(d,KINDS[e.kind].speed*(1+Math.min(wave,10)*CFG.enemySpeedPerWave)*mul*dt)*Math.cos(off);
+  moveTank(e,Math.cos(e.angle)*step,Math.sin(e.angle)*step,dt);
+}
+// застревание — нет продвижения по маршруту при активной команде движения
+function stalled(e,s,dt){e.cmdT+=dt;if(e.cmdT<1.2)return false;const stuck=s-e.progS<4;e.cmdT=0;e.progS=s;return stuck;}
+const holdStill=(e,s)=>{e.cmdT=0;e.progS=s;};
+function allyAhead(e) {
+  const hx=Math.cos(e.angle),hy=Math.sin(e.angle);
+  return enemies.some(o=>{if(o===e||o.dead||o.entering)return false;const dx=o.x-e.x,dy=o.y-e.y,d=Math.hypot(dx,dy);return d<e.r+o.r+6&&(dx*hx+dy*hy)/d>.5;});
+}
+function wallAhead(e,rt) {
+  const R=navR(e),p=e.rp;
+  for(let k=p.wp+1;k<rt.nodes.length&&rt.len[k]<=p.s+e.r+NS;k++)if(navStatus(rt.nodes[k],R)===2)return wallPoint(rt.pts[k].x,rt.pts[k].y,R,e);
+  return null;
+}
+function wallPoint(x,y,R,e) {
+  let best=null,bd=1e9;
+  for(const i of softCells(x,y,R))for(const b of tileRects(i%COLS,i/COLS|0,grid[i])) {
+    if(Math.hypot(x-clamp(x,b.x,b.x+b.w),y-clamp(y,b.y,b.y+b.h))>=R)continue;
+    const cx=b.x+b.w/2,cy=b.y+b.h/2,d=Math.hypot(cx-e.x,cy-e.y);if(d<bd){bd=d;best={x:cx,y:cy};}
+  }
+  return best;
+}
+function appendLoop(q) {
+  const rt=q.route,lp=q.loop,base0=rt.len[rt.len.length-1];
+  for(let k=1;k<lp.nodes.length;k++){rt.nodes.push(lp.nodes[k]);rt.pts.push(lp.pts[k]);rt.len.push(base0+lp.len[k]);}
+}
+function followRoute(e,q,dt) {
+  const rt=q.route,p=e.rp,queue=queueOf(q),k=queue.indexOf(e);
+  trackRoute(p,e.x,e.y,rt);
+  const wall=wallAhead(e,rt);
+  if(wall){e.mode='breach';e.wall=wall;holdStill(e,p.s);if((e.breachT+=dt)>15){e.breachT=0;unstick(e,q);}return;}
+  e.wall=null;e.breachT=0;
+  let end=rt.len[rt.len.length-1],goal=p.s+14,mul=1;
+  if(k<=0) {
+    if(q.hunter&&q.loop&&p.s>=end-NS){appendLoop(q);end=rt.len[rt.len.length-1];}
+    if(!q.hunter&&p.s>=end-4){e.mode='fire';holdStill(e,p.s);return;}
+    // лидер замедляется или ждёт отставших ведомых
+    let gap=0,lag=0;
+    for(let i=1;i<queue.length;i++){const f=queue[i];gap+=queue[i-1].r+f.r+14;if(f.entering||f.mode==='route'||f.mode==='wait')lag=Math.max(lag,p.s-gap-(f.entering?f.y-48:f.rp.s));}
+    if(lag>5*T){e.mode='wait';holdStill(e,p.s);return;}
+    if(lag>2.5*T)mul=.5;
+  } else {
+    // ведомый идёт по маршруту лидера на дистанции за танком впереди, в узостях — по очереди
+    const ahead=queue[k-1],limit=ahead.rp.s-(ahead.r+e.r+14);
+    if(ahead.entering||limit<=p.s+1) {
+      e.mode='wait';holdStill(e,p.s);
+      // лидер уже на огневой позиции у базы: ведомый ищет своё место рядом, не перекрывая огонь
+      if(queue[0].mode==='fire'&&!q.hunter&&base&&!base.dead&&(e.postT-=dt)<=0){e.postT=2;const post=baseFirePos(e,q);if(post){e.post=post;e.mode='position';e.req=navRequest(localPath(e,post.x,post.y));}}
+      return;
+    }
+    goal=Math.min(goal,limit);
+  }
+  if(e.pushT>0)e.pushT-=dt;
+  else if(allyAhead(e)) {
+    e.mode='wait';holdStill(e,p.s);
+    // долго стоим лицом к союзнику — проезжаем, физика растолкает
+    if((e.waitT+=dt)>2.5){e.waitT=0;e.pushT=1.5;}
+    return;
+  }
+  e.waitT=0;e.mode='route';
+  const pt=pointAt(rt,goal,p.wp);
+  drive(e,pt.x,pt.y,dt,mul);
+  if(stalled(e,p.s,dt))unstick(e,q);
+}
+// соединительный путь к точке маршрута впереди; основной маршрут не меняется
+function unstick(e,q) {
+  if(e.unstickT>0)return;
+  e.unstickT=2;e.routeS=e.rp.s+3*T;e.rejoinMin=wpAt(q.route,e.routeS);e.mode='return';e.retFails=0;e.retT=0;dropPath(e);
+}
+function requestReturn(e,q) {
+  const rt=q.route;
+  if(e.retT>0)return;
+  const k0=wpAt(rt,e.routeS);let k=k0,bd=1e9;
+  for(let i=e.rejoinMin??Math.max(0,k0-8);i<=Math.min(rt.pts.length-1,k0+16);i++){const d=Math.hypot(rt.pts[i].x-e.x,rt.pts[i].y-e.y);if(d<bd){bd=d;k=i;}}
+  if(e.retFails)k=Math.max(0,k-4*e.retFails); // после неудачи — к более ранней точке
+  e.rejoinK=k;
+  const pt=rt.pts[k];
+  if(Math.hypot(pt.x-e.x,pt.y-e.y)<NS){e.mode='route';e.rp={s:rt.len[k],wp:Math.max(0,k-1),off:0};e.rejoinMin=null;return;}
+  if(e.retFails>=3||segFree(e.x,e.y,pt.x,pt.y,navR(e))){e.local=lineRoute(e,pt);e.lp={s:0,wp:0,off:0};return;}
+  e.req=navRequest(localPath(e,pt.x,pt.y));
+}
+function followLocal(e,q,dt) {
+  if(e.req) {
+    if(!e.req.done){holdStill(e,0);return;}
+    e.local=e.req.result;e.req=null;e.lp={s:0,wp:0,off:0};
+    if(!e.local){if(e.mode==='return'){e.retFails++;e.retT=1;}else{e.post={x:e.x,y:e.y,hold:true};e.mode='fire';}return;}
+  }
+  if(!e.local){if(e.mode==='return'){e.retT-=dt;requestReturn(e,q);}else e.mode='fire';return;}
+  const rt=e.local,last=rt.pts[rt.pts.length-1];
+  trackRoute(e.lp,e.x,e.y,rt);
+  if(Math.hypot(last.x-e.x,last.y-e.y)<4||e.lp.s>=rt.len[rt.len.length-1]-1) {
+    e.local=null;
+    if(e.mode==='return'){const k=e.rejoinK;e.mode='route';e.rp={s:q.route.len[k],wp:Math.max(0,k-1),off:0};e.retFails=0;e.rejoinMin=null;}
+    else e.mode=e.post&&e.post.cover?'hide':'fire';
+    return;
+  }
+  const pt=pointAt(rt,e.lp.s+14,e.lp.wp);
+  drive(e,pt.x,pt.y,dt);
+  if(stalled(e,e.lp.s,dt)){e.local=null;if(e.mode==='return'){e.retFails++;e.retT=.5;}else{e.post={x:e.x,y:e.y,hold:true};e.mode='fire';}}
+}
+// только текущее состояние задаёт команду движения
+function steer(e,q,dt) {
+  e.unstickT-=dt;
+  switch(e.mode) {
+    case 'route': case 'wait': case 'breach': followRoute(e,q,dt); break;
+    case 'position': case 'return': followLocal(e,q,dt); break;
+    case 'hide': holdStill(e,0); if(e.cd<=.4){e.mode='peek';e.peekT=0;} break;
+    case 'peek': case 'retreat': {
+      const P=e.post;if(!P){e.mode='fire';break;}
+      const x=e.mode==='peek'?P.px:P.x,y=e.mode==='peek'?P.py:P.y,d=Math.hypot(x-e.x,y-e.y);
+      if(e.mode==='peek'&&(e.peekT+=dt)>2.5)e.mode='retreat';
+      if(d<3){if(e.mode==='retreat')e.mode='hide';holdStill(e,0);break;}
+      drive(e,x,y,dt);
+      if(stalled(e,-d,dt)){e.post={x:e.x,y:e.y,hold:true};e.mode='fire';}
+      break;
+    }
+    default: holdStill(e,0);
   }
 }
 function updateEnemy(e, dt) {
   const K = KINDS[e.kind];
   e.flash -= dt; e.recoil = (e.recoilMax||5)*clamp(e.cd/enemyInterval(e.kind),0,1);
   if (e.spawnT > 0) { e.spawnT -= dt; return; }
-  if(e.entering) {e.y+=K.speed*dt;e.ty=e.y;e.tx=e.x;if(e.y>=48){e.y=48;e.entering=false;e.cd=enemyInterval(e.kind);}return;}
-  e.cd -= dt; e.decideT -= dt;reconsiderRoute(e,dt);
-  const goal=enemyGoal(e);
-  if(!e.leader)buildFlow(Math.floor(goal.x/T),Math.floor(goal.y/T));
-
-  const p = player, alive = p && !p.dead;
-  const dp = alive ? Math.hypot(p.x - e.x, p.y - e.y) : 1e9;
-  const hidden = alive && tileAt(Math.floor(p.x / T), Math.floor(p.y / T)) === TREE && dp > CFG.treeStealth;
-  const sees = alive && !hidden && dp < CFG.enemySight && los(e.x, e.y, p.x, p.y);
-
-  // движение от клетки к клетке по полю расстояний
-  if (e.stuck > .7) { e.stuck = 0; decide(e, true); e.decideT = .5; }
-  else if (Math.hypot(e.tx - e.x, e.ty - e.y) < 1.5 && e.decideT <= 0) { decide(e, false); e.decideT = e.brick ? .35 : 0; }
-
-  if(e.detourTime<=0 && e.leader && !e.leader.dead && !e.brick) {
-    const lead=e.leader, gap=48*e.columnSlot;
-    const gx=lead.x-Math.cos(lead.angle)*gap,gy=lead.y-Math.sin(lead.angle)*gap;
-    if(los(e.x,e.y,gx,gy)) {e.tx=clamp(gx,24,W-24);e.ty=clamp(gy,24,H-24);}
+  const q = e.squad || soloSquad(e);
+  if (e.entering) {
+    // колонна выкатывается из одной точки по очереди, не наезжая на танк впереди
+    const k = q.members.indexOf(e), ahead = k > 0 ? q.members[k - 1] : null, y = Math.min(48, e.y + K.speed * dt);
+    if (!ahead || ahead.dead || Math.hypot(ahead.x - e.x, ahead.y - y) >= ahead.r + e.r + 10) e.y = y;
+    if (e.y >= 48) { e.entering = false; e.cd = enemyInterval(e.kind); }
+    return;
   }
-  const pathWall=blockingBrick(e,goal);
-  if(pathWall && (e.kind==='heavy'||e.stuck>.25||e.brick)) {e.brick=pathWall;e.cover=null;e.retreat=false;}
-  else if(e.detourTime<=0)updateCover(e,goal,dt);
-  const hold = e.detourTime<=0 && !e.cover && sees && dp < K.hold;
-  const mx = e.tx - e.x, my = e.ty - e.y, md = Math.hypot(mx, my);
-  if (!hold && md > .5) {
-    const speed = K.speed * (1 + Math.min(wave, 10) * CFG.enemySpeedPerWave);
-    const step = Math.min(md, speed * dt);
-    e.angle = turnTo(e.angle, Math.atan2(my, mx), dt * 8);
-    const moved = moveTank(e, mx / md * step, my / md * step, dt);
-    if (step > .5 && moved < step * .3) e.stuck += dt; else e.stuck = Math.max(0, e.stuck - dt);
-  }
+  e.cd -= dt;
+  steer(e, q, dt);
 
-  // башня и стрельба
-  let target = null;
-  if(e.brick)target=e.brick;
-  else if (sees && goal===p) {
-    const lead = dp / (e.kind==='heavy'?3000:K.bulletSpeed) * .6;
-    target = { x: p.x + p.vx * lead, y: p.y + p.vy * lead };
-  } else if(base && !base.dead && los(e.x,e.y,base.x,base.y)) target=base;
-  else if (e.brick) target = e.brick;
+  // башня и стрельба: игрок важнее базы и стены; каждый танк сам проверяет линию огня
+  const p = player;
+  let target = null, shoot = false;
+  if (q.combat && q.last) {
+    if (e.sees && p && !p.dead) {
+      const lead = Math.hypot(p.x - e.x, p.y - e.y) / (e.kind==='heavy'?3000:K.bulletSpeed) * .6;
+      target = { x: p.x + p.vx * lead, y: p.y + p.vy * lead }; shoot = e.mode !== 'hide' && e.mode !== 'retreat';
+    } else target = q.last;
+  } else if (e.mode === 'breach' && e.wall) { target = e.wall; shoot = true; }
+  else if (e.shot) { target = e.shot; shoot = true; }
   const aim = target ? Math.atan2(target.y - e.y, target.x - e.x) : e.angle;
   e.turret = turnTo(e.turret, aim, dt * K.turretSpeed);
-  if (target && !e.retreat && e.cd <= 0 && Math.abs(angDiff(e.turret, aim)) < .12) {
+  if (shoot && e.cd <= 0 && Math.abs(angDiff(e.turret, aim)) < .12 && (!q.combat || los(e.x, e.y, p.x, p.y))) {
     fire(e);
     e.cd = enemyInterval(e.kind);
-    if(e.cover) e.retreat=true;
+    if (e.mode === 'peek') e.mode = 'retreat';
   }
 }
 
@@ -1128,38 +1462,118 @@ function downgradeShell(b) {
   if(!b.armor)return;
   b.armor=false;b.trail=[];b.brickPierced=true;b.dmg=Math.max(1,b.dmg/2);b.vx/=1.5;b.vy/=1.5;b.r=3;
 }
-function collideShells() {
-  for(let i=0;i<bullets.length;i++)for(let j=i+1;j<bullets.length;j++) {
-    const a=bullets[i],b=bullets[j];if(a.dead||b.dead||(a.owner===b.owner&&!!a.armor===!!b.armor))continue;
-    if(Math.hypot(a.x-b.x,a.y-b.y)>a.r+b.r+2)continue;
-    if(!!a.armor!==!!b.armor){const ap=a.armor?a:b,normal=a.armor?b:a;normal.dead=true;downgradeShell(ap);}
-    else a.dead=b.dead=true;
-    burst((a.x+b.x)/2,(a.y+b.y)/2,16,['#fff','#ffd76a','#ff9e38'],250,.35,4,'spark');
+// ---------- столкновения снарядов ----------
+// Непрерывная проверка: за кадр снаряд проходит отрезок, события (стена, крона, база, танк, встречный снаряд)
+// обрабатываются по времени. После события пересчитываются только затронутые снаряды.
+const SHOT_CELL=64,SHOT_EVENTS=256,SHOT_EVENTS_EACH=12;
+let shotGrid=new Map(),shotStamp=0,tankMotion=false;
+// первое касание точки s+d·f (f∈[0,1]) с прямоугольником; -1 — нет
+function sweepBox(sx,sy,dx,dy,x0,y0,x1,y1) {
+  let t0=0,t1=1;
+  if(Math.abs(dx)<1e-9){if(sx<x0||sx>x1)return -1;}
+  else{let a=(x0-sx)/dx,b=(x1-sx)/dx;if(a>b){const q=a;a=b;b=q;}if(a>t0)t0=a;if(b<t1)t1=b;}
+  if(Math.abs(dy)<1e-9){if(sy<y0||sy>y1)return -1;}
+  else{let a=(y0-sy)/dy,b=(y1-sy)/dy;if(a>b){const q=a;a=b;b=q;}if(a>t0)t0=a;if(b<t1)t1=b;}
+  return t0<=t1?t0:-1;
+}
+// первое касание с кругом радиуса R в начале координат
+function sweepCircle(sx,sy,dx,dy,R) {
+  const c=sx*sx+sy*sy-R*R;if(c<=0)return 0;
+  const a=dx*dx+dy*dy,b=sx*dx+sy*dy;if(a<1e-12||b>=0)return -1;
+  const disc=b*b-a*c;if(disc<0)return -1;
+  const t=(-b-Math.sqrt(disc))/a;return t<=1?t:-1;
+}
+// прямоугольник, раздутый на радиус снаряда со скруглёнными углами
+function sweepRect(sx,sy,dx,dy,r,b) {
+  let best=sweepBox(sx,sy,dx,dy,b.x-r,b.y,b.x+b.w+r,b.y+b.h),t=sweepBox(sx,sy,dx,dy,b.x,b.y-r,b.x+b.w,b.y+b.h+r);
+  if(t>=0&&(best<0||t<best))best=t;
+  if(r>0)for(let k=0;k<4;k++){t=sweepCircle(sx-b.x-(k&1?b.w:0),sy-b.y-(k&2?b.h:0),dx,dy,r);if(t>=0&&(best<0||t<best))best=t;}
+  return best;
+}
+// положение танка в момент u кадра: танки уже сдвинулись, снаряды летят за тот же интервал
+function tankAt(t,u,dt){if(!tankMotion||t.px===undefined)return {x:t.x,y:t.y};const k=u/dt;return {x:t.px+(t.x-t.px)*k,y:t.py+(t.y-t.py)*k};}
+// пространственная сетка: снаряды по всему отрезку кадра, танки по всему пути за кадр
+function buildShotGrid(dt) {
+  shotGrid=new Map();
+  const add=(o,x0,y0,x1,y1)=>{for(let gy=Math.floor(y0/SHOT_CELL);gy<=Math.floor(y1/SHOT_CELL);gy++)for(let gx=Math.floor(x0/SHOT_CELL);gx<=Math.floor(x1/SHOT_CELL);gx++){const k=gy*4096+gx;let a=shotGrid.get(k);if(!a)shotGrid.set(k,a=[]);a.push(o);}};
+  for(const b of bullets)if(!b.dead){const x=b.x+b.vx*dt,y=b.y+b.vy*dt,m=b.r+2;add(b,Math.min(b.x,x)-m,Math.min(b.y,y)-m,Math.max(b.x,x)+m,Math.max(b.y,y)+m);}
+  for(const t of player&&!player.dead?[player,...enemies]:enemies)if(!t.dead){const p=tankAt(t,0,dt);add(t,Math.min(p.x,t.x)-t.r,Math.min(p.y,t.y)-t.r,Math.max(p.x,t.x)+t.r,Math.max(p.y,t.y)+t.r);}
+}
+function shotBox(b,tau){const x=b.x+b.vx*tau,y=b.y+b.vy*tau,m=b.r+2;return [Math.min(b.x,x)-m,Math.min(b.y,y)-m,Math.max(b.x,x)+m,Math.max(b.y,y)+m];}
+// ближайшее событие снаряда на оставшейся части кадра
+function shotEvent(b,now,dt) {
+  const tau=dt-now,dx=b.vx*tau,dy=b.vy*tau,r=b.r;let ev=null;
+  const take=(f,kind,o)=>{if(f>=0&&(!ev||now+f*tau<ev.t))ev={t:now+f*tau,kind,o,b};};
+  const x0=Math.min(b.x,b.x+dx)-r,x1=Math.max(b.x,b.x+dx)+r,y0=Math.min(b.y,b.y+dy)-r,y1=Math.max(b.y,b.y+dy)+r;
+  // стены: только клетки, которых касается движение, и реальные прямоугольники кладки, забора и стали
+  for(let cr=Math.floor(y0/T);cr<=Math.floor(y1/T);cr++)for(let cc=Math.floor(x0/T);cc<=Math.floor(x1/T);cc++) {
+    const t=tileAt(cc,cr);
+    if(t===TREE){if(!b.leaves||!b.leaves.has(cr*COLS+cc))take(sweepBox(b.x,b.y,dx,dy,cc*T,cr*T,cc*T+T,cr*T+T),'leaf',{c:cc,r:cr});continue;}
+    if(!blocksBullet(t)||sweepRect(b.x,b.y,dx,dy,r,{x:cc*T,y:cr*T,w:T,h:T})<0)continue;
+    for(const rect of tileRects(cc,cr,t))take(sweepRect(b.x,b.y,dx,dy,r,rect),'wall',{c:cc,r:cr});
+  }
+  if(base&&!base.dead)take(sweepCircle(b.x-base.x,b.y-base.y,dx,dy,base.r+r),'base',base);
+  const stamp=++shotStamp,m=SHOT_CELL;
+  for(let gy=Math.floor((y0-2)/m);gy<=Math.floor((y1+2)/m);gy++)for(let gx=Math.floor((x0-2)/m);gx<=Math.floor((x1+2)/m);gx++)for(const o of shotGrid.get(gy*4096+gx)||[]) {
+    if(o._stamp===stamp||o===b||o.dead)continue;o._stamp=stamp;
+    if('owner' in o) {
+      // встречный снаряд: относительное движение и время контакта, а не пересечение траекторий
+      if(o.owner===b.owner&&!!o.armor===!!b.armor)continue;
+      take(sweepCircle(b.x-o.x,b.y-o.y,dx-o.vx*tau,dy-o.vy*tau,b.r+o.r+2),'shell',o);
+    } else if(b.owner==='p'?o!==player&&o.spawnT<=0:o===player) {
+      const p=tankAt(o,now,dt);
+      take(sweepCircle(b.x-p.x,b.y-p.y,dx-(o.x-p.x),dy-(o.y-p.y),o.r+r),'tank',o);
+    }
+  }
+  return ev;
+}
+function applyShotEvent(ev) {
+  const b=ev.b,x=b.x,y=b.y;b.hits++;
+  if(ev.kind==='leaf')hitFoliage(ev.o.c,ev.o.r,x,y,b);
+  else if(ev.kind==='wall') {
+    const {c,r}=ev.o,t=tileAt(c,r);
+    // бронебойный пролетает забор насквозь, не тратя пробитие кирпича
+    if(t===FENCE&&b.armor)hitFence(c,r,x,y);
+    else if(t===FENCE){hitFence(c,r,x,y);b.dead=true;}
+    else if(t===BRICK&&b.armor&&!b.brickPierced){hitBrick(c,r,99,x,y);b.brickPierced=true;}
+    else{if(t===BRICK)hitBrick(c,r,1,x,y);else burst(x,y,6,['#e8eef2'],120,.25,2);b.dead=true;}
+  }
+  else if(ev.kind==='base'){hitBase(b.dmg);b.dead=true;}
+  else if(ev.kind==='tank'){if(ev.o===player)hitPlayer(b);else hitEnemy(ev.o,b);b.dead=true;}
+  else {
+    const o=ev.o;
+    if(!!b.armor!==!!o.armor){const ap=b.armor?b:o,normal=b.armor?o:b;normal.dead=true;downgradeShell(ap);}
+    else b.dead=o.dead=true;
+    burst((b.x+o.x)/2,(b.y+o.y)/2,16,['#fff','#ffd76a','#ff9e38'],250,.35,4,'spark');
   }
 }
 function updateBullets(dt) {
-  const steps=Math.max(3,Math.ceil(Math.max(0,...bullets.map(b=>Math.hypot(b.vx,b.vy)))*dt/3));
   for(const b of bullets){b.life-=dt;if(b.life<=0)b.dead=true;if(b.armor){b.trail=b.trail||[];b.trail.push({x:b.x,y:b.y});if(b.trail.length>9)b.trail.shift();}}
-  for(let step=0;step<steps;step++) {
-    collideShells();
-    for(const b of bullets) {
-      if(b.dead)continue;
-      const nx=b.x+b.vx*dt/steps,ny=b.y+b.vy*dt/steps,c=Math.floor(nx/T),r=Math.floor(ny/T),t=tileAt(c,r);
-      if(t===TREE)hitFoliage(c,r,nx,ny,b);
-      if(bulletBlocked(nx,ny,b.r)) {
-        // бронебойный пролетает забор насквозь, не тратя пробитие кирпича
-        if(t===FENCE&&b.armor){hitFence(c,r,nx,ny);}
-        else if(t===FENCE){hitFence(c,r,nx,ny);b.dead=true;continue;}
-        else if(t===BRICK&&b.armor&&!b.brickPierced){hitBrick(c,r,99,nx,ny);b.brickPierced=true;}
-        else {if(t===BRICK)hitBrick(c,r,1,nx,ny);else burst(nx,ny,6,['#e8eef2'],120,.25,2);b.dead=true;continue;}
-      }
-      b.x=nx;b.y=ny;
-      if(base&&!base.dead&&Math.hypot(b.x-base.x,b.y-base.y)<base.r+b.r){hitBase(b.dmg);b.dead=true;continue;}
-      if(b.owner==='p'){for(const e of enemies){if(!e.dead&&e.spawnT<=0&&Math.hypot(e.x-b.x,e.y-b.y)<e.r+b.r){hitEnemy(e,b);b.dead=true;break;}}}
-      else if(player&&!player.dead&&Math.hypot(player.x-b.x,player.y-b.y)<player.r+b.r){hitPlayer(b);b.dead=true;}
+  const live=bullets.filter(b=>!b.dead);
+  buildShotGrid(dt);
+  let now=0;
+  for(const b of live){b.hits=0;b.ev=shotEvent(b,0,dt);}
+  for(let n=0;n<SHOT_EVENTS;n++) {
+    let ev=null;
+    for(const b of live)if(!b.dead&&b.ev&&(!ev||b.ev.t<ev.t))ev=b.ev;
+    if(!ev)break;
+    for(const b of live)if(!b.dead){b.x+=b.vx*(ev.t-now);b.y+=b.vy*(ev.t-now);}
+    now=ev.t;
+    applyShotEvent(ev);
+    // пересчитать затронутых: участников, тех, чьё событие касалось изменившегося объекта или клетки,
+    // и снаряды рядом с путём снаряда, сменившего скорость; взрыв базы задевает всё
+    const changed=ev.kind==='shell'?[ev.b,ev.o]:[ev.b],cell=ev.kind==='wall'||ev.kind==='leaf'?ev.o:null,all=ev.kind==='base';
+    const boxes=ev.kind==='shell'?changed.filter(s=>!s.dead).map(s=>shotBox(s,dt-now)):[];
+    for(const b of live) {
+      if(b.dead){b.ev=null;continue;}
+      const e=b.ev;
+      let redo=all||changed.includes(b)||e&&(changed.includes(e.o)||e.o===ev.o||cell&&(e.kind==='wall'||e.kind==='leaf')&&e.o.c===cell.c&&e.o.r===cell.r);
+      if(!redo){const q=shotBox(b,dt-now);redo=boxes.some(a=>a[0]<=q[2]&&q[0]<=a[2]&&a[1]<=q[3]&&q[1]<=a[3]);}
+      // ограничение повторных контактов одного снаряда за кадр
+      if(redo)b.ev=b.hits>=SHOT_EVENTS_EACH?null:shotEvent(b,now,dt);
     }
-    collideShells();
   }
+  for(const b of live)if(!b.dead){b.x+=b.vx*(dt-now);b.y+=b.vy*(dt-now);b.ev=null;}
   bullets=bullets.filter(b=>!b.dead);
 }
 
@@ -1217,23 +1631,8 @@ function updateWrecks(dt) {
   wrecks = wrecks.filter(w => !w.taken || w.exploded===false || w.age < (w.blastAge||0)+2);
 }
 
-function updateSpawns(dt) {
-  spawnTimer -= dt;
-  if (!toSpawn.length || spawnTimer > 0 || enemies.length >= maxAlive()) return;
-  const free = SPAWNS.filter(s => {
-    const x = s.c * T + 16, y = s.r * T + 16;
-    return !enemies.concat(player && !player.dead ? [player] : []).some(t => Math.hypot(t.x - x, t.y - y) < 40);
-  });
-  if (!free.length) return;
-  const s = free[ri(0, free.length - 1)];
-  const e = makeTank(s.c * T + 16, -32, toSpawn.pop());
-  e.angle = e.turret = Math.PI / 2; e.spawnT = 0; e.entering=true;
-  enemies.push(e);
-  spawnTimer = rnd(1.2, 2.4);
-}
-
 function updateParts(dt) {
-  for(let i=0;i<brickShake.length;i++)brickShake[i]=Math.max(0,brickShake[i]-dt);
+  for(const i of shaking){brickShake[i]=Math.max(0,brickShake[i]-dt);if(!brickShake[i]){shaking.delete(i);markTile(i);}}
   for(let i=0;i<foliageShake.length;i++)foliageShake[i]=Math.max(0,foliageShake[i]-dt);
   const DRAG = { smoke: .3, spark: .15, debris: .08 };
   for (const p of parts) {
@@ -1259,22 +1658,16 @@ function update(dt) {
   banner.t -= dt;
   if (state === 'over') { overT += dt; return; }
 
-  if (player) {
-    player.flash -= dt;
-    flowTimer -= dt;
-    if (flowTimer <= 0 && !player.dead) {
-      const goal=base && !base.dead ? base : player;
-      buildFlow(clamp(Math.floor(goal.x / T), 0, COLS - 1), clamp(Math.floor(goal.y / T), 0, ROWS - 1));
-      flowTimer = .4;
-    }
-  }
+  if (player) player.flash -= dt;
+  for (const t of player ? [player, ...enemies] : enemies) { t.px = t.x; t.py = t.y; }
   updatePlayer(dt); updateTreadSound(dt);
+  navStep();
   if (state === 'play') updateSpawns(dt);
-  formColumns();
+  squads = squads.filter(q => thinkSquad(q, dt));
   for (const e of enemies) updateEnemy(e, dt);
   enemies = enemies.filter(e => !e.dead);
   separate();
-  updateBullets(dt);
+  tankMotion = true; updateBullets(dt); tankMotion = false;
   enemies = enemies.filter(e => !e.dead);
   updateItems(dt);
   updateWrecks(dt);
@@ -1304,18 +1697,43 @@ function update(dt) {
 // ---------- отрисовка ----------
 function tileHash(c, r) { let h = (c * 73856093) ^ (r * 19349663); h = (h ^ (h >>> 13)) * 1274126177; return (h >>> 0) / 4294967296; }
 
-function drawTiles() {
-  ctx.fillStyle = 'rgba(0,0,0,.28)';
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    const t = grid[r * COLS + c];
-    if (t === STEEL) ctx.fillRect(c * T + 4, r * T + 4, T, T);
+// ---------- кэш карты ----------
+// Сталь, кирпич и забор с тенями лежат в отдельном холсте. Изменённые за кадр клетки перерисовываются один раз,
+// с полем в 4 px под тени и выступающие столбы. Вода и встряхнутые кирпичи рисуются каждый кадр, листва — после танков.
+let tileCanvas = null, tctx = null, tileDirty = new Set(), shaking = new Set(), waterCells = [];
+function buildTileLayer() {
+  tileCanvas = document.createElement('canvas'); tileCanvas.width = W; tileCanvas.height = H; tctx = tileCanvas.getContext('2d');
+  tileDirty.clear(); shaking.clear(); waterCells = [];
+  for (let i = 0; i < grid.length; i++) { if (grid[i] === WATER) waterCells.push(i); if (brickShake[i] > 0) shaking.add(i); }
+  paintTiles(0, 0, W, H);
+}
+const markTile = i => tileDirty.add(i);
+function paintTiles(x, y, w, h) {
+  const g = tctx, c0 = Math.max(0, Math.floor(x / T) - 1), c1 = Math.min(COLS - 1, Math.floor((x + w) / T)), r0 = Math.max(0, Math.floor(y / T) - 1), r1 = Math.min(ROWS - 1, Math.floor((y + h) / T));
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); g.clearRect(x, y, w, h);
+  g.fillStyle = 'rgba(0,0,0,.28)';
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (grid[r * COLS + c] === STEEL) g.fillRect(c * T + 4, r * T + 4, T, T);
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+    const i = r * COLS + c, t = grid[i];
+    if (t === BRICK && !shaking.has(i)) drawBrick(g, c * T, r * T, brickHp[i], brickMask[i], brickVariant[i]);
+    else if (t === FENCE) drawFence(g, c, r);
+    else if (t === STEEL) drawSteel(g, c * T, r * T);
   }
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    const t = grid[r * COLS + c], x = c * T, y = r * T;
-    if (t === BRICK) drawBrick(x, y, brickHp[r * COLS + c], brickMask[r * COLS + c], brickVariant[r * COLS + c]);
-    else if (t === FENCE) drawFence(c, r);
-    else if (t === STEEL) drawSteel(x, y);
-    else if (t === WATER) drawWater(x, y, c, r);
+  // вода рисуется под кэшем, поэтому тени на неё не ложатся, как и раньше
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (grid[r * COLS + c] === WATER) g.clearRect(c * T, r * T, T, T);
+  g.restore();
+}
+function drawTiles() {
+  for (const i of waterCells) drawWater(i % COLS * T, (i / COLS | 0) * T);
+  for (const i of tileDirty) paintTiles(i % COLS * T - 4, (i / COLS | 0) * T - 4, T + 8, T + 8);
+  tileDirty.clear();
+  ctx.drawImage(tileCanvas, 0, 0);
+  // встряхнутый кирпич на время тряски убран из кэша и рисуется только здесь
+  for (const i of shaking) if (grid[i] === BRICK) {
+    const jolt = brickShake[i] * 5;
+    ctx.save(); ctx.translate(Math.sin(time * 65 + i) * jolt, Math.cos(time * 59 + i) * jolt * .5);
+    drawBrick(ctx, i % COLS * T, (i / COLS | 0) * T, brickHp[i], brickMask[i], brickVariant[i]);
+    ctx.restore();
   }
 }
 
@@ -1328,50 +1746,47 @@ function masonry(variant) {
   }
   return bricks;
 }
-function drawBrick(x,y,hp,mask,variant) {
-  const i=Math.floor(y/T)*COLS+Math.floor(x/T),jolt=brickShake[i]*5;
-  ctx.save();ctx.translate(Math.sin(time*65+i)*jolt,Math.cos(time*59+i)*jolt*.5);
+function drawBrick(g,x,y,hp,mask,variant) {
   masonry(0).forEach((b,q)=>{
     if(!(mask & (1<<q)))return;
-    ctx.fillStyle='#402b21';ctx.fillRect(x+b.x,y+b.y,b.w,8);
-    ctx.fillStyle=['#b3633a','#a95833','#bd7149'][Math.abs(Math.floor((x+b.x+(b.y%16?8:0))/16)+Math.floor((y+b.y)/8))%3];
-    ctx.fillRect(x+b.x,y+b.y+1,b.w,7);
-    if(b.x>0 || b.y%16===0){ctx.fillStyle='#402b21';ctx.fillRect(x+b.x,y+b.y,1,8);}
-    ctx.fillStyle='#d18b6066';ctx.fillRect(x+b.x+1,y+b.y+1,b.w-2,1);
-    if(hp<4){ctx.strokeStyle='#502c23';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+b.x+b.w*.3,y+b.y+1);ctx.lineTo(x+b.x+b.w*.6,y+b.y+4);ctx.lineTo(x+b.x+b.w*.5,y+b.y+7);ctx.stroke();}
+    g.fillStyle='#402b21';g.fillRect(x+b.x,y+b.y,b.w,8);
+    g.fillStyle=['#b3633a','#a95833','#bd7149'][Math.abs(Math.floor((x+b.x+(b.y%16?8:0))/16)+Math.floor((y+b.y)/8))%3];
+    g.fillRect(x+b.x,y+b.y+1,b.w,7);
+    if(b.x>0 || b.y%16===0){g.fillStyle='#402b21';g.fillRect(x+b.x,y+b.y,1,8);}
+    g.fillStyle='#d18b6066';g.fillRect(x+b.x+1,y+b.y+1,b.w-2,1);
+    if(hp<4){g.strokeStyle='#502c23';g.lineWidth=1;g.beginPath();g.moveTo(x+b.x+b.w*.3,y+b.y+1);g.lineTo(x+b.x+b.w*.6,y+b.y+4);g.lineTo(x+b.x+b.w*.5,y+b.y+7);g.stroke();}
   });
-  ctx.restore();
 }
 
 // вид сверху: доска-перекладина по каждому плечу, столбы в центре и на краях клетки
-function drawFence(c, r) {
+function drawFence(g, c, r) {
   const rects = fenceRects(c, r), x = c * T, y = r * T, arms = fenceArms[r * COLS + c];
-  ctx.fillStyle = 'rgba(0,0,0,.25)';
-  for (const b of rects) ctx.fillRect(b.x + 2, b.y + 3, b.w, b.h);
+  g.fillStyle = 'rgba(0,0,0,.25)';
+  for (const b of rects) g.fillRect(b.x + 2, b.y + 3, b.w, b.h);
   for (const b of rects) {
-    ctx.fillStyle = '#5a3d22'; ctx.fillRect(b.x, b.y, b.w, b.h);
-    ctx.fillStyle = '#a57a46'; ctx.fillRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
-    ctx.fillStyle = '#c49a62'; b.w > b.h ? ctx.fillRect(b.x + 1, b.y + 1, b.w - 2, 1) : ctx.fillRect(b.x + 1, b.y + 1, 1, b.h - 2);
+    g.fillStyle = '#5a3d22'; g.fillRect(b.x, b.y, b.w, b.h);
+    g.fillStyle = '#a57a46'; g.fillRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
+    g.fillStyle = '#c49a62'; b.w > b.h ? g.fillRect(b.x + 1, b.y + 1, b.w - 2, 1) : g.fillRect(b.x + 1, b.y + 1, 1, b.h - 2);
   }
   const posts = [[16, 16]];
   if (arms & ARM_N) posts.push([16, 3]); if (arms & ARM_S) posts.push([16, 29]);
   if (arms & ARM_E) posts.push([29, 16]); if (arms & ARM_W) posts.push([3, 16]);
   for (const [px, py] of posts) {
-    ctx.fillStyle = '#3f2a17'; ctx.fillRect(x + px - 4, y + py - 4, 8, 8);
-    ctx.fillStyle = '#7a5531'; ctx.fillRect(x + px - 3, y + py - 3, 6, 6);
-    ctx.fillStyle = '#5a3d22'; ctx.fillRect(x + px - 1, y + py - 1, 2, 2);
+    g.fillStyle = '#3f2a17'; g.fillRect(x + px - 4, y + py - 4, 8, 8);
+    g.fillStyle = '#7a5531'; g.fillRect(x + px - 3, y + py - 3, 6, 6);
+    g.fillStyle = '#5a3d22'; g.fillRect(x + px - 1, y + py - 1, 2, 2);
   }
 }
 
-function drawSteel(x, y) {
-  ctx.fillStyle = '#6f7b85'; ctx.fillRect(x, y, T, T);
-  ctx.fillStyle = '#9aa6af'; ctx.fillRect(x + 3, y + 3, T - 6, T - 6);
-  ctx.fillStyle = '#b9c3ca'; ctx.fillRect(x + 3, y + 3, T - 6, 3);
-  ctx.fillStyle = '#5b666f';
-  for (const [ox, oy] of [[7, 7], [25, 7], [7, 25], [25, 25]]) { ctx.beginPath(); ctx.arc(x + ox, y + oy, 2, 0, Math.PI * 2); ctx.fill(); }
+function drawSteel(g, x, y) {
+  g.fillStyle = '#6f7b85'; g.fillRect(x, y, T, T);
+  g.fillStyle = '#9aa6af'; g.fillRect(x + 3, y + 3, T - 6, T - 6);
+  g.fillStyle = '#b9c3ca'; g.fillRect(x + 3, y + 3, T - 6, 3);
+  g.fillStyle = '#5b666f';
+  for (const [ox, oy] of [[7, 7], [25, 7], [7, 25], [25, 25]]) { g.beginPath(); g.arc(x + ox, y + oy, 2, 0, Math.PI * 2); g.fill(); }
 }
 
-function drawWater(x, y, c, r) {
+function drawWater(x, y) {
   ctx.fillStyle = '#2c6d96'; ctx.fillRect(x, y, T, T);
   ctx.strokeStyle = 'rgba(190,230,255,.35)'; ctx.lineWidth = 1.5;
   for (let k = 0; k < 2; k++) {
@@ -1655,6 +2070,27 @@ function drawMenu() {
   if (best) text(`Рекорд: ${best}`, UI_W / 2, 605, 15, '#ffe08a', 'center', '400');
 }
 
+// линии строятся из тех же данных, по которым едут танки: общий маршрут отряда, обход охотников, соединительные пути
+function routeLines() {
+  const lines = [];
+  for (const q of squads) {
+    lines.push({ pts: q.loop ? q.route.pts.slice(0, q.entryEnd + 1) : q.route.pts, dash: false });
+    if (q.loop) lines.push({ pts: q.loop.pts, dash: false });
+  }
+  for (const e of enemies) if (e.local) lines.push({ pts: e.local.pts, dash: true });
+  return lines.filter(l => l.pts.length > 1);
+}
+function drawRoutes() {
+  ctx.save(); ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(110,240,110,.8)';
+  for (const l of routeLines()) {
+    ctx.setLineDash(l.dash ? [4, 4] : []);
+    ctx.beginPath(); ctx.moveTo(l.pts[0].x, l.pts[0].y);
+    for (let k = 1; k < l.pts.length; k++) ctx.lineTo(l.pts[k].x, l.pts[k].y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function draw() {
   ctx.save();
   const sk = shake * CFG.shake * .5;
@@ -1672,6 +2108,7 @@ function draw() {
     drawParts();
   }
   drawTrees();
+  if (CFG.showRoutes && state !== 'menu') drawRoutes();
   ctx.restore();
 
   ctx.save();
@@ -1715,8 +2152,6 @@ const TANK_FIELDS = [
   ['fireRate', 'Перезарядка, с', .05, 10, .05],
   ['dmg', 'Урон снаряда', 0, 20, 1],
   ['turretSpeed', 'Скорость поворота башни, рад/с', .1, 20, .1],
-  ['hold', 'Дистанция стоянки', 0, 600, 10],
-  ['wander', 'Случайность пути', 0, 1, .05],
   ['score', 'Очки за уничтожение', 0, 5000, 50],
   ['scrap', 'Металлолом', 0, 50, 1],
 ];
@@ -1740,11 +2175,16 @@ const CFG_FIELDS = [
   ['Мир и эффекты', [
     ['mapElements', 'Групп элементов на 30×20 (плотность)', 0, 180, 1],
     ['invulnTime', 'Неуязвимость после урона, с', 0, 5, .1],
-    ['enemySight', 'Дальность обзора врагов', 50, 1500, 10],
-    ['treeStealth', 'Видят в кронах ближе чем', 0, 500, 10],
     ['shake', 'Тряска экрана (×)', 0, 3, .1],
     ['hitstop', 'Стоп-кадр при взрыве, с', 0, .3, .01],
     ['godMode', 'Режим бога', 'bool'],
+  ]],
+  ['Противники', [
+    ['enemySightCells', 'Дальность обзора, клеток', 3, 60, 1],
+    ['treeStealth', 'Видят в кронах ближе чем', 0, 500, 10],
+    ['columnRatio', 'Событий «колонна» на одно событие «одиночка» (не число танков)', 0, 10, 1],
+    ['hunterEvery', 'Охотники: каждая N-я колонна (0 — нет)', 0, 50, 1],
+    ['showRoutes', 'Показывать маршруты', 'bool'],
   ]],
 ];
 const DEV_DEFAULTS = JSON.stringify({ KINDS, CFG });
@@ -2216,7 +2656,7 @@ document.getElementById('mapPick').addEventListener('change', e => {
 
 // стартовый экран: фон-превью собирается из выбранных размера и режима карты
 function toMenu() {
-  state = 'menu'; player = null; base = null; enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
+  state = 'menu'; player = null; base = null; enemies = []; squads = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
   applyMapChoice(); genMap(1);
 }
 document.getElementById('btnDev').addEventListener('click', e => { e.currentTarget.blur(); devOpen = true; buildDev(); });
