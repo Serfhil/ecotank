@@ -31,16 +31,72 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 16px; }
   .grid label { display: grid; grid-template-columns: 1fr 86px; align-items: center; gap: 8px; color: #c9d4c4; }
   .note { margin: 16px 0 0; color: #7f8f88; font-size: 12px; }
+  #editor, #mapEditor { position: fixed; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; background: rgba(8,10,12,.7); }
+  .epanel { width: min(860px, calc(100vw - 32px)); max-height: 92vh; overflow: auto; background: #161c1f; border: 1px solid #2f3a40; border-radius: 12px; box-shadow: 0 20px 60px #000c; color: #dde6d8; font: 13px "Segoe UI", system-ui, sans-serif; padding: 16px 20px 20px; box-sizing: border-box; }
+  .epanel h3 { margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #9fb39a; }
+  .epanel button { font-size: 13px; padding: 6px 12px; }
+  .epanel input { background: #0f1416; color: #eef5e8; border: 1px solid #2f3a40; border-radius: 6px; padding: 5px 6px; font: inherit; }
+  .epanel input[type=number] { width: 52px; }
+  .pe-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; border-top: 1px solid #222b2f; }
+  .pe-row .pe-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pe-row .pe-size { color: #7f8f88; }
+  .pe-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; }
+  .pe-palette { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .pe-palette button { display: flex; align-items: center; gap: 6px; }
+  .pe-palette button.on { border-color: #8be06a; background: #2a3a2c; }
+  .pe-palette .pe-cell { width: 16px; height: 16px; }
+  .pe-grid { display: grid; gap: 1px; background: #0b0f11; padding: 1px; width: max-content; user-select: none; touch-action: none; }
+  .pe-grid .pe-cell { width: 30px; height: 30px; cursor: crosshair; }
+  .epanel { scrollbar-color: #3a464c #161c1f; }
+  .pe-thumb { width: 98px; flex: none; }
+  .pe-mini { display: grid; gap: 1px; background: #0b0f11; padding: 1px; width: max-content; }
+  .pe-mini .pe-cell { width: 7px; height: 7px; }
+  .pe-cell { box-sizing: border-box; }
+  .t-none { background: repeating-conic-gradient(#1b2226 0 25%, #252e33 0 50%) 0 0 / 10px 10px; }
+  .t-clear { background: #56693f; }
+  .t-B, .t-b { background: linear-gradient(#402b21 0 1px, transparent 1px 50%, #402b21 50% calc(50% + 1px), transparent 0) #b3633a; }
+  .t-F { background: linear-gradient(#56693f 40%, #a57a46 40% 60%, #56693f 60%); }
+  .t-S { background: #9aa6af; border: 3px solid #6f7b85; }
+  .t-W { background: #2c6d96; }
+  .t-P { background: repeating-linear-gradient(-8deg, #b59e64 0 5px, #c9b277 5px 6px); }
+  .t-T, .t-t { background: radial-gradient(circle, #3f8a3a 55%, #2c5e2a 62%, #56693f 64%); }
+  .t-b, .t-t { opacity: .5; }
+  .epanel select { background: #0f1416; color: #eef5e8; border: 1px solid #2f3a40; border-radius: 6px; padding: 5px 6px; font: inherit; }
+  .pe-pack { border: 1px solid #2f3a40; border-radius: 8px; padding: 8px 12px 4px; margin-top: 12px; }
+  .pe-packhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-bottom: 6px; }
+  .pe-pack.folded { padding-bottom: 2px; }
+  .pe-pack.folded .pe-packhead { padding-bottom: 6px; }
+  .epanel .pe-fold { width: 30px; height: 30px; padding: 0; font-size: 14px; line-height: 1; transition: transform .15s; }
+  .pe-pack.folded .pe-fold { transform: rotate(-90deg); }
+  .pe-packhead b { flex: 1; min-width: 140px; color: #8be06a; font-size: 14px; }
+  .pe-packhead .pe-packname { flex: 1; min-width: 140px; font-weight: 700; }
+  .pe-packhead label { display: flex; align-items: center; gap: 6px; }
+  .pe-warn { color: #ffc477; margin: 10px 0 0; }
+  .pe-msg { min-height: 18px; margin-top: 10px; color: #ff8a7a; }
+  .pe-actions { display: flex; gap: 8px; margin-top: 14px; }
+  #mapEditorPanel { width: min(1180px, calc(100vw - 32px)); }
+  .me-canvas { display: block; cursor: crosshair; touch-action: none; border: 1px solid #0b0f11; }
+  .me-thumb { display: block; flex: none; border: 1px solid #0b0f11; }
+  .me-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; color: #9fb39a; font-size: 12px; }
+  .me-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
 </style>
+<!-- «Карты Клода»: готовые карты в текстовом виде, формат описан в самом файле -->
+<script src="maps.js"></script>
 </head>
 <body>
 <div id="musicControls" style="position:fixed;top:8px;right:10px;z-index:2;display:flex;align-items:center;gap:8px;background:#14181cdd;padding:5px;border-radius:6px;color:#bbc9b5;font-size:12px">
 <button id="musicToggle" style="font-size:11px;padding:5px 8px" aria-label="Включить или выключить музыку">♫ Музыка</button><input id="musicVolume" aria-label="Громкость музыки" type="range" min="0" max="1" step="0.01" value="0.22" style="width:70px"></div>
-<label id="mapControl" style="position:fixed;top:8px;left:10px;z-index:2;background:#14181cdd;padding:7px;color:#d5dfcc;font-size:12px;border-radius:6px">Карта (новая игра)
-<select id="mapSize" aria-label="Размер карты для новой игры" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="30">30×20</option><option value="45">45×30</option><option value="60">60×40</option></select></label>
+<div id="mapControl" style="position:fixed;top:8px;left:10px;z-index:2;background:#14181cdd;padding:7px;color:#d5dfcc;font-size:12px;border-radius:6px">Карта (новая игра)
+<select id="mapSize" aria-label="Размер карты для новой игры" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="30">30×20</option><option value="45">45×30</option><option value="60">60×40</option></select>
+<select id="mapMode" aria-label="Режим расстановки декораций для новой игры" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="original">Оригинальный</option><option value="preset01">Пресет тест 0.1</option><option value="map">Карта</option><option value="campaign">Кампания</option></select>
+<select id="campaignPick" aria-label="Уровень, с которого начать кампанию" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:220px"></select>
+<select id="mapPick" aria-label="Готовая карта для новой игры" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:200px"></select>
+<button id="btnEditor" class="ghost" style="font-size:12px;padding:4px 10px">Редактор пресетов</button>
+<button id="btnMapEditor" class="ghost" style="font-size:12px;padding:4px 10px">Редактор карт</button></div>
 <div id="wrap"><canvas id="c" width="960" height="640"></canvas></div>
 <div id="pauseMenu" hidden>
   <button id="btnResume">Продолжить</button>
+  <button id="btnNewGame" class="ghost">Новая игра</button>
   <button id="btnDev" class="ghost">Настройки разработчика</button>
 </div>
 <div id="dev" hidden>
@@ -58,20 +114,27 @@
     <p class="note">Изменения применяются сразу и сохраняются в браузере. ХП врагов действует на новых врагов. Количество групп элементов применяется к следующей карте; больше групп — плотнее карта.</p>
   </div>
 </div>
+<div id="editor" hidden><div id="editorPanel" class="epanel"></div></div>
+<div id="mapEditor" hidden><div id="mapEditorPanel" class="epanel"></div></div>
+<input type="file" id="mapImport" accept=".json,application/json" hidden>
 <script>
 'use strict';
 // ---------- базовые константы и утилиты ----------
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const T=32; let COLS=30,ROWS=20,W=COLS*T,H=ROWS*T;
-const EMPTY = 0, BRICK = 1, STEEL = 2, WATER = 3, TREE = 4;
+const EMPTY = 0, BRICK = 1, STEEL = 2, WATER = 3, TREE = 4, FENCE = 5;
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const rnd = (a, b) => a + Math.random() * (b - a);
 const ri = (a, b) => Math.floor(rnd(a, b + 1));
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
 const turnTo = (a, b, s) => { const d = angDiff(a, b); return Math.abs(d) <= s ? b : a + Math.sign(d) * s; };
-const blocksTank = t => t === BRICK || t === STEEL || t === WATER;
-const blocksBullet = t => t === BRICK || t === STEEL;
+const blocksTank = t => t === BRICK || t === STEEL || t === WATER || t === FENCE;
+const blocksBullet = t => t === BRICK || t === STEEL || t === FENCE;
+// забор: узкая перекладина по центру клетки; форма задаётся «плечами» к соседним клеткам
+const ARM_N = 1, ARM_E = 2, ARM_S = 4, ARM_W = 8;
+const FENCE_H = ARM_E | ARM_W, FENCE_V = ARM_N | ARM_S;
+const FENCE_SHAPES = [FENCE_H, FENCE_V, ARM_N | ARM_E, ARM_E | ARM_S, ARM_S | ARM_W, ARM_W | ARM_N];
 
 function roundRect(c, x, y, w, h, r) {
   c.beginPath();
@@ -105,7 +168,7 @@ const ITEMS = {
 const CFG = {
   dropChance: .22, heavyDropBonus: .3, powerupTime: 10, repairAmount: 2, railMax: 3,
   waveBase: 6, wavePerLevel: 2, maxAliveBase: 3, maxAliveCap: 7, enemySpeedPerWave: .02, waveBonus: 300, waveHeal: 1,
-  mapSize:30, mapElements: 42, brickHp: 4, invulnTime: .7, enemySight: 460, treeStealth: 90, shake: 1, hitstop: .06, godMode: false,
+  mapSize:30, mapMode:'original', mapPick:'', campaignStart:0, mapElements: 42, brickHp: 4, invulnTime: .7, enemySight: 460, treeStealth: 90, shake: 1, hitstop: .06, godMode: false,
 };
 const SPAWNS = Array.from({length:5},(_,i)=>({c:1+Math.round(27*i/4),r:1}));
 const PLAYER_START = { x: W / 2 - 80, y: H - 48 };
@@ -185,6 +248,7 @@ function sfx(n) {
       case 'leaves': noise(.18, .10, 6500); noise(.3,.05,1700); break;
       case 'hit': noise(.09,.23,5200);tone(1050,260,.13,'triangle',.11);noise(.18,.09,500);break;
       case 'brick': noise(.06, .08, 1300); break;
+      case 'fence': noise(.07, .1, 2800); tone(260, 110, .08, 'square', .04); break;
       case 'deflect': tone(1500, 700, .07, 'triangle', .04); break;
       case 'boom': noise(.9, .5, 520); noise(.15, .3, 3500); tone(150, 25, .6, 'sawtooth', .1); break;
       case 'rail': tone(2200, 180, .4, 'sawtooth', .07); noise(.35, .3, 5000); break;
@@ -197,36 +261,215 @@ function sfx(n) {
 }
 
 // ---------- карта ----------
-let grid, brickHp, brickMask, brickVariant, foliageMask, foliageShake, brickShake, sand, groundCanvas, gctx;
+let grid, brickHp, brickMask, brickVariant, fenceArms, foliageMask, foliageShake, brickShake, sand, groundCanvas, gctx;
 let flow = new Int32Array(COLS * ROWS);
 const tileAt = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS) ? STEEL : grid[r * COLS + c];
 
+const MAP_SIZES = [30, 45, 60];
+const spawnCols = cols => Array.from({length:5},(_,i)=>1+Math.round((cols-3)*i/4));
+// клетки, которые игра всегда расчищает: подъезд к базе и точки появления врагов
+function reservedCell(cols, c, r) {
+  const rows=cols*2/3, center=Math.floor(cols/2);
+  if (r>=rows-4 && c>=center-3 && c<=center+2) return true;
+  return r<=2 && spawnCols(cols).some(s=>Math.abs(c-s)<=1);
+}
 function configureMap(size) {
-  COLS=[30,45,60].includes(Number(size))?Number(size):30; ROWS=COLS*2/3;W=COLS*T;H=ROWS*T;
+  COLS=MAP_SIZES.includes(Number(size))?Number(size):30; ROWS=COLS*2/3;W=COLS*T;H=ROWS*T;
   const center=Math.floor(COLS/2);
-  SPAWNS.splice(0,SPAWNS.length,...Array.from({length:5},(_,i)=>({c:1+Math.round((COLS-3)*i/4),r:1})));
+  SPAWNS.splice(0,SPAWNS.length,...spawnCols(COLS).map(c=>({c,r:1})));
   Object.assign(BASE_POS,{x:center*T+16,y:H-16});
   Object.assign(PLAYER_START,{x:center*T-80,y:H-48});
   cv.width=W;cv.height=H;flow=new Int32Array(COLS*ROWS);fit();
 }
+// режим декораций фиксируется в начале игры, как и размер карты
+let mapMode = CFG.mapMode;
+// группы декораций для «Пресет тест 0.1»: B кирпич, F забор, S сталь, W вода, T дерево, P песок, . пусто,
+// b/t — кирпич/дерево с шансом 60% (руины, редкий подлесок), пробел — клетка не трогается
+const PREFABS = [
+  { name: 'Пост',       rows: ['TBT'] },
+  { name: 'Угол',       rows: ['BB', 'B.'] },
+  { name: 'Изгородь',   rows: ['FFFF'] },
+  { name: 'Плетень',    rows: ['FFF', 'F  ', 'F  '] },
+  { name: 'Огород',     rows: ['FF.FF', 'F.t.F', 'F...F', 'FFFFF'] },
+  { name: 'Хутор',      rows: ['FFFF.FF', 'F.....F', 'F.BB..F', 'F.BB.tF', 'FFF.FFF'] },
+  { name: 'Кусты',      rows: ['tTt', 'Tt '] },
+  { name: 'Блиндаж',    rows: ['BBB', 'BSB'] },
+  { name: 'Окоп',       rows: ['BBb.BBB'] },
+  { name: 'Руины',      rows: ['BBb.', 'B...', 'b..B', '.bBB'] },
+  { name: 'Роща',       rows: [' tT ', 'tTTt', '.TTt', ' t  '] },
+  { name: 'Пруд',       rows: [' tt ', 'tWWt', 'WWWW', ' WWt'] },
+  { name: 'Склад',      rows: ['BBBBB', 'B...B', 'B.S.B', 'BB.BB'] },
+  { name: 'Переправа',  rows: ['tt...tt', 'WWW.WWW', 'WWW.WWW', 'tt...tt'] },
+  { name: 'Форт',       rows: ['BB..BB', 'B....B', '..SS..', 'B....B', 'BB..BB'] },
+  { name: 'Деревня',    rows: ['BBB..t.', 'B.b.BBB', '....B.B', 't......', '.BBB.tt', '.B.B.t.'] },
+  { name: 'Карьер',     rows: [' PPP ', 'PPBPP', 'PbPPP', ' PPP '] },
+];
+// песок — грунт под пустой клеткой (замедляет танки), а не отдельный тип клетки
+const PREFAB_TILES = { B: BRICK, F: FENCE, S: STEEL, W: WATER, T: TREE, P: EMPTY, '.': EMPTY };
+// пресеты живут в паках, паки хранятся в браузере; PREFABS — исходное содержимое пака «Пресеты Клода»
+const PACKS_KEY = 'ecotank-packs-v1', OLD_PRESETS_KEY = 'ecotank-presets-v1', PRESET_MAX = 12;
+const CLAUDE_PACK = 'claude', CLAUDE_PACK_NAME = 'Пресеты Клода';
+const validPreset = p => p && typeof p.name === 'string' && p.name.trim() && Array.isArray(p.rows)
+  && p.rows.length >= 1 && p.rows.length <= PRESET_MAX
+  && p.rows.every(r => typeof r === 'string' && r.length === p.rows[0].length && r.length <= PRESET_MAX && /^[BFSWTPbt. ]+$/.test(r))
+  && p.rows.some(r => r.trim());
+const defaultClaudePack = () => ({ id: CLAUDE_PACK, name: CLAUDE_PACK_NAME, enabled: true, presets: PREFABS.map(p => ({ name: p.name, rows: [...p.rows] })) });
+function loadPacks() {
+  let packs = null;
+  try { packs = JSON.parse(localStorage.getItem(PACKS_KEY)); } catch (e) {}
+  if (!Array.isArray(packs)) {
+    packs = [defaultClaudePack()];
+    // пресеты из первой версии редактора переезжают в отдельный пак
+    try { const old = JSON.parse(localStorage.getItem(OLD_PRESETS_KEY)); if (Array.isArray(old) && old.some(validPreset)) packs.push({ id: 'mine', name: 'Мои пресеты', enabled: true, presets: old.filter(validPreset) }); } catch (e) {}
+  }
+  packs = packs.filter(p => p && typeof p.id === 'string' && typeof p.name === 'string' && Array.isArray(p.presets))
+    .map(p => ({ id: p.id, name: p.id === CLAUDE_PACK ? CLAUDE_PACK_NAME : p.name.trim() || 'Без имени', enabled: p.enabled !== false, presets: p.presets.filter(validPreset) }));
+  if (!packs.some(p => p.id === CLAUDE_PACK)) packs.unshift(defaultClaudePack());
+  return packs;
+}
+function savePacks(packs) { try { localStorage.setItem(PACKS_KEY, JSON.stringify(packs)); } catch (e) {} }
+const activePresets = () => loadPacks().filter(p => p.enabled).flatMap(p => p.presets);
+// частота пока зависит только от площади: чем больше группа, тем реже
+const prefabWeight = p => 9 / Math.sqrt(p.rows.length * p.rows[0].length);
+function pickPrefab(list) {
+  let roll = Math.random() * list.reduce((s, p) => s + prefabWeight(p), 0);
+  return list.find(p => (roll -= prefabWeight(p)) < 0) || list[0];
+}
+// клетки шаблона со случайным поворотом на 90°·k и отражением
+function prefabCells(p) {
+  let w = p.rows[0].length, h = p.rows.length, cells = [];
+  p.rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== ' ') cells.push([x, y, ch]); }));
+  if (Math.random() < .5) cells = cells.map(([x, y, ch]) => [w - 1 - x, y, ch]);
+  for (let k = ri(0, 3); k > 0; k--) { cells = cells.map(([x, y, ch]) => [h - 1 - y, x, ch]); [w, h] = [h, w]; }
+  return { w, h, cells };
+}
+function placeOriginal(set) {
+  const n = Math.round(CFG.mapElements*COLS*ROWS/600);
+  for (let i = 0; i < n; i++) {
+    const roll = Math.random();
+    const type = roll < .47 ? BRICK : roll < .55 ? FENCE : roll < .7 ? STEEL : roll < .82 ? WATER : TREE;
+    let cw = ri(1, 3), ch = ri(1, 3);
+    if (type === FENCE || (type !== TREE && Math.random() < .25)) { if (Math.random() < .5) { cw = ri(3, 6); ch = 1; } else { cw = 1; ch = ri(3, 5); } }
+    if (type === STEEL) { cw = Math.min(cw, 3); ch = Math.min(ch, 3); }
+    const c0 = ri(0, COLS - 1), r0 = ri(2, ROWS - 3);
+    for (let y = r0; y < r0 + ch; y++) for (let x = c0; x < c0 + cw && x < COLS; x++) set(x, y, type);
+  }
+}
+// группы не перекрываются и держат проход в клетку между собой
+function placePresets(set, sandMark) {
+  const occ = new Uint8Array(COLS * ROWS), budget = Math.round(CFG.mapElements*COLS*ROWS/600*3);
+  const list = activePresets();
+  if (!list.length) return;
+  let filled = 0;
+  for (let tries = 0; tries < 400 && filled < budget; tries++) {
+    const { w, h, cells } = prefabCells(pickPrefab(list));
+    if (w > COLS || ROWS - 2 - h < 2) continue;
+    const c0 = ri(0, COLS - w), r0 = ri(2, ROWS - 2 - h);
+    let free = true;
+    for (let y = r0 - 1; y <= r0 + h && free; y++) for (let x = c0 - 1; x <= c0 + w; x++) if (x >= 0 && y >= 0 && x < COLS && y < ROWS && occ[y * COLS + x]) { free = false; break; }
+    if (!free) continue;
+    for (let y = r0; y < r0 + h; y++) for (let x = c0; x < c0 + w; x++) occ[y * COLS + x] = 1;
+    for (const [x, y, ch] of cells) {
+      const t = ch === 'b' ? (Math.random() < .6 ? BRICK : EMPTY) : ch === 't' ? (Math.random() < .6 ? TREE : EMPTY) : PREFAB_TILES[ch];
+      set(c0 + x, r0 + y, t); if (t !== EMPTY || ch === 'P') filled++;
+      if (ch === 'P') sandMark[(r0 + y) * COLS + c0 + x] = 1;
+    }
+  }
+}
+// ---------- готовые карты ----------
+// карта — строки из тех же символов, что и пресеты (кроме пробела): размер 30/45/60 в ширину, высота = 2/3 ширины.
+// «Карты Клода» лежат в maps.js (window.ECOTANK_MAPS), свои карты пользователя — в браузере
+const MAPS_KEY = 'ecotank-maps-v1';
+function normalizeMap(m) {
+  if (!m || typeof m.name !== 'string' || !m.name.trim() || !MAP_SIZES.includes(m.cols) || !Array.isArray(m.rows) || m.rows.length !== m.cols * 2 / 3) return null;
+  const rows = m.rows.map(r => typeof r === 'string' ? r.replace(/ /g, '.') : '');
+  if (rows.some(r => r.length !== m.cols || !/^[BFSWTPbt.]+$/.test(r))) return null;
+  return { id: typeof m.id === 'string' ? m.id : '', name: m.name.trim(), cols: m.cols, rows };
+}
+const claudeMaps = () => (Array.isArray(window.ECOTANK_MAPS) ? window.ECOTANK_MAPS : []).map(normalizeMap).filter(m => m && m.id).map(m => ({ ...m, claude: true }));
+function loadUserMaps() {
+  try { const list = JSON.parse(localStorage.getItem(MAPS_KEY)); return Array.isArray(list) ? list.map(normalizeMap).filter(m => m && m.id) : []; } catch (e) { return []; }
+}
+function saveUserMaps(list) { try { localStorage.setItem(MAPS_KEY, JSON.stringify(list.map(({ id, name, cols, rows }) => ({ id, name, cols, rows })))); } catch (e) {} }
+const allMaps = () => [...claudeMaps(), ...loadUserMaps()];
+const findMap = id => allMaps().find(m => m.id === id) || null;
+// есть ли проезд от каждой точки появления врагов до базы (сталь и вода непроходимы, кирпич простреливается)
+function mapPassable(cols, rows) {
+  const h = cols * 2 / 3, seen = new Uint8Array(cols * h), start = (h - 2) * cols + Math.floor(cols / 2), q = [start];
+  const blocked = (c, r) => !reservedCell(cols, c, r) && 'SW'.includes(rows[r][c]);
+  seen[start] = 1;
+  for (let k = 0; k < q.length; k++) {
+    const c = q[k] % cols, r = (q[k] / cols) | 0;
+    for (const [dc, dr] of DIRS) {
+      const nc = c + dc, nr = r + dr, j = nr * cols + nc;
+      if (nc < 0 || nr < 0 || nc >= cols || nr >= h || seen[j] || blocked(nc, nr)) continue;
+      seen[j] = 1; q.push(j);
+    }
+  }
+  return spawnCols(cols).every(c => seen[cols + c]);
+}
+function placeMap(set, sandMark, map) {
+  map.rows.forEach((row, r) => [...row].forEach((ch, c) => {
+    set(c, r, ch === 'b' ? (Math.random() < .6 ? BRICK : EMPTY) : ch === 't' ? (Math.random() < .6 ? TREE : EMPTY) : PREFAB_TILES[ch]);
+    if (ch === 'P') sandMark[r * COLS + c] = 1;
+  }));
+}
+// ---------- кампания ----------
+// уровни — карты Клода в порядке window.ECOTANK_CAMPAIGN (без него — все карты из maps.js по порядку);
+// номер уровня служит номером волны, поэтому врагов с каждым уровнем больше
+const CAMPAIGN_KEY = 'ecotank-campaign-v1';
+function campaignMaps() {
+  const maps = claudeMaps(), order = Array.isArray(window.ECOTANK_CAMPAIGN) ? window.ECOTANK_CAMPAIGN : [];
+  const listed = order.map(id => maps.find(m => m.id === id)).filter(Boolean);
+  return listed.length ? listed : maps;
+}
+// сколько уровней открыто для старта (первый открыт всегда)
+function campaignUnlocked() {
+  let n = 1;
+  try { n = Math.max(1, +localStorage.getItem(CAMPAIGN_KEY) || 1); } catch (e) {}
+  return Math.min(n, Math.max(1, campaignMaps().length));
+}
+function unlockCampaign(level) {
+  if (level <= campaignUnlocked()) return;
+  try { localStorage.setItem(CAMPAIGN_KEY, String(level)); } catch (e) {}
+}
+
+// режим, размер и карта фиксируются в начале игры; удалённая карта откатывает режим к оригинальному
+let activeMap = null, campaign = null, victory = false;
+function applyMapChoice() {
+  campaign = null;
+  if (CFG.mapMode === 'campaign') {
+    const levels = campaignMaps();
+    if (levels.length) {
+      campaign = levels; CFG.campaignStart = clamp(Math.floor(+CFG.campaignStart || 0), 0, campaignUnlocked() - 1);
+      activeMap = levels[CFG.campaignStart]; mapMode = 'map'; configureMap(activeMap.cols); return;
+    }
+  }
+  activeMap = CFG.mapMode === 'map' ? findMap(CFG.mapPick) : null;
+  mapMode = CFG.mapMode === 'map' && !activeMap ? 'original' : CFG.mapMode === 'campaign' ? 'original' : CFG.mapMode;
+  configureMap(activeMap ? activeMap.cols : CFG.mapSize);
+}
+
+// форма забора по соседним заборам: прямая или один из четырёх углов, без свободного вращения
+function shapeFences() {
+  fenceArms = new Uint8Array(COLS * ROWS);
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (grid[r * COLS + c] !== FENCE) continue;
+    const n = tileAt(c, r - 1) === FENCE, s = tileAt(c, r + 1) === FENCE, e = tileAt(c + 1, r) === FENCE, w = tileAt(c - 1, r) === FENCE;
+    const vert = n || s, horiz = e || w;
+    fenceArms[r * COLS + c] = vert && horiz ? (n ? ARM_N : ARM_S) | (e ? ARM_E : ARM_W) : vert ? FENCE_V : FENCE_H;
+  }
+}
 function genMap(w) {
   const center=Math.floor(COLS/2);
+  let sandMark;
   for (let tries = 0; tries < 60; tries++) {
-    grid = new Uint8Array(COLS * ROWS);
+    grid = new Uint8Array(COLS * ROWS); sandMark = new Uint8Array(COLS * ROWS);
     foliageMask = new Uint8Array(COLS*ROWS); foliageMask.fill(31); foliageShake = new Float32Array(COLS*ROWS);
     const set = (c, r, t) => { if (c >= 0 && r >= 0 && c < COLS && r < ROWS) { grid[r * COLS + c] = t; } };
-    const n = Math.round(CFG.mapElements*COLS*ROWS/600);
-    for (let i = 0; i < n; i++) {
-      const roll = Math.random();
-      const type = roll < .55 ? BRICK : roll < .7 ? STEEL : roll < .82 ? WATER : TREE;
-      let cw = ri(1, 3), ch = ri(1, 3);
-      if (type !== TREE && Math.random() < .25) { if (Math.random() < .5) { cw = ri(3, 6); ch = 1; } else { cw = 1; ch = ri(3, 5); } }
-      if (type === STEEL) { cw = Math.min(cw, 3); ch = Math.min(ch, 3); }
-      const c0 = ri(0, COLS - 1), r0 = ri(2, ROWS - 3);
-      for (let y = r0; y < r0 + ch; y++) for (let x = c0; x < c0 + cw && x < COLS; x++) set(x, y, type);
-    }
-    for (let r=ROWS-4;r<ROWS;r++)for(let c=center-3;c<=center+2;c++) grid[r * COLS + c] = EMPTY;
-    for (const s of SPAWNS) for (let r = s.r - 1; r <= s.r + 1; r++) for (let c = s.c - 1; c <= s.c + 1; c++) set(c, r, EMPTY);
+    if (mapMode === 'map') placeMap(set, sandMark, activeMap);
+    else if (mapMode === 'preset01') placePresets(set, sandMark); else placeOriginal(set);
+    for (let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++) if (reservedCell(COLS,c,r)) grid[r * COLS + c] = EMPTY;
     if (connected()) break;
     // At extreme density, clear guaranteed routes rather than return a sealed map.
     if (tries === 59) for (const spawn of SPAWNS) {
@@ -238,11 +481,13 @@ function genMap(w) {
   brickMask = new Uint16Array(COLS * ROWS);
   brickVariant = new Uint8Array(COLS * ROWS); brickShake = new Float32Array(COLS*ROWS);
   for (let i = 0; i < grid.length; i++) if (grid[i] === BRICK) { brickHp[i] = 4; brickMask[i] = 1023; brickVariant[i] = ri(0,2); }
+  shapeFences();
   sand=new Uint8Array(COLS*ROWS);
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++) {
     if(![EMPTY,TREE].includes(tileAt(c,r)))continue;
     const near=DIRS.some(([dx,dy])=>tileAt(c+dx,r+dy)===WATER);
-    sand[r*COLS+c]=Math.random()<(near?.7:.035)?1:0;
+    // на готовой карте песок только нарисованный, без случайного
+    sand[r*COLS+c]=sandMark[r*COLS+c]||(mapMode!=='map'&&Math.random()<(near?.7:.035))?1:0;
   }
   buildGround();
 }
@@ -271,7 +516,7 @@ function buildFlow(tc, tr) {
     for (const [dc, dr] of DIRS) {
       const nc = c + dc, nr = r + dr, t = tileAt(nc, nr);
       if (t === STEEL || t === WATER) continue;
-      const j = nr * COLS + nc, nd = flow[i] + (t === BRICK ? 4 : 1);
+      const j = nr * COLS + nc, nd = flow[i] + (t === BRICK ? 4 : t === FENCE ? 2 : 1);
       if (nd < flow[j]) { flow[j] = nd; q.push(j); }
     }
   }
@@ -334,13 +579,25 @@ function waveList(w) {
 const maxAlive = () => Math.min(CFG.maxAliveBase + Math.floor(wave / 2), CFG.maxAliveCap);
 
 function startGame() {
-  configureMap(CFG.mapSize);score = 0; scrap = 0; wave = 0; player = null;
+  applyMapChoice();score = 0; scrap = 0; wave = campaign ? CFG.campaignStart : 0; player = null; victory = false;
   base = { ...BASE_POS, hp: 5, maxHp: 5, dead: false };
   nextWave(); syncMusic();
 }
 
+function winCampaign() {
+  victory = true; state = 'over'; overT = 0; banner.t = 0; CFG.campaignStart = 0; saveDev();
+  if (score > best) { best = score; try { localStorage.setItem('ecotank-best', best); } catch (e) {} }
+  sfx('wave');
+}
+
 function nextWave() {
   wave++;
+  if (campaign) {
+    if (wave > campaign.length) { wave = campaign.length; winCampaign(); return; }
+    // размер поля может смениться между уровнями: база и старт переезжают вместе с ним
+    activeMap = campaign[wave - 1];
+    if (activeMap.cols !== COLS) { configureMap(activeMap.cols); if (base) { base.x = BASE_POS.x; base.y = BASE_POS.y; } }
+  }
   genMap(wave);
   if(base) {
     const center=Math.floor(COLS/2);
@@ -357,7 +614,9 @@ function nextWave() {
   player.hp = hp; player.rail = rail; player.armor=armor; Object.assign(player,boostState); player.cd = .3;
   enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = [];
   toSpawn = waveList(wave); spawnTimer = 1.2; flowTimer = 0;
-  banner = { text: `Волна ${wave}`, sub: `Врагов: ${toSpawn.length}`, t: 2.2 };
+  banner = campaign
+    ? { text: `Уровень ${wave} из ${campaign.length}`, sub: `${activeMap.name} · Врагов: ${toSpawn.length}`, t: 2.4 }
+    : { text: `Волна ${wave}`, sub: `Врагов: ${toSpawn.length}`, t: 2.2 };
   state = 'play';
   sfx('wave');
 }
@@ -367,6 +626,13 @@ const keys = {};
 const mouse = { x: W / 2, y: H / 2, down: false };
 addEventListener('keydown', e => {
   if (e.code === 'Escape' && devOpen) { devOpen = false; document.activeElement.blur(); return; }
+  // в редакторе игра не слушает клавиатуру; Esc закрывает его только из списка, чтобы не потерять правки
+  if (editorOpen) { if (e.code === 'Escape' && !edit) closeEditor(); return; }
+  if (mapEdOpen) {
+    if (e.code === 'Escape' && !mapEd) closeMapEditor();
+    else if (mapEd && mapStamp && (e.code === 'KeyR' || e.code === 'KeyF') && !['INPUT', 'SELECT'].includes(e.target.tagName)) { turnStamp(e.code === 'KeyR' ? 'turn' : 'flip'); renderMapEditor(); }
+    return;
+  }
   if (e.target.tagName === 'INPUT') return;
   if((e.code==='ShiftLeft'||e.code==='ShiftRight')&&!e.repeat&&player&&!player.dead&&state==='play')player.boostQueued=true;
   keys[e.code] = true;
@@ -403,17 +669,27 @@ function brickRects(c,r) {
   const i=r*COLS+c;
   return masonry(0).filter((b,q)=>brickMask[i]&(1<<q)).map(b=>({x:c*T+b.x,y:r*T+b.y,w:b.w,h:8}));
 }
+function fenceRects(c,r) {
+  const arms=fenceArms[r*COLS+c],x=c*T,y=r*T,rects=[];
+  if(arms&ARM_N)rects.push({x:x+13,y,w:6,h:19});
+  if(arms&ARM_S)rects.push({x:x+13,y:y+13,w:6,h:19});
+  if(arms&ARM_E)rects.push({x:x+13,y:y+13,w:19,h:6});
+  if(arms&ARM_W)rects.push({x,y:y+13,w:19,h:6});
+  return rects;
+}
+const tileRects=(c,r,type)=>type===BRICK?brickRects(c,r):type===FENCE?fenceRects(c,r):[{x:c*T,y:r*T,w:T,h:T}];
+const breakable=t=>t===BRICK||t===FENCE;
 function bulletBlocked(x,y,radius=0) {
   const c=Math.floor(x/T),r=Math.floor(y/T),type=tileAt(c,r);
   if(type===STEEL)return true;
-  if(type!==BRICK)return false;
-  return brickRects(c,r).some(b=>Math.hypot(x-clamp(x,b.x,b.x+b.w),y-clamp(y,b.y,b.y+b.h))<=radius);
+  if(!breakable(type))return false;
+  return tileRects(c,r,type).some(b=>Math.hypot(x-clamp(x,b.x,b.x+b.w),y-clamp(y,b.y,b.y+b.h))<=radius);
 }
 function collideTiles(t) {
   const c0=Math.floor((t.x-t.r)/T),c1=Math.floor((t.x+t.r)/T),r0=Math.floor((t.y-t.r)/T),r1=Math.floor((t.y+t.r)/T);
   for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++) {
     const type=tileAt(c,r);if(!blocksTank(type))continue;
-    const rects=type===BRICK?brickRects(c,r):[{x:c*T,y:r*T,w:T,h:T}];
+    const rects=tileRects(c,r,type);
     for(const b of rects){const px=clamp(t.x,b.x,b.x+b.w),py=clamp(t.y,b.y,b.y+b.h),dx=t.x-px,dy=t.y-py,d=Math.hypot(dx,dy);
       if(d>=t.r)continue;
       if(d===0){const sides=[{v:t.x-b.x,dx:-1,dy:0},{v:b.x+b.w-t.x,dx:1,dy:0},{v:t.y-b.y,dx:0,dy:-1},{v:b.y+b.h-t.y,dx:0,dy:1}].sort((a,b)=>a.v-b.v);t.x+=sides[0].dx*(sides[0].v+t.r);t.y+=sides[0].dy*(sides[0].v+t.r);}
@@ -498,6 +774,7 @@ function fireRail(p) {
     if (t === STEEL) break;
     if (t === TREE) hitFoliage(c,r,x,y,foliageRay);
     if (t === BRICK && bulletBlocked(x,y)) hitBrick(c, r, 99);
+    if (t === FENCE && bulletBlocked(x,y)) hitFence(c, r, x, y);
     for (const e of enemies) {
       if (e.dead || e.spawnT > 0 || hit.has(e)) continue;
       if ((e.x - x) ** 2 + (e.y - y) ** 2 < (e.r + 4) ** 2) { hit.add(e); hitEnemy(e, { x, y, dmg: 99 }); }
@@ -526,7 +803,7 @@ function blastDamage(x,y,diameter=30) {
   for(let r=Math.max(0,Math.floor((y-radius)/T));r<=Math.min(ROWS-1,Math.floor((y+radius)/T));r++)
     for(let c=Math.max(0,Math.floor((x-radius)/T));c<=Math.min(COLS-1,Math.floor((x+radius)/T));c++) {
       const hx=clamp(x,c*T,(c+1)*T),hy=clamp(y,r*T,(r+1)*T);
-      if(Math.hypot(x-hx,y-hy)<=radius){if(grid[r*COLS+c]===BRICK)hitBrick(c,r,1,hx,hy);else if(grid[r*COLS+c]===TREE)hitFoliage(c,r,hx,hy,{});}
+      if(Math.hypot(x-hx,y-hy)<=radius){const t=grid[r*COLS+c];if(t===BRICK)hitBrick(c,r,1,hx,hy);else if(t===FENCE)hitFence(c,r,hx,hy);else if(t===TREE)hitFoliage(c,r,hx,hy,{});}
     }
   // Marked-dead tanks are ignored, so chain explosions cannot award duplicate kills.
   for(const e of [...enemies]) if(!e.dead && e.spawnT<=0 && Math.hypot(e.x-x,e.y-y)<=radius)hitEnemy(e,{x,y,dmg:1,blast:true});
@@ -560,7 +837,7 @@ function fragmentBlocked(x,y,radius) {
   if(x-radius<0||y-radius<0||x+radius>W||y+radius>H)return true;
   for(let r=Math.floor((y-radius)/T);r<=Math.floor((y+radius)/T);r++)
     for(let c=Math.floor((x-radius)/T);c<=Math.floor((x+radius)/T);c++) {
-      const tile=tileAt(c,r),rects=tile===BRICK?brickRects(c,r):tile===STEEL?[{x:c*T,y:r*T,w:T,h:T}]:[];
+      const tile=tileAt(c,r),rects=breakable(tile)||tile===STEEL?tileRects(c,r,tile):[];
       if(rects.some(b=>Math.hypot(x-clamp(x,b.x,b.x+b.w),y-clamp(y,b.y,b.y+b.h))<radius))return true;
     }
   return false;
@@ -607,6 +884,18 @@ function hitBrick(c, r, dmg, hx = c*T+16, hy = r*T+16) {
     burst(c*T+16, r*T+16, 14, ['#b3633a', '#8c4a2b'], 160, .6, 5);
   }
   sfx('brick');
+}
+// забор слабее кирпича: ломается с одного попадания и разлетается щепой
+function hitFence(c, r, hx = c*T+16, hy = r*T+16) {
+  const i = r * COLS + c;
+  if (grid[i] !== FENCE) return;
+  for (const b of fenceRects(c, r)) for (let k = 0; k < 4; k++) {
+    const x = b.x + rnd(0, b.w), y = b.y + rnd(0, b.h), a = Math.atan2(y - hy, x - hx) + rnd(-.8, .8), s = rnd(60, 170), life = rnd(.7, 1.3);
+    parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life, max: life, w: rnd(5, 9), h: 2, size: 6, rot: rnd(0, 6), vr: rnd(-10, 10), color: ['#8a6338', '#a57a46', '#6f4d2b'][k % 3], kind: 'debris' });
+  }
+  burst(hx, hy, 8, ['#c49a62', '#8a6338'], 110, .35, 3);
+  grid[i] = EMPTY; fenceArms[i] = 0; flowTimer = 0;
+  sfx('fence');
 }
 
 function hitEnemy(e, b) {
@@ -666,14 +955,14 @@ function decide(e, random) {
   for (const [dc, dr] of DIRS) {
     const nc = c + dc, nr = r + dr, t = tileAt(nc, nr);
     if (t === STEEL || t === WATER) continue;
-    if (random && t === BRICK && e.kind!=='heavy') continue;
+    if (random && breakable(t) && e.kind!=='heavy') continue;
     opts.push({ nc, nr, t, v: flow[nr * COLS + nc] });
   }
   e.brick = null;
   if (!opts.length) { e.tx = c * T + 16; e.ty = r * T + 16; return; }
   let pick = opts.reduce((a, b) => b.v < a.v ? b : a);
   if (random || Math.random() < K.wander) pick = opts[ri(0, opts.length - 1)];
-  if (pick.t === BRICK) {
+  if (breakable(pick.t)) {
     e.brick = { x: pick.nc * T + 16, y: pick.nr * T + 16 };
     e.tx = c * T + 16; e.ty = r * T + 16;
   } else {
@@ -723,7 +1012,7 @@ function updateCover(e,goal,dt) {
 function blockingBrick(e,goal) {
   const n=Math.ceil(Math.hypot(goal.x-e.x,goal.y-e.y)/6);
   for(let j=1;j<n;j++) {const x=e.x+(goal.x-e.x)*j/n,y=e.y+(goal.y-e.y)*j/n,c=Math.floor(x/T),r=Math.floor(y/T),t=tileAt(c,r);
-    if(t===STEEL||t===WATER)return null;if(t===BRICK&&bulletBlocked(x,y))return {x,y};}
+    if(t===STEEL||t===WATER)return null;if(breakable(t)&&bulletBlocked(x,y))return {x,y};}
   return null;
 }
 function reconsiderRoute(e,dt) {
@@ -858,7 +1147,10 @@ function updateBullets(dt) {
       const nx=b.x+b.vx*dt/steps,ny=b.y+b.vy*dt/steps,c=Math.floor(nx/T),r=Math.floor(ny/T),t=tileAt(c,r);
       if(t===TREE)hitFoliage(c,r,nx,ny,b);
       if(bulletBlocked(nx,ny,b.r)) {
-        if(t===BRICK&&b.armor&&!b.brickPierced){hitBrick(c,r,99,nx,ny);b.brickPierced=true;}
+        // бронебойный пролетает забор насквозь, не тратя пробитие кирпича
+        if(t===FENCE&&b.armor){hitFence(c,r,nx,ny);}
+        else if(t===FENCE){hitFence(c,r,nx,ny);b.dead=true;continue;}
+        else if(t===BRICK&&b.armor&&!b.brickPierced){hitBrick(c,r,99,nx,ny);b.brickPierced=true;}
         else {if(t===BRICK)hitBrick(c,r,1,nx,ny);else burst(nx,ny,6,['#e8eef2'],120,.25,2);b.dead=true;continue;}
       }
       b.x=nx;b.y=ny;
@@ -992,12 +1284,15 @@ function update(dt) {
     if (deadT <= 0 && !(base&&base.dead&&base.collapseCount<3)) {
       state = 'over'; overT = 0;
       if (score > best) { best = score; try { localStorage.setItem('ecotank-best', best); } catch (e) {} }
+      // повтор кампании начинается с проигранного уровня
+      if (campaign) { CFG.campaignStart = wave - 1; saveDev(); }
     }
   } else if (state === 'play' && !toSpawn.length && !enemies.length && !wrecks.some(w=>w.exploded===false)) {
     const bonus = CFG.waveBonus * wave;
     score += bonus;
     const collected=collectRemainingScrap();
-    banner = { text: 'Волна пройдена!', sub: `Бонус +${bonus} · Металлолом +${collected}`, t: 2.5 };
+    if (campaign) unlockCampaign(Math.min(wave + 1, campaign.length));
+    banner = { text: campaign ? (wave >= campaign.length ? 'Последний уровень пройден!' : 'Уровень пройден!') : 'Волна пройдена!', sub: `Бонус +${bonus} · Металлолом +${collected}`, t: 2.5 };
     state = 'between'; betweenT = 2.8;
     sfx('wave');
   } else if (state === 'between') {
@@ -1018,6 +1313,7 @@ function drawTiles() {
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const t = grid[r * COLS + c], x = c * T, y = r * T;
     if (t === BRICK) drawBrick(x, y, brickHp[r * COLS + c], brickMask[r * COLS + c], brickVariant[r * COLS + c]);
+    else if (t === FENCE) drawFence(c, r);
     else if (t === STEEL) drawSteel(x, y);
     else if (t === WATER) drawWater(x, y, c, r);
   }
@@ -1045,6 +1341,26 @@ function drawBrick(x,y,hp,mask,variant) {
     if(hp<4){ctx.strokeStyle='#502c23';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+b.x+b.w*.3,y+b.y+1);ctx.lineTo(x+b.x+b.w*.6,y+b.y+4);ctx.lineTo(x+b.x+b.w*.5,y+b.y+7);ctx.stroke();}
   });
   ctx.restore();
+}
+
+// вид сверху: доска-перекладина по каждому плечу, столбы в центре и на краях клетки
+function drawFence(c, r) {
+  const rects = fenceRects(c, r), x = c * T, y = r * T, arms = fenceArms[r * COLS + c];
+  ctx.fillStyle = 'rgba(0,0,0,.25)';
+  for (const b of rects) ctx.fillRect(b.x + 2, b.y + 3, b.w, b.h);
+  for (const b of rects) {
+    ctx.fillStyle = '#5a3d22'; ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.fillStyle = '#a57a46'; ctx.fillRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
+    ctx.fillStyle = '#c49a62'; b.w > b.h ? ctx.fillRect(b.x + 1, b.y + 1, b.w - 2, 1) : ctx.fillRect(b.x + 1, b.y + 1, 1, b.h - 2);
+  }
+  const posts = [[16, 16]];
+  if (arms & ARM_N) posts.push([16, 3]); if (arms & ARM_S) posts.push([16, 29]);
+  if (arms & ARM_E) posts.push([29, 16]); if (arms & ARM_W) posts.push([3, 16]);
+  for (const [px, py] of posts) {
+    ctx.fillStyle = '#3f2a17'; ctx.fillRect(x + px - 4, y + py - 4, 8, 8);
+    ctx.fillStyle = '#7a5531'; ctx.fillRect(x + px - 3, y + py - 3, 6, 6);
+    ctx.fillStyle = '#5a3d22'; ctx.fillRect(x + px - 1, y + py - 1, 2, 2);
+  }
 }
 
 function drawSteel(x, y) {
@@ -1265,9 +1581,12 @@ function text(str, x, y, size, color, align = 'left', weight = '600') {
   ctx.fillStyle = color; ctx.fillText(str, x, y);
 }
 
+// интерфейс рисуется в постоянных координатах 960×640 и масштабируется под холст,
+// чтобы размер карты не менял размер HUD и меню на экране
+const UI_W = 960, UI_H = 640;
 function drawHud() {
-  if(player) text(player.boostLeft>0?'SHIFT · Ускорение':player.boostCooldown>0?'SHIFT · '+Math.ceil(player.boostCooldown)+' с':'SHIFT · Готов',12,H-15,12,'#e5cd88');
-  if(player && player.armor) text('AP · Бронебойные',W/2,42,12,'#ffc477','center');
+  if(player) text(player.boostLeft>0?'SHIFT · Ускорение':player.boostCooldown>0?'SHIFT · '+Math.ceil(player.boostCooldown)+' с':'SHIFT · Готов',12,UI_H-15,12,'#e5cd88');
+  if(player && player.armor) text('AP · Бронебойные',UI_W/2,42,12,'#ffc477','center');
   ctx.fillStyle = 'rgba(12,16,14,.6)';
   roundRect(ctx, 8, 8, 570, 32, 8); ctx.fill();
   const maxHp = KINDS.player.hp;
@@ -1282,11 +1601,11 @@ function drawHud() {
     text(`${player.hp}/${maxHp}`, 61, 24, 11, '#fff', 'center', '700');
   }
   text(`Очки ${score}`, 118, 24, 15, '#eef5e8');
-  text(`Волна ${wave}`, 230, 24, 15, '#eef5e8');
+  text(campaign ? `Ур. ${wave}/${campaign.length}` : `Волна ${wave}`, 230, 24, 15, '#eef5e8');
   text(`Враги ${toSpawn.length + enemies.length}`, 320, 24, 15, '#eef5e8');
   text(`Металлолом ${scrap}`, 425, 24, 15, '#d9c27a');
 
-  let x = W - 12;
+  let x = UI_W - 12;
   if (player.rail > 0) {
     const I = ITEMS.rail;
     ctx.fillStyle = 'rgba(12,16,14,.6)'; roundRect(ctx, x - 150, 8, 150, 32, 8); ctx.fill();
@@ -1304,15 +1623,15 @@ function drawHud() {
     ctx.fillStyle = I.color; ctx.fillRect(x - 110, 31, Math.min(100, v / CFG.powerupTime * 100), 3);
     x -= 128;
   }
-  if (muted) text('звук выкл (M)', W - 12, H - 14, 12, '#aab', 'right', '400');
+  if (muted) text('звук выкл (M)', UI_W - 12, UI_H - 14, 12, '#aab', 'right', '400');
 }
 
-function overlay(alpha) { ctx.fillStyle = `rgba(10,14,16,${alpha})`; ctx.fillRect(0, 0, W, H); }
+function overlay(alpha) { ctx.fillStyle = `rgba(10,14,16,${alpha})`; ctx.fillRect(0, 0, UI_W, UI_H); }
 
 function drawMenu() {
   overlay(.72);
-  text('EcoTank', W / 2, 150, 72, '#8be06a', 'center', '800');
-  text('Защищай лес — круши вражескую технику', W / 2, 205, 18, '#cfe0c6', 'center', '400');
+  text('EcoTank', UI_W / 2, 150, 72, '#8be06a', 'center', '800');
+  text('Защищай лес — круши вражескую технику', UI_W / 2, 205, 18, '#cfe0c6', 'center', '400');
   const lines = [
     ['W/S · ↑/↓', 'вперёд / назад'], ['A/D · ←/→', 'поворот корпуса'],
     ['Мышь', 'прицел башни'],
@@ -1321,19 +1640,19 @@ function drawMenu() {
     ['P / Esc', 'пауза'],
     ['M', 'звук'],
   ];
-  lines.forEach(([k, v], i) => { text(k, W / 2 - 20, 260 + i * 27, 16, '#ffe08a', 'right'); text(v, W / 2, 260 + i * 27, 16, '#dde6d8', 'left', '400'); });
-  text('Кирпич ломается, сталь и вода — нет. В кронах деревьев враги тебя не видят.', W / 2, 438, 14, '#9fb39a', 'center', '400');
-  text('Проезжай по обломкам врагов, чтобы собрать металлолом.', W / 2, 460, 14, '#d9c27a', 'center', '400');
+  lines.forEach(([k, v], i) => { text(k, UI_W / 2 - 20, 260 + i * 27, 16, '#ffe08a', 'right'); text(v, UI_W / 2, 260 + i * 27, 16, '#dde6d8', 'left', '400'); });
+  text('Забор ломается с выстрела, кирпич — с четырёх, сталь и вода — нет. В кронах враги тебя не видят.', UI_W / 2, 438, 14, '#9fb39a', 'center', '400');
+  text('Проезжай по обломкам врагов, чтобы собрать металлолом.', UI_W / 2, 460, 14, '#d9c27a', 'center', '400');
   const types = Object.entries(ITEMS);
   types.forEach(([k, I], i) => {
-    const x = W / 2 - 370 + i * 160, y = 505;
+    const x = UI_W / 2 - 370 + i * 160, y = 505;
     ctx.fillStyle = '#1d2226'; roundRect(ctx, x - 12, y - 12, 24, 24, 6); ctx.fill();
     ctx.strokeStyle = I.color; ctx.lineWidth = 2; ctx.stroke();
     text(I.glyph, x, y + 1, 14, I.color, 'center', '700');
     text(I.name, x + 20, y, 14, '#dde6d8', 'left', '400');
   });
-  if (Math.floor(time * 2) % 2 === 0) text('Нажми Enter или кликни, чтобы начать', W / 2, 565, 20, '#fff', 'center');
-  if (best) text(`Рекорд: ${best}`, W / 2, 605, 15, '#ffe08a', 'center', '400');
+  if (Math.floor(time * 2) % 2 === 0) text('Нажми Enter или кликни, чтобы начать', UI_W / 2, 565, 20, '#fff', 'center');
+  if (best) text(`Рекорд: ${best}`, UI_W / 2, 605, 15, '#ffe08a', 'center', '400');
 }
 
 function draw() {
@@ -1355,26 +1674,34 @@ function draw() {
   drawTrees();
   ctx.restore();
 
+  ctx.save();
+  ctx.scale(W / UI_W, H / UI_H);
+  drawUI();
+  ctx.restore();
+}
+
+function drawUI() {
   if (state === 'menu') { drawMenu(); return; }
   drawHud();
   if (banner.t > 0) {
     const a = clamp(banner.t, 0, 1);
     ctx.globalAlpha = a;
-    text(banner.text, W / 2, H / 2 - 30, 48, '#fff', 'center', '800');
-    if (banner.sub) text(banner.sub, W / 2, H / 2 + 15, 20, '#ffe08a', 'center');
+    text(banner.text, UI_W / 2, UI_H / 2 - 30, 48, '#fff', 'center', '800');
+    if (banner.sub) text(banner.sub, UI_W / 2, UI_H / 2 + 15, 20, '#ffe08a', 'center');
     ctx.globalAlpha = 1;
   }
   if (state === 'pause') {
     overlay(.55);
-    text('Пауза', W / 2, H / 2 - 50, 52, '#fff', 'center', '800');
+    text('Пауза', UI_W / 2, UI_H / 2 - 50, 52, '#fff', 'center', '800');
   }
   if (state === 'over') {
     overlay(clamp(overT * 1.5, 0, .7));
     if (overT > .3) {
-      text(base && base.dead ? 'База уничтожена' : 'Танк уничтожен', W / 2, H / 2 - 70, 52, '#ff6b5a', 'center', '800');
-      text(`Очки: ${score}   ·   Волна: ${wave}   ·   Металлолом: ${scrap}`, W / 2, H / 2 - 10, 22, '#fff', 'center');
-      text(score >= best && score > 0 ? 'Новый рекорд!' : `Рекорд: ${best}`, W / 2, H / 2 + 25, 18, '#ffe08a', 'center');
-      if (overT > .6 && Math.floor(time * 2) % 2 === 0) text('Enter или клик — ещё раз', W / 2, H / 2 + 80, 18, '#cfe0c6', 'center', '400');
+      text(victory ? 'Кампания пройдена!' : base && base.dead ? 'База уничтожена' : 'Танк уничтожен', UI_W / 2, UI_H / 2 - 70, 52, victory ? '#8be06a' : '#ff6b5a', 'center', '800');
+      text(`Очки: ${score}   ·   ${campaign ? 'Уровень' : 'Волна'}: ${campaign ? `${wave} из ${campaign.length}` : wave}   ·   Металлолом: ${scrap}`, UI_W / 2, UI_H / 2 - 10, 22, '#fff', 'center');
+      text(score >= best && score > 0 ? 'Новый рекорд!' : `Рекорд: ${best}`, UI_W / 2, UI_H / 2 + 25, 18, '#ffe08a', 'center');
+      const again = !campaign ? 'Enter или клик — ещё раз' : victory ? 'Enter или клик — пройти кампанию заново' : `Enter или клик — повторить уровень ${wave}`;
+      if (overT > .6 && Math.floor(time * 2) % 2 === 0) text(again, UI_W / 2, UI_H / 2 + 80, 18, '#cfe0c6', 'center', '400');
     }
   }
 }
@@ -1484,16 +1811,439 @@ devEl.querySelector('.devActions').addEventListener('click', e => {
   }
 });
 document.getElementById('btnResume').addEventListener('click', e => { e.currentTarget.blur(); state = 'play'; });
+document.getElementById('btnNewGame').addEventListener('click', e => {
+  e.currentTarget.blur(); devOpen = false;
+  if (score > best) { best = score; try { localStorage.setItem('ecotank-best', best); } catch (err) {} }
+  toMenu();
+});
+// ---------- редактор пресетов ----------
+// edit — открытый на редактирование пресет: { packId/orig — откуда он (null у нового или копии),
+// target — пак для сохранения, name, cells: [[символ]] }
+let editorOpen = false, edit = null, brush = 'B', painting = null, editorMsg = '';
+// свёрнутые паки — удобство конкретного браузера, без них редактор просто открывается развёрнутым
+const FOLD_KEY = 'ecotank-packs-folded';
+let foldedPacks = new Set();
+try { const f = JSON.parse(localStorage.getItem(FOLD_KEY)); if (Array.isArray(f)) foldedPacks = new Set(f); } catch (e) {}
+function setFolded(id, folded) {
+  if (folded) foldedPacks.add(id); else foldedPacks.delete(id);
+  try { localStorage.setItem(FOLD_KEY, JSON.stringify([...foldedPacks])); } catch (e) {}
+}
+const editorEl = document.getElementById('editor'), editorPanel = document.getElementById('editorPanel');
+const BRUSHES = [['B', 'Кирпич'], ['F', 'Забор'], ['S', 'Сталь'], ['W', 'Вода'], ['T', 'Дерево'], ['P', 'Песок'], ['b', 'Кирпич 60%'], ['t', 'Дерево 60%'], ['.', 'Расчистить'], [' ', 'Не трогать']];
+const cellClass = ch => 'pe-cell t-' + (ch === ' ' ? 'none' : ch === '.' ? 'clear' : ch);
+const escapeHtml = s => s.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+function miniGrid(rows) {
+  return `<div class="pe-thumb"><div class="pe-mini" style="grid-template-columns:repeat(${rows[0].length},7px)">` + rows.map(r => [...r].map(ch => `<div class="${cellClass(ch)}"></div>`).join('')).join('') + '</div></div>';
+}
+function openEditor() { editorOpen = true; edit = null; editorMsg = ''; renderEditor(); }
+function closeEditor() { editorOpen = false; edit = null; painting = null; if (state === 'menu') toMenu(); }
+// keep=true — правка существующего пресета, иначе новый (p=null) или копия p
+function startEdit(packId, p, keep) {
+  const rows = p ? p.rows : Array.from({ length: 5 }, () => ' '.repeat(5));
+  edit = { packId: keep ? packId : null, orig: keep ? p.name : null, target: packId, name: keep ? p.name : p ? p.name + ' (копия)' : '', cells: rows.map(r => [...r]) };
+  editorMsg = ''; renderEditor();
+}
+const newPackId = () => 'p' + Date.now().toString(36) + ri(0, 1e6).toString(36);
+function resizeEdit(w, h) {
+  w = clamp(Math.round(w) || 1, 1, PRESET_MAX); h = clamp(Math.round(h) || 1, 1, PRESET_MAX);
+  edit.cells = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => edit.cells[y]?.[x] ?? ' '));
+}
+// обрезает пустые («не трогать») края, чтобы вес и размещение считались по реальной группе
+function trimRows(cells) {
+  const used = (y0, y1, x0, x1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (cells[y][x] !== ' ') return true; return false; };
+  let top = 0, bottom = cells.length - 1, left = 0, right = cells[0].length - 1;
+  while (top <= bottom && !used(top, top, left, right)) top++;
+  if (top > bottom) return [];
+  while (!used(bottom, bottom, left, right)) bottom--;
+  while (!used(top, bottom, left, left)) left++;
+  while (!used(top, bottom, right, right)) right--;
+  return cells.slice(top, bottom + 1).map(r => r.slice(left, right + 1).join(''));
+}
+function saveEdit() {
+  const name = edit.name.trim(), rows = trimRows(edit.cells), packs = loadPacks();
+  const target = packs.find(p => p.id === edit.target), source = packs.find(p => p.id === edit.packId);
+  if (!name) { editorMsg = 'Введите имя пресета.'; return renderEditor(); }
+  if (!rows.length) { editorMsg = 'Пресет пуст: нарисуйте хотя бы одну клетку.'; return renderEditor(); }
+  if (!target) { editorMsg = 'Выбранный пак не найден.'; return renderEditor(); }
+  if (target.presets.some(p => p.name === name && !(target === source && p.name === edit.orig))) { editorMsg = `В паке «${target.name}» уже есть пресет с таким именем.`; return renderEditor(); }
+  const preset = { name, rows }, i = source ? source.presets.findIndex(p => p.name === edit.orig) : -1;
+  // правка на месте сохраняет порядок; смена пака переносит пресет в конец нового
+  if (i >= 0 && source === target) target.presets[i] = preset;
+  else { if (i >= 0) source.presets.splice(i, 1); target.presets.push(preset); }
+  savePacks(packs); setFolded(target.id, false); edit = null; editorMsg = ''; renderEditor();
+}
+function renderEditor() {
+  const packs = loadPacks();
+  let h = '<div class="devHead"><b>Редактор пресетов</b>' + (edit ? '' : '<button data-act="close" class="ghost">Закрыть</button>') + '</div>';
+  if (!edit) {
+    h += '<div class="pe-actions" style="margin-top:0"><button data-act="newPack">Новый пак</button><button data-act="foldAll" class="ghost">Свернуть все</button><button data-act="unfoldAll" class="ghost">Развернуть все</button></div>';
+    if (!packs.some(p => p.enabled && p.presets.length)) h += '<p class="pe-warn">Ни один пак с пресетами не включён — в режиме «Пресет тест 0.1» карта будет пустой.</p>';
+    for (const pack of packs) {
+      const id = escapeHtml(pack.id), claude = pack.id === CLAUDE_PACK, folded = foldedPacks.has(pack.id);
+      h += `<div class="pe-pack${folded ? ' folded' : ''}"><div class="pe-packhead">`
+        + `<button data-act="fold" data-pack="${id}" class="ghost pe-fold" aria-expanded="${!folded}" aria-label="${folded ? 'Развернуть' : 'Свернуть'} пак">▾</button>`
+        + (claude ? `<b>${CLAUDE_PACK_NAME}</b>` : `<input class="pe-packname" data-pack="${id}" maxlength="40" value="${escapeHtml(pack.name)}" aria-label="Имя пака">`)
+        + `<span class="pe-size">${pack.presets.length} шт.</span>`
+        + `<label><input type="checkbox" data-act="toggle" data-pack="${id}"${pack.enabled ? ' checked' : ''}>В игре</label>`
+        + `<button data-act="new" data-pack="${id}">Новый пресет</button>`
+        + (claude ? `<button data-act="resetPack" data-pack="${id}" class="ghost">Сбросить к исходным</button>` : `<button data-act="deletePack" data-pack="${id}" class="ghost">Удалить пак</button>`)
+        + '</div>';
+      if (folded) { h += '</div>'; continue; }
+      h += pack.presets.length ? pack.presets.map((p, i) => `<div class="pe-row">${miniGrid(p.rows)}<span class="pe-name">${escapeHtml(p.name)}</span><span class="pe-size">${p.rows[0].length}×${p.rows.length}</span>`
+        + `<button data-act="edit" data-pack="${id}" data-i="${i}" class="ghost">Изменить</button><button data-act="copy" data-pack="${id}" data-i="${i}" class="ghost">Копировать</button><button data-act="delete" data-pack="${id}" data-i="${i}" class="ghost">Удалить</button></div>`).join('')
+        : '<p class="note" style="margin:4px 0 8px">Пак пуст.</p>';
+      h += '</div>';
+    }
+    h += '<p class="note">В режиме «Пресет тест 0.1» на карту ставятся пресеты всех паков, отмеченных «В игре».</p>';
+  } else {
+    const w = edit.cells[0].length, hh = edit.cells.length;
+    h += `<div class="pe-tools"><label>Имя <input id="peName" maxlength="40" value="${escapeHtml(edit.name)}"></label>`
+      + `<label>Пак <select id="pePack">${packs.map(p => `<option value="${escapeHtml(p.id)}"${p.id === edit.target ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}</select></label>`
+      + `<label>Ширина <input type="number" id="peW" min="1" max="${PRESET_MAX}" value="${w}"></label>`
+      + `<label>Высота <input type="number" id="peH" min="1" max="${PRESET_MAX}" value="${hh}"></label>`
+      + '<button data-act="clear" class="ghost">Очистить</button></div>';
+    h += '<div class="pe-palette">' + BRUSHES.map(([ch, label]) => `<button data-act="brush" data-ch="${ch}" class="ghost${ch === brush ? ' on' : ''}"><span class="${cellClass(ch)}"></span>${label}</button>`).join('') + '</div>';
+    h += `<div class="pe-grid" style="grid-template-columns:repeat(${w},30px)">` + edit.cells.map((r, y) => r.map((ch, x) => `<div class="${cellClass(ch)}" data-x="${x}" data-y="${y}"></div>`).join('')).join('') + '</div>';
+    h += '<p class="note">ЛКМ — рисовать выбранной кистью, ПКМ — стереть («не трогать»). «Расчистить» освобождает клетку на карте. Пустые края обрезаются при сохранении, группа на карте случайно поворачивается и отражается, частота зависит от размера.</p>';
+    h += `<div class="pe-msg">${escapeHtml(editorMsg)}</div><div class="pe-actions"><button data-act="save">Сохранить</button><button data-act="cancel" class="ghost">Отмена</button></div>`;
+  }
+  editorPanel.innerHTML = h;
+}
+function paintCell(el) {
+  if (!edit || painting === null || !el || el.dataset.x === undefined) return;
+  const x = +el.dataset.x, y = +el.dataset.y;
+  edit.cells[y][x] = painting; el.className = cellClass(painting);
+}
+editorPanel.addEventListener('click', e => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  const act = btn.dataset.act, packs = loadPacks(), pack = packs.find(p => p.id === btn.dataset.pack), i = +btn.dataset.i, preset = pack && pack.presets[i];
+  btn.blur();
+  if (act === 'close') closeEditor();
+  else if (act === 'fold' && pack) { setFolded(pack.id, !foldedPacks.has(pack.id)); renderEditor(); }
+  else if (act === 'foldAll' || act === 'unfoldAll') { for (const p of packs) setFolded(p.id, act === 'foldAll'); renderEditor(); }
+  else if (act === 'newPack') { packs.push({ id: newPackId(), name: 'Новый пак ' + packs.length, enabled: true, presets: [] }); savePacks(packs); renderEditor(); }
+  else if (act === 'deletePack' && pack && pack.id !== CLAUDE_PACK && (!pack.presets.length || confirm(`Удалить пак «${pack.name}» вместе с ${pack.presets.length} пресетами?`))) { packs.splice(packs.indexOf(pack), 1); savePacks(packs); renderEditor(); }
+  else if (act === 'resetPack' && pack && confirm(`Вернуть «${CLAUDE_PACK_NAME}» к исходным? Правки в этом паке пропадут.`)) { packs[packs.indexOf(pack)] = { ...defaultClaudePack(), enabled: pack.enabled }; savePacks(packs); renderEditor(); }
+  else if (act === 'new' && pack) startEdit(pack.id, null, false);
+  else if (act === 'edit' && preset) startEdit(pack.id, preset, true);
+  else if (act === 'copy' && preset) startEdit(pack.id, preset, false);
+  else if (act === 'delete' && preset && confirm(`Удалить пресет «${preset.name}»?`)) { pack.presets.splice(i, 1); savePacks(packs); renderEditor(); }
+  else if (act === 'brush') { brush = btn.dataset.ch; renderEditor(); }
+  else if (act === 'clear') { edit.cells = edit.cells.map(r => r.map(() => ' ')); renderEditor(); }
+  else if (act === 'save') saveEdit();
+  else if (act === 'cancel') { edit = null; editorMsg = ''; renderEditor(); }
+});
+editorPanel.addEventListener('input', e => {
+  if (!edit) return;
+  if (e.target.id === 'peName') edit.name = e.target.value;
+});
+editorPanel.addEventListener('change', e => {
+  const el = e.target;
+  if (!edit && (el.dataset.act === 'toggle' || el.classList.contains('pe-packname'))) {
+    const packs = loadPacks(), pack = packs.find(p => p.id === el.dataset.pack);
+    if (!pack) return;
+    if (el.dataset.act === 'toggle') pack.enabled = el.checked;
+    else if (el.value.trim()) pack.name = el.value.trim();
+    savePacks(packs); renderEditor(); return;
+  }
+  if (!edit) return;
+  if (el.id === 'pePack') edit.target = el.value;
+  else if (el.id === 'peW' || el.id === 'peH') { resizeEdit(+document.getElementById('peW').value, +document.getElementById('peH').value); renderEditor(); }
+});
+editorPanel.addEventListener('mousedown', e => {
+  if (!e.target.closest('.pe-grid')) return;
+  e.preventDefault(); painting = e.button === 2 ? ' ' : brush; paintCell(e.target);
+});
+editorPanel.addEventListener('mouseover', e => paintCell(e.target));
+editorPanel.addEventListener('contextmenu', e => { if (e.target.closest('.pe-grid')) e.preventDefault(); });
+addEventListener('mouseup', () => { painting = null; });
+document.getElementById('btnEditor').addEventListener('click', e => { e.currentTarget.blur(); openEditor(); });
+
+// ---------- редактор карт ----------
+// mapEd — открытая карта: { id: null у новой/копии, name, cols, cells: [[символ]] }
+let mapEdOpen = false, mapEd = null, mapBrush = 'B', mapPaint = null, mapMirror = false, mapEdMsg = '';
+// штамп — пресет из любого пака, который ставится на карту кликом: { pack, i, turns, flip }; mapHover — клетка под курсором
+let mapStamp = null, mapHover = null;
+const mapEditorEl = document.getElementById('mapEditor'), mapEditorPanel = document.getElementById('mapEditorPanel');
+const MAP_BRUSHES = BRUSHES.filter(([ch]) => ch !== ' ').map(([ch, label]) => [ch, ch === '.' ? 'Пусто' : label]);
+const MAP_COLORS = { '.': '#56693f', B: '#b3633a', b: '#b3633a', F: '#56693f', S: '#9aa6af', W: '#2c6d96', T: '#56693f', t: '#56693f', P: '#b59e64' };
+const blankMapRows = cols => Array.from({ length: cols * 2 / 3 }, () => '.'.repeat(cols));
+// рисует карту по клеткам размером cs; marks — показать базу, точки появления врагов и запретные зоны
+// alpha < 1 — полупрозрачное превью штампа; пробел («не трогать») не рисуется
+function drawMapCells(g, rows, cs, marks, alpha = 1) {
+  const cols = rows[0].length, h = rows.length, center = Math.floor(cols / 2), at = (c, r) => rows[r]?.[c];
+  for (let r = 0; r < h; r++) for (let c = 0; c < cols; c++) {
+    const ch = rows[r][c], x = c * cs, y = r * cs;
+    if (ch === ' ') continue;
+    g.globalAlpha = alpha;
+    g.fillStyle = MAP_COLORS[ch]; g.fillRect(x, y, cs, cs);
+    g.globalAlpha = (ch === 'b' || ch === 't' ? .5 : 1) * alpha;
+    if (ch === 'B' || ch === 'b') { g.fillStyle = '#402b21'; g.fillRect(x, y + cs / 2, cs, Math.max(1, cs / 12)); g.fillRect(x, y, cs, Math.max(1, cs / 12)); }
+    else if (ch === 'S') { g.fillStyle = '#6f7b85'; g.fillRect(x, y, cs, cs); g.fillStyle = '#b9c3ca'; g.fillRect(x + cs * .18, y + cs * .18, cs * .64, cs * .64); }
+    else if (ch === 'T' || ch === 't') { g.fillStyle = '#3f8a3a'; g.beginPath(); g.arc(x + cs / 2, y + cs / 2, cs * .42, 0, Math.PI * 2); g.fill(); }
+    else if (ch === 'F') {
+      // как в игре: перекладина тянется к соседним заборам, одиночный — горизонтальный
+      const n = at(c, r - 1) === 'F', s = at(c, r + 1) === 'F', e = at(c + 1, r) === 'F', w = at(c - 1, r) === 'F', t = Math.max(1, cs * .2), m = cs / 2;
+      g.fillStyle = '#a57a46';
+      if (n) g.fillRect(x + m - t / 2, y, t, m); if (s) g.fillRect(x + m - t / 2, y + m, t, m);
+      if (e || !(n || s)) g.fillRect(x + m, y + m - t / 2, m, t); if (w || !(n || s)) g.fillRect(x, y + m - t / 2, m, t);
+    }
+    g.globalAlpha = 1;
+  }
+  if (!marks) return;
+  for (let r = 0; r < h; r++) for (let c = 0; c < cols; c++) if (reservedCell(cols, c, r)) {
+    g.fillStyle = r <= 2 ? 'rgba(229,72,77,.38)' : 'rgba(255,208,90,.22)'; g.fillRect(c * cs, r * cs, cs, cs);
+  }
+  // кирпичные стены базы, сама база, точка старта игрока и точки появления врагов
+  for (const [c, r] of [[center - 1, h - 2], [center, h - 2], [center + 1, h - 2], [center - 1, h - 1], [center + 1, h - 1]]) { g.fillStyle = '#b3633a'; g.fillRect(c * cs + 1, r * cs + 1, cs - 2, cs - 2); }
+  g.fillStyle = '#ffd05a'; g.fillRect(center * cs + cs * .15, (h - 1) * cs + cs * .15, cs * .7, cs * .7);
+  g.fillStyle = '#7be38a'; g.beginPath(); g.arc((center - 3) * cs + cs / 2, (h - 2) * cs + cs / 2, cs * .35, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#e5484d';
+  for (const c of spawnCols(cols)) { g.beginPath(); g.moveTo(c * cs + cs * .2, cs * 1.2); g.lineTo(c * cs + cs * .8, cs * 1.2); g.lineTo(c * cs + cs / 2, cs * 1.85); g.fill(); }
+  if (cs >= 12) { g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 1; g.beginPath(); for (let c = 1; c < cols; c++) { g.moveTo(c * cs + .5, 0); g.lineTo(c * cs + .5, h * cs); } for (let r = 1; r < h; r++) { g.moveTo(0, r * cs + .5); g.lineTo(cols * cs, r * cs + .5); } g.stroke(); }
+}
+const mapCellSize = cols => clamp(Math.floor(Math.min(1120, innerWidth - 80) / cols), 8, 28);
+function openMapEditor() { mapEdOpen = true; mapEd = null; mapEdMsg = ''; renderMapEditor(); }
+function closeMapEditor() { mapEdOpen = false; mapEd = null; mapPaint = null; renderMapPick(); if (state === 'menu') toMenu(); }
+function startMapEdit(map, keep, cols = 30) {
+  const rows = map ? map.rows : blankMapRows(cols);
+  mapEd = { id: keep ? map.id : null, name: keep ? map.name : map ? map.name + ' (копия)' : '', cols: rows[0].length, cells: rows.map(r => [...r]) };
+  mapEdMsg = ''; renderMapEditor();
+}
+// смена размера держит низ и центр на месте — там база
+function resizeMapEdit(cols) {
+  if (!MAP_SIZES.includes(cols) || cols === mapEd.cols) return;
+  const rows = cols * 2 / 3, dx = Math.floor(cols / 2) - Math.floor(mapEd.cols / 2), dy = rows - mapEd.cells.length;
+  mapEd.cells = Array.from({ length: rows }, (_, y) => Array.from({ length: cols }, (_, x) => mapEd.cells[y - dy]?.[x - dx] ?? '.'));
+  mapEd.cols = cols;
+}
+function paintMapCell(c, r, ch) {
+  const cols = mapEd.cols, rows = mapEd.cells.length;
+  for (const x of mapMirror ? [c, cols - 1 - c] : [c]) if (x >= 0 && r >= 0 && x < cols && r < rows && !reservedCell(cols, x, r)) mapEd.cells[r][x] = ch;
+}
+// строки пресета с поворотом на 90°·turns по часовой и отражением, как их поставит штамп
+function transformRows(rows, turns, flip) {
+  let g = rows.map(r => [...r]);
+  if (flip) g = g.map(r => r.reverse());
+  for (let k = 0; k < turns % 4; k++) g = g[0].map((_, x) => g.map(r => r[x]).reverse());
+  return g.map(r => r.join(''));
+}
+function stampRows() {
+  const pack = mapStamp && loadPacks().find(p => p.id === mapStamp.pack), p = pack && pack.presets[mapStamp.i];
+  return p ? transformRows(p.rows, mapStamp.turns, mapStamp.flip) : null;
+}
+// штамп центрируется на клетке под курсором; запретные зоны и «не трогать» карту не меняют
+function placeStamp(c, r) {
+  const rows = stampRows(); if (!rows) return;
+  const c0 = c - Math.floor(rows[0].length / 2), r0 = r - Math.floor(rows.length / 2);
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== ' ') paintMapCell(c0 + x, r0 + y, ch); }));
+}
+function saveMapEdit() {
+  const name = mapEd.name.trim(), rows = mapEd.cells.map(r => r.join('')), list = loadUserMaps();
+  if (!name) { mapEdMsg = 'Введите имя карты.'; return renderMapEditor(); }
+  if (list.some(m => m.name === name && m.id !== mapEd.id)) { mapEdMsg = 'Карта с таким именем уже есть.'; return renderMapEditor(); }
+  if (!mapPassable(mapEd.cols, rows)) { mapEdMsg = 'Враги не могут доехать до базы хотя бы от одной точки появления: уберите сталь или воду с пути.'; return renderMapEditor(); }
+  const map = { id: mapEd.id || newPackId(), name, cols: mapEd.cols, rows }, i = list.findIndex(m => m.id === mapEd.id);
+  if (i >= 0) list[i] = map; else list.push(map);
+  saveUserMaps(list); mapEd = null; mapEdMsg = ''; renderMapPick(); renderMapEditor();
+}
+// импорт принимает одну карту или массив карт; повторяющиеся имена получают номер
+function importMapText(text) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) { return 0; }
+  const list = loadUserMaps(), found = (Array.isArray(data) ? data : [data]).map(normalizeMap).filter(Boolean);
+  for (const m of found) {
+    let name = m.name, k = 2;
+    while (list.some(x => x.name === name)) name = `${m.name} (${k++})`;
+    list.push({ ...m, id: newPackId() + list.length, name });
+  }
+  if (found.length) saveUserMaps(list);
+  return found.length;
+}
+function exportMap(m) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({ name: m.name, cols: m.cols, rows: m.rows }, null, 2)], { type: 'application/json' }));
+  a.download = m.name.replace(/[\\/:*?"<>|]+/g, '_') + '.ecotank-map.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function mapRow(m, i, mine) {
+  const k = `data-src="${mine ? 'mine' : 'claude'}" data-i="${i}"`;
+  return `<div class="pe-row"><canvas class="me-thumb" width="120" height="80" ${k}></canvas><span class="pe-name">${escapeHtml(m.name)}</span><span class="pe-size">${m.cols}×${m.rows.length}</span>`
+    + `<button data-act="play" ${k}>Играть</button>` + (mine ? `<button data-act="edit" ${k} class="ghost">Изменить</button>` : '')
+    + `<button data-act="copy" ${k} class="ghost">Копировать</button><button data-act="export" ${k} class="ghost">Экспорт</button>`
+    + (mine ? `<button data-act="delete" ${k} class="ghost">Удалить</button>` : '') + '</div>';
+}
+function renderMapEditor() {
+  let h = '<div class="devHead"><b>Редактор карт</b>' + (mapEd ? '' : '<button data-act="close" class="ghost">Закрыть</button>') + '</div>';
+  if (!mapEd) {
+    const claude = claudeMaps(), mine = loadUserMaps();
+    h += '<div class="pe-tools"><button data-act="new">Новая карта</button><select id="meNewSize" aria-label="Размер новой карты">' + MAP_SIZES.map(s => `<option value="${s}">${s}×${s * 2 / 3}</option>`).join('') + '</select>'
+      + '<button data-act="import" class="ghost">Импорт из файла</button></div>';
+    if (mapEdMsg) h += `<div class="pe-msg">${escapeHtml(mapEdMsg)}</div>`;
+    h += '<h3>Карты Клода</h3>' + (claude.length ? claude.map((m, i) => mapRow(m, i, false)).join('') : '<p class="note">Файл maps.js не найден или пуст.</p>');
+    h += '<h3>Мои карты</h3>' + (mine.length ? mine.map((m, i) => mapRow(m, i, true)).join('') : '<p class="note">Своих карт пока нет. Создайте новую или скопируйте карту Клода.</p>');
+    h += '<p class="note">Карты Клода хранятся в файле maps.js и меняются только в нём — копия попадает в «Мои карты». Экспорт сохраняет карту в JSON: его можно импортировать в другом браузере или передать модели, чтобы добавить карту в maps.js.</p>';
+  } else {
+    h += `<div class="pe-tools"><label>Имя <input id="meName" maxlength="40" value="${escapeHtml(mapEd.name)}"></label>`
+      + '<label>Размер <select id="meSize">' + MAP_SIZES.map(s => `<option value="${s}"${s === mapEd.cols ? ' selected' : ''}>${s}×${s * 2 / 3}</option>`).join('') + '</select></label>'
+      + `<label><input type="checkbox" id="meMirror"${mapMirror ? ' checked' : ''}> Зеркально</label><button data-act="clear" class="ghost">Очистить</button></div>`;
+    h += '<div class="pe-palette">' + MAP_BRUSHES.map(([ch, label]) => `<button data-act="brush" data-ch="${ch}" class="ghost${!mapStamp && ch === mapBrush ? ' on' : ''}"><span class="${cellClass(ch)}"></span>${label}</button>`).join('') + '</div>';
+    const packs = loadPacks(), stamp = stampRows(), sel = mapStamp ? `${mapStamp.pack}:${mapStamp.i}` : '';
+    h += '<div class="pe-tools"><label>Пресет <select id="meStamp"><option value="">— кисть —</option>'
+      + packs.filter(p => p.presets.length).map(p => `<optgroup label="${escapeHtml(p.name)}">` + p.presets.map((pr, i) => { const v = escapeHtml(`${p.id}:${i}`); return `<option value="${v}"${v === escapeHtml(sel) ? ' selected' : ''}>${escapeHtml(pr.name)} · ${pr.rows[0].length}×${pr.rows.length}</option>`; }).join('') + '</optgroup>').join('')
+      + '</select></label>'
+      + (stamp ? `${miniGrid(stamp)}<button data-act="turn" class="ghost">↻ Повернуть (R)</button><button data-act="flip" class="ghost">⇋ Отразить (F)</button><button data-act="unstamp" class="ghost">Вернуться к кисти</button>` : '')
+      + '</div>';
+    h += `<canvas id="meCanvas" class="me-canvas" width="${mapEd.cols * mapCellSize(mapEd.cols)}" height="${mapEd.cells.length * mapCellSize(mapEd.cols)}"></canvas>`;
+    h += '<div class="me-legend"><span><i style="background:#e5484d"></i>Точки появления врагов</span><span><i style="background:#ffd05a"></i>База и подъезд к ней</span><span><i style="background:#7be38a;border-radius:50%"></i>Старт игрока</span><span>Подсвеченные зоны игра всегда расчищает, рисовать там нельзя.</span></div>';
+    h += '<p class="note">ЛКМ — рисовать, ПКМ — стереть. Выбранный пресет ставится кликом по центру под курсором; R поворачивает, F отражает, клетки «не трогать» карту не меняют. «Зеркально» повторяет мазок и пресет на другой половине карты. Кирпич и забор враги простреливают, а через сталь и воду должен оставаться путь к базе.</p>';
+    h += `<div class="pe-msg">${escapeHtml(mapEdMsg)}</div><div class="pe-actions"><button data-act="save">Сохранить</button><button data-act="cancel" class="ghost">Отмена</button></div>`;
+  }
+  mapEditorPanel.innerHTML = h;
+  drawMapEditor();
+}
+function drawMapEditor() {
+  if (mapEd) {
+    const g = document.getElementById('meCanvas').getContext('2d'), cs = mapCellSize(mapEd.cols), stamp = mapHover && stampRows();
+    drawMapCells(g, mapEd.cells.map(r => r.join('')), cs, true);
+    if (stamp) {
+      // превью штампа (и его зеркальной копии) под курсором
+      const c0 = mapHover[0] - Math.floor(stamp[0].length / 2), r0 = mapHover[1] - Math.floor(stamp.length / 2);
+      const spots = mapMirror ? [[c0, stamp], [mapEd.cols - c0 - stamp[0].length, stamp.map(r => [...r].reverse().join(''))]] : [[c0, stamp]];
+      for (const [x0, rows] of spots) {
+        g.save(); g.translate(x0 * cs, r0 * cs); drawMapCells(g, rows, cs, false, .7);
+        g.strokeStyle = '#8be06a'; g.lineWidth = 2; g.strokeRect(1, 1, rows[0].length * cs - 2, rows.length * cs - 2); g.restore();
+      }
+    }
+    return;
+  }
+  const claude = claudeMaps(), mine = loadUserMaps();
+  for (const el of mapEditorPanel.querySelectorAll('canvas[data-src]')) {
+    const m = (el.dataset.src === 'mine' ? mine : claude)[+el.dataset.i];
+    if (m) drawMapCells(el.getContext('2d'), m.rows, 120 / m.cols, false);
+  }
+}
+function renderMapPick() {
+  const el = document.getElementById('mapPick'), claude = claudeMaps(), mine = loadUserMaps();
+  const opt = m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)} · ${m.cols}×${m.rows.length}</option>`;
+  el.innerHTML = (claude.length ? `<optgroup label="Карты Клода">${claude.map(opt).join('')}</optgroup>` : '')
+    + (mine.length ? `<optgroup label="Мои карты">${mine.map(opt).join('')}</optgroup>` : '') || '<option value="">Нет карт</option>';
+  if (!findMap(CFG.mapPick)) CFG.mapPick = (claude[0] || mine[0] || { id: '' }).id;
+}
+function mapEdCell(e) {
+  const b = e.target.getBoundingClientRect();
+  return [Math.floor((e.clientX - b.left) / b.width * mapEd.cols), Math.floor((e.clientY - b.top) / b.height * mapEd.cells.length)];
+}
+mapEditorPanel.addEventListener('click', e => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  const act = btn.dataset.act, mine = loadUserMaps(), m = (btn.dataset.src === 'mine' ? mine : claudeMaps())[+btn.dataset.i];
+  btn.blur(); mapEdMsg = '';
+  if (act === 'close') closeMapEditor();
+  else if (act === 'new') startMapEdit(null, false, +document.getElementById('meNewSize').value);
+  else if (act === 'import') document.getElementById('mapImport').click();
+  else if (act === 'play' && m) { CFG.mapMode = 'map'; CFG.mapPick = m.id; saveDev(); closeMapEditor(); }
+  else if (act === 'edit' && m) startMapEdit(m, true);
+  else if (act === 'copy' && m) startMapEdit(m, false);
+  else if (act === 'export' && m) exportMap(m);
+  else if (act === 'delete' && m && confirm(`Удалить карту «${m.name}»?`)) { saveUserMaps(mine.filter(x => x.id !== m.id)); renderMapPick(); renderMapEditor(); }
+  else if (act === 'brush') { mapBrush = btn.dataset.ch; mapStamp = null; renderMapEditor(); }
+  else if (act === 'unstamp') { mapStamp = null; renderMapEditor(); }
+  else if ((act === 'turn' || act === 'flip') && mapStamp) { turnStamp(act); renderMapEditor(); }
+  else if (act === 'clear') { mapEd.cells = blankMapRows(mapEd.cols).map(r => [...r]); renderMapEditor(); }
+  else if (act === 'save') saveMapEdit();
+  else if (act === 'cancel') { mapEd = null; renderMapEditor(); }
+});
+mapEditorPanel.addEventListener('input', e => { if (mapEd && e.target.id === 'meName') mapEd.name = e.target.value; });
+mapEditorPanel.addEventListener('change', e => {
+  if (!mapEd) return;
+  if (e.target.id === 'meSize') { resizeMapEdit(+e.target.value); renderMapEditor(); }
+  else if (e.target.id === 'meMirror') mapMirror = e.target.checked;
+  else if (e.target.id === 'meStamp') {
+    const [pack, i] = e.target.value.split(':');
+    mapStamp = e.target.value ? { pack, i: +i, turns: 0, flip: false } : null; renderMapEditor();
+  }
+});
+// поворот по часовой и отражение по горизонтали того, что видно сейчас;
+// transformRows сначала отражает, потом поворачивает, поэтому отражение обращает поворот
+function turnStamp(act) {
+  if (act === 'turn') mapStamp.turns = (mapStamp.turns + 1) % 4;
+  else { mapStamp.turns = (4 - mapStamp.turns) % 4; mapStamp.flip = !mapStamp.flip; }
+}
+mapEditorPanel.addEventListener('mousedown', e => {
+  if (!mapEd || e.target.id !== 'meCanvas') return;
+  e.preventDefault();
+  if (mapStamp && e.button === 0) { placeStamp(...mapEdCell(e)); drawMapEditor(); return; }
+  mapPaint = e.button === 2 ? '.' : mapBrush;
+  paintMapCell(...mapEdCell(e), mapPaint); drawMapEditor();
+});
+mapEditorPanel.addEventListener('mousemove', e => {
+  if (!mapEd || e.target.id !== 'meCanvas') return;
+  if (mapStamp) { mapHover = mapEdCell(e); drawMapEditor(); }
+  if (mapPaint === null) return;
+  paintMapCell(...mapEdCell(e), mapPaint); drawMapEditor();
+});
+mapEditorPanel.addEventListener('mouseout', e => { if (mapHover && e.target.id === 'meCanvas') { mapHover = null; drawMapEditor(); } });
+mapEditorPanel.addEventListener('contextmenu', e => { if (e.target.id === 'meCanvas') e.preventDefault(); });
+addEventListener('mouseup', () => { mapPaint = null; });
+document.getElementById('mapImport').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  file.text().then(text => {
+    const n = importMapText(text);
+    mapEdMsg = n ? '' : 'В файле нет подходящих карт EcoTank.';
+    renderMapPick(); renderMapEditor();
+  });
+});
+document.getElementById('btnMapEditor').addEventListener('click', e => { e.currentTarget.blur(); openMapEditor(); });
+// список уровней кампании: закрытые уровни видны, но недоступны для старта
+let campaignPickKey = '';
+function renderCampaignPick() {
+  const levels = campaignMaps(), open = campaignUnlocked(), key = levels.map(m => m.id).join() + ':' + open;
+  if (key === campaignPickKey) return;
+  campaignPickKey = key;
+  document.getElementById('campaignPick').innerHTML = levels.length
+    ? levels.map((m, i) => `<option value="${i}"${i >= open ? ' disabled' : ''}>${i >= open ? '🔒 ' : ''}Уровень ${i + 1} · ${escapeHtml(m.name)} · ${m.cols}×${m.rows.length}</option>`).join('')
+    : '<option value="0">Нет карт кампании</option>';
+}
+document.getElementById('campaignPick').addEventListener('change', e => {
+  CFG.campaignStart = +e.target.value || 0; saveDev(); e.target.blur();
+  if (state === 'menu') toMenu();
+});
+document.getElementById('mapPick').addEventListener('change', e => {
+  CFG.mapPick = e.target.value; saveDev(); e.target.blur();
+  if (state === 'menu') toMenu();
+});
+
+// стартовый экран: фон-превью собирается из выбранных размера и режима карты
+function toMenu() {
+  state = 'menu'; player = null; base = null; enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
+  applyMapChoice(); genMap(1);
+}
 document.getElementById('btnDev').addEventListener('click', e => { e.currentTarget.blur(); devOpen = true; buildDev(); });
 document.getElementById('btnDevClose').addEventListener('click', e => { e.currentTarget.blur(); devOpen = false; });
 
 document.getElementById('mapSize').value=String(CFG.mapSize||30);
 document.getElementById('mapSize').addEventListener('change', e=>{
   CFG.mapSize=[30,45,60].includes(Number(e.target.value))?Number(e.target.value):30;saveDev();e.target.blur();
+  if(state==='menu')toMenu();
+});
+document.getElementById('mapMode').addEventListener('change', e=>{
+  CFG.mapMode=['preset01','map','campaign'].includes(e.target.value)?e.target.value:'original';saveDev();e.target.blur();
+  if(state==='menu')toMenu();
 });
 function syncUI() {
+  const mapPick=document.getElementById('mapPick'),campaignPick=document.getElementById('campaignPick');
+  const fixed=CFG.mapMode==='map',camp=CFG.mapMode==='campaign';
   document.getElementById('mapSize').value=String(CFG.mapSize||30);
-  document.getElementById('mapControl').hidden=!(state==='menu'||state==='pause'||state==='over');
+  document.getElementById('mapSize').hidden=fixed||camp;
+  document.getElementById('mapMode').value=['preset01','map','campaign'].includes(CFG.mapMode)?CFG.mapMode:'original';
+  if(mapPick.hidden===fixed)mapPick.hidden=!fixed;
+  if(fixed&&mapPick.value!==CFG.mapPick)mapPick.value=CFG.mapPick;
+  if(campaignPick.hidden===camp)campaignPick.hidden=!camp;
+  if(camp){renderCampaignPick();if(campaignPick.value!==String(CFG.campaignStart))campaignPick.value=String(CFG.campaignStart);}
+  document.getElementById('mapControl').hidden=editorOpen||mapEdOpen||!(state==='menu'||state==='over');
+  if (editorEl.hidden === editorOpen) editorEl.hidden = !editorOpen;
+  if (mapEditorEl.hidden === mapEdOpen) mapEditorEl.hidden = !mapEdOpen;
   syncMusic();
   const pm = state === 'pause' && !devOpen, dv = state === 'pause' && devOpen;
   if (pauseMenu.hidden === pm) pauseMenu.hidden = !pm;
@@ -1501,7 +2251,8 @@ function syncUI() {
 }
 
 // ---------- запуск ----------
-configureMap(CFG.mapSize);genMap(1);
+renderMapPick();
+toMenu();
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(.033, (now - last) / 1000);

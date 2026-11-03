@@ -1,11 +1,11 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
 const code=fs.readFileSync(__dirname+'/index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 const context=new Proxy({}, {get:(o,k)=>k in o?o[k]:(()=>context)});
-const element={style:{},addEventListener(){},getContext:()=>context,querySelector:()=>element,blur(){}};
+const element={style:{},addEventListener(){},getContext:()=>context,querySelector:()=>element,querySelectorAll:()=>[],blur(){}};
 const store=new Map([['ecotank-dev',JSON.stringify({KINDS:{player:{speed:999}},CFG:{brickHp:2}})]]);
 const box={console,document:{getElementById:()=>({...element}),createElement:()=>({...element}),activeElement:element},window:{},innerWidth:960,innerHeight:640,addEventListener(){},requestAnimationFrame(){},performance:{now:()=>0},setTimeout(){},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)}};
 box.Audio=class {play(){this.paused=false;return Promise.resolve();} pause(){this.paused=true;}};
-vm.createContext(box);vm.runInContext(code,box);
+vm.createContext(box);vm.runInContext(fs.readFileSync(__dirname+'/maps.js','utf8'),box);vm.runInContext(code,box);
 vm.runInContext(`
 muted=true;
 if(KINDS.player.speed!==60||KINDS.player.bulletSpeed!==1200||KINDS.heavy.hp!==3)throw Error('Defaults or legacy settings');
@@ -154,6 +154,116 @@ grid[5*COLS+4]=STEEL;grid[5*COLS+3]=STEEL;grid[5*COLS+6]=EMPTY;grid[5*COLS+7]=EM
 for(let n=0;n<15;n++){const exit=fragmentEscape(176,176,1.4);if(Math.cos(exit.angle)<.9||exit.clearance<60)throw Error('Fragments choose right opening');}
 grid[5*COLS+5]=BRICK;brickMask[5*COLS+5]=1023;brickHp[5*COLS+5]=4;parts=[];hitBrick(5,5,1,160,161);
 const escapingChunks=parts.filter(p=>p.brickFragment);for(const chunk of escapingChunks){const clearance=fragmentEscape(chunk.x,chunk.y,1).clearance;if(Math.hypot(chunk.vx,chunk.vy)>clearance*2+10)throw Error('Fragment confined speed');}
+startGame();
+// Preset mode places whole groups, keeps the map passable and only switches on a new game.
+CFG.mapMode='preset01';if(mapMode!=='original')throw Error('Mode waits for new game');
+for(const size of [30,45,60]){CFG.mapSize=size;startGame();if(mapMode!=='preset01'||!connected()||!grid.some(t=>t!==EMPTY))throw Error('Preset map');}
+CFG.mapSize=30;startGame();CFG.mapElements=0;genMap(1);if(grid.some(t=>t!==EMPTY))throw Error('Preset empty density');
+CFG.mapElements=180;for(let n=0;n<20;n++){genMap(1);if(!connected())throw Error('Disconnected dense preset map');}
+for(const p of PREFABS){if(p.rows.some(r=>r.length!==p.rows[0].length||/[^BFSWTPbt. ]/.test(r)))throw Error('Prefab shape '+p.name);
+for(let n=0;n<8;n++){const {w,h,cells}=prefabCells(p);if(cells.some(([x,y])=>x<0||y<0||x>=w||y>=h)||w*h!==p.rows.length*p.rows[0].length)throw Error('Prefab transform '+p.name);}}
+CFG.mapElements=42;CFG.mapMode='original';startGame();
+// Pause "new game" returns to the start screen with a preview of the chosen map.
+CFG.mapSize=45;toMenu();if(state!=='menu'||player||base||COLS!==45)throw Error('Back to menu');draw();CFG.mapSize=30;startGame();
+// Fence: auto shape (straight or one of four corners), narrow collision, one-hit destruction, AP passes through.
+grid.fill(EMPTY);enemies=[];base=null;player.x=700;player.y=500;
+const fence=(c,r)=>{grid[r*COLS+c]=FENCE;};
+fence(5,5);fence(6,5);fence(7,5);fence(5,6);fence(5,7);fence(10,10);shapeFences();
+if(fenceArms[5*COLS+5]!==(ARM_E|ARM_S)||fenceArms[5*COLS+6]!==FENCE_H||fenceArms[6*COLS+5]!==FENCE_V||fenceArms[10*COLS+10]!==FENCE_H)throw Error('Fence shapes');
+if(!FENCE_SHAPES.includes(fenceArms[5*COLS+7]))throw Error('Fence shape set');
+if(!bulletBlocked(6*T+16,5*T+16)||bulletBlocked(6*T+16,5*T+4))throw Error('Fence narrow');
+const nearFence={x:6*T+16,y:5*T+4,r:4};collideTiles(nearFence);if(nearFence.y!==5*T+4)throw Error('Fence passable beside rail');
+const rammer={x:6*T+16,y:5*T+10,r:8};collideTiles(rammer);if(rammer.y>=5*T+10)throw Error('Fence blocks tank');
+bullets=[{x:6*T+16,y:5*T-20,vx:0,vy:300,life:2,r:2,dmg:1,owner:'p'}];updateBullets(.2);if(grid[5*COLS+6]!==EMPTY||bullets.length)throw Error('Fence one hit');
+const apFence={x:7*T+16,y:5*T-20,vx:0,vy:1500,life:2,r:3,dmg:2,armor:true,trail:[],owner:'p'};bullets=[apFence];updateBullets(.04);
+if(grid[5*COLS+7]!==EMPTY||apFence.dead||apFence.brickPierced)throw Error('AP through fence');
+blastDamage(5*T+16,6*T+16,30);if(grid[6*COLS+5]!==EMPTY)throw Error('Blast fence');draw();
+// Preset editor: trimmed save, unique names, weight by size, saved presets used by preset mode.
+// Preset packs: Claude's pack by default, legacy presets migrate, packs toggle, presets edit/move between packs.
+localStorage.removeItem(PACKS_KEY);localStorage.setItem(OLD_PRESETS_KEY,JSON.stringify([{name:'Старый',rows:['BB']},{name:'bad',rows:['BX']}]));
+let packs=loadPacks();if(packs[0].id!==CLAUDE_PACK||packs[0].name!=='Пресеты Клода'||packs[0].presets.length!==PREFABS.length||packs[1].presets.length!==1)throw Error('Default and migrated packs');
+localStorage.removeItem(OLD_PRESETS_KEY);savePacks([{id:'x',name:'Чужой',presets:[{name:'ok',rows:['B','BB']}]}]);packs=loadPacks();
+if(packs[0].id!==CLAUDE_PACK||packs[1].presets.length)throw Error('Claude pack restored, invalid presets filtered');
+savePacks([defaultClaudePack(),{id:'mine',name:'Мой',enabled:true,presets:[]}]);
+openEditor();startEdit('mine',null,false);edit.cells[1][2]='W';edit.cells[3][2]='F';saveEdit();if(!edit||!editorMsg)throw Error('Editor requires name');
+edit.name='  Тест  ';saveEdit();let mine=loadPacks()[1].presets;if(edit||mine.length!==1||mine[0].name!=='Тест'||JSON.stringify(mine[0].rows)!==JSON.stringify(['W',' ','F']))throw Error('Editor trimmed save');
+startEdit('mine',null,false);edit.name='Тест';edit.cells[0][0]='B';saveEdit();if(!edit||loadPacks()[1].presets.length!==1)throw Error('Editor duplicate name');
+startEdit(CLAUDE_PACK,null,false);edit.name='Тест';edit.cells[0][0]='B';saveEdit();if(edit||loadPacks()[0].presets.length!==PREFABS.length+1)throw Error('Same name in other pack');
+startEdit(CLAUDE_PACK,loadPacks()[0].presets[0],true);edit.cells[0][0]='S';saveEdit();packs=loadPacks();if(packs[0].presets[0].rows[0][0]!=='S'||packs[0].presets[0].name!==PREFABS[0].name||packs[0].presets.length!==PREFABS.length+1)throw Error('Edit Claude preset in place');
+startEdit('mine',mine[0],true);edit.target=CLAUDE_PACK;saveEdit();if(!edit)throw Error('Move name clash');edit.name='Перенос';saveEdit();packs=loadPacks();
+if(packs[1].presets.length||packs[0].presets.at(-1).name!=='Перенос')throw Error('Move preset between packs');
+startEdit('mine',null,false);edit.name='Пусто';saveEdit();if(!edit)throw Error('Editor empty preset');
+resizeEdit(99,0);if(edit.cells.length!==1||edit.cells[0].length!==PRESET_MAX)throw Error('Editor size clamp');edit=null;renderEditor();
+setFolded('mine',true);if(!JSON.parse(localStorage.getItem(FOLD_KEY)).includes('mine'))throw Error('Fold persistence');renderEditor();
+startEdit('mine',null,false);edit.name='Свёрнутый';edit.cells[0][0]='B';saveEdit();if(foldedPacks.has('mine'))throw Error('Unfold after save');closeEditor();
+if(!(prefabWeight({rows:['B']})>prefabWeight({rows:['BB','BB']})))throw Error('Weight by size');
+savePacks([{...defaultClaudePack(),enabled:false},{id:'canal',name:'Каналы',enabled:true,presets:[{name:'Канал',rows:['WWWWWWWWWWWW']}]}]);
+if(activePresets().length!==1)throw Error('Only enabled packs');CFG.mapMode='preset01';CFG.mapSize=60;let canal=false;
+for(let n=0;n<5&&!canal;n++){startGame();for(let r=0;r<ROWS&&!canal;r++)for(let c=0;c<COLS&&!canal;c++){let hRun=0,vRun=0;while(tileAt(c+hRun,r)===WATER)hRun++;while(tileAt(c,r+vRun)===WATER)vRun++;canal=hRun>=12||vRun>=12;}}
+if(!canal)throw Error('Pack preset on map');
+savePacks([{...defaultClaudePack(),enabled:false}]);genMap(1);if(grid.some(t=>t!==EMPTY))throw Error('No enabled packs');
+// Sand brush: passable empty tile with sand ground, counted toward map fill.
+savePacks([{...defaultClaudePack(),enabled:false},{id:'dune',name:'Дюны',enabled:true,presets:[{name:'Дюна',rows:['PPPPPPPPPPPP']}]}]);genMap(1);
+if(grid.some(t=>t!==EMPTY)||!connected())throw Error('Sand keeps tiles empty');let sandRun=false;
+for(let r=0;r<ROWS&&!sandRun;r++)for(let c=0;c<COLS&&!sandRun;c++){let hRun=0,vRun=0;while(sand[r*COLS+c+hRun]&&c+hRun<COLS)hRun++;while(r+vRun<ROWS&&sand[(r+vRun)*COLS+c])vRun++;sandRun=hRun>=12||vRun>=12;}
+if(!sandRun)throw Error('Preset sand on map');
+localStorage.removeItem(PACKS_KEY);CFG.mapMode='original';CFG.mapSize=30;
+// Claude's maps from maps.js: valid, unique ids, passable.
+const cm=claudeMaps();if(cm.length<3||new Set(cm.map(m=>m.id)).size!==cm.length||cm.length!==window.ECOTANK_MAPS.length)throw Error('Claude maps valid');
+for(const m of cm)if(!mapPassable(m.cols,m.rows))throw Error('Claude map passable '+m.name);
+if(new Set(spawnCols(30)).size!==5||!reservedCell(30,15,19)||!reservedCell(30,1,0)||reservedCell(30,5,5))throw Error('Reserved layout');
+// Map mode: size and tiles come from the map, every wave restores it, reserved zones stay clear.
+for(const m of cm){CFG.mapMode='map';CFG.mapPick=m.id;startGame();
+  if(COLS!==m.cols||mapMode!=='map'||!connected())throw Error('Map mode '+m.name);
+  const center=Math.floor(COLS/2),baseWall=(c,r)=>r>=ROWS-2&&c>=center-1&&c<=center+1;
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const ch=m.rows[r][c],t=grid[r*COLS+c];
+    if(baseWall(c,r))continue;
+    if(reservedCell(COLS,c,r)){if(t!==EMPTY)throw Error('Reserved cleared '+m.name);continue;}
+    if('BFSWT.P'.includes(ch)&&t!==PREFAB_TILES[ch])throw Error('Map tile '+m.name+' '+c+','+r);
+    if(!!sand[r*COLS+c]!==(ch==='P'))throw Error('Map sand exactly as drawn');}
+  const bi=grid.findIndex((t,i)=>t===BRICK&&m.rows[(i/COLS)|0][i%COLS]==='B'&&!reservedCell(COLS,i%COLS,(i/COLS)|0));
+  if(bi>=0){hitBrick(bi%COLS,(bi/COLS)|0,99);nextWave();if(grid[bi]!==BRICK)throw Error('Map restored each wave');}draw();}
+CFG.mapPick='missing';startGame();if(mapMode!=='original'||activeMap)throw Error('Missing map fallback');
+// Map editor: reserved cells locked, mirror, resize anchored at the base, passability and name checks, import.
+localStorage.removeItem(MAPS_KEY);openMapEditor();startMapEdit(null,false,30);
+paintMapCell(15,19,'S');paintMapCell(1,1,'S');if(mapEd.cells[19][15]!=='.'||mapEd.cells[1][1]!=='.')throw Error('Reserved locked');
+mapMirror=true;paintMapCell(5,6,'B');mapMirror=false;if(mapEd.cells[6][5]!=='B'||mapEd.cells[6][24]!=='B')throw Error('Mirror paint');
+saveMapEdit();if(!mapEd||!mapEdMsg)throw Error('Map name required');mapEd.name='Стена';
+for(let c=0;c<30;c++)paintMapCell(c,8,'S');saveMapEdit();if(!mapEd||!mapEdMsg.includes('доехать'))throw Error('Impassable map rejected');
+paintMapCell(10,8,'B');saveMapEdit();if(mapEd||loadUserMaps().length!==1)throw Error('Map saved');
+const saved=loadUserMaps()[0];startMapEdit(saved,true);resizeMapEdit(45);if(mapEd.cols!==45||mapEd.cells.length!==30||mapEd.cells[16][12]!=='B'||mapEd.cells[18][17]!=='B')throw Error('Resize anchored');
+mapEd.name='Копия стены';mapEd.id=null;saveMapEdit();startMapEdit(loadUserMaps()[0],false);mapEd.name='Стена';saveMapEdit();if(!mapEd)throw Error('Duplicate map name');mapEd=null;renderMapEditor();
+const exported=JSON.stringify({name:saved.name,cols:saved.cols,rows:saved.rows});
+if(importMapText(exported)!==1||!loadUserMaps().some(m=>m.name==='Стена (2)'))throw Error('Import renames');
+if(importMapText('{"name":"x","cols":31,"rows":[]}')!==0||importMapText('not json')!==0)throw Error('Import rejects');
+// Preset stamps in the map editor: transforms, placement centred on the cursor, "untouched" cells, mirror, reserved zones.
+if(JSON.stringify(transformRows(['BS','T '],1,false))!==JSON.stringify(['TB',' S'])||JSON.stringify(transformRows(['BS'],0,true))!==JSON.stringify(['SB']))throw Error('Stamp transform');
+savePacks([defaultClaudePack(),{id:'st',name:'Штампы',enabled:false,presets:[{name:'Г',rows:['SS','S ']}]}]);
+startMapEdit(null,false,30);mapStamp={pack:'st',i:0,turns:0,flip:false};
+mapEd.cells[8][10]='W';placeStamp(10,8);if(mapEd.cells[7][9]!=='S'||mapEd.cells[7][10]!=='S'||mapEd.cells[8][9]!=='S'||mapEd.cells[8][10]!=='W')throw Error('Stamp placement');
+mapMirror=true;placeStamp(5,10);mapMirror=false;if(mapEd.cells[9][4]!=='S'||mapEd.cells[9][25]!=='S'||mapEd.cells[9][24]!=='S')throw Error('Stamp mirror');
+placeStamp(15,19);if(mapEd.cells[18][14]!=='.')throw Error('Stamp reserved');
+const shape=()=>stampRows().join('|');turnStamp('turn');if(shape()!=='SS| S')throw Error('Stamp turn');turnStamp('flip');if(shape()!=='SS|S ')throw Error('Stamp flip visible');
+turnStamp('turn');if(shape()!=='SS| S')throw Error('Stamp turn after flip');turnStamp('turn');if(shape()!==' S|SS')throw Error('Stamp second turn after flip');
+mapHover=[10,10];drawMapEditor();renderMapEditor();mapStamp=null;mapHover=null;mapEd=null;localStorage.removeItem(PACKS_KEY);
+renderMapPick();CFG.mapMode='map';CFG.mapPick=saved.id;state='menu';closeMapEditor();if(activeMap.id!==saved.id||COLS!==30)throw Error('Play user map');
+localStorage.removeItem(MAPS_KEY);CFG.mapMode='original';CFG.mapPick='';CFG.mapSize=30;
+// Campaign: ordered levels, locked starts, size change between levels, unlock on clear, victory, retry from the lost level.
+const realCampaign=window.ECOTANK_CAMPAIGN;
+if(!Array.isArray(realCampaign)||new Set(realCampaign).size!==realCampaign.length||realCampaign.some(id=>!cm.some(m=>m.id===id))||campaignMaps().length!==realCampaign.length)throw Error('maps.js campaign order');window.ECOTANK_CAMPAIGN=['claude-swamp','missing','claude-crossing'];
+if(campaignMaps().map(m=>m.id).join()!=='claude-swamp,claude-crossing')throw Error('Campaign order');
+localStorage.removeItem(CAMPAIGN_KEY);CFG.mapMode='campaign';CFG.campaignStart=1;startGame();
+if(!campaign||CFG.campaignStart!==0||wave!==1||activeMap.id!=='claude-swamp'||COLS!==45||mapMode!=='map')throw Error('Campaign locked start');
+const clearLevel=()=>{toSpawn=[];enemies=[];wrecks=[];hitstop=0;update(.01);if(state!=='between')throw Error('Level clear');for(let t=0;t<40&&state==='between';t++)update(.1);};
+player.inv=99;clearLevel();
+if(campaignUnlocked()!==2||wave!==2||activeMap.id!=='claude-crossing'||COLS!==30||grid.length!==600||base.x!==BASE_POS.x||base.y!==H-16||player.y!==H-48)throw Error('Campaign next level');
+if(!connected())throw Error('Campaign level passable');draw();player.inv=99;clearLevel();
+if(state!=='over'||!victory||wave!==2||CFG.campaignStart!==0)throw Error('Campaign victory');draw();
+CFG.campaignStart=1;startGame();if(wave!==2||activeMap.id!=='claude-crossing'||victory)throw Error('Campaign start from unlocked level');
+toSpawn=[];enemies=[];player.inv=0;player.pw.shield=0;player.hp=1;hitPlayer({x:player.x,y:player.y,dmg:1});
+for(let t=0;t<200&&state!=='over';t++){hitstop=0;update(.05);}if(state!=='over'||victory||CFG.campaignStart!==1)throw Error('Campaign retry level');draw();
+window.ECOTANK_CAMPAIGN=undefined;if(campaignMaps().length!==claudeMaps().length)throw Error('Campaign fallback order');
+window.ECOTANK_CAMPAIGN=realCampaign;localStorage.removeItem(CAMPAIGN_KEY);CFG.mapMode='original';CFG.campaignStart=0;
 startGame();
 `,box);
 assert(!code.includes("tone(420, 110"));
