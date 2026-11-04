@@ -1,6 +1,6 @@
 'use strict';
 // Canvas-интерфейс: текст, HUD, сообщения, затемнение, пауза и экран результата.
-// Координаты UI_W/UI_H постоянны; масштабирование выполняет renderer.js.
+// Баннеры используют UI_W/UI_H; отдельный HUD — CSS-пиксели из layout.js.
 // Читает общее состояние и UI_TEXT/CFG/ITEMS. DOM-меню и обработчики остаются в игре.
 // Подключение не обращается к DOM или Canvas и не меняет состояние игры.
 
@@ -11,46 +11,55 @@ function text(str, x, y, size, color, align = 'left', weight = '600') {
   ctx.fillStyle = color; ctx.fillText(str, x, y);
 }
 
-function drawHud() {
-  if(player) text(player.boostLeft>0?UI_TEXT.shift_uskorenie:player.boostCooldown>0?'SHIFT · '+Math.ceil(player.boostCooldown)+UI_TEXT.s:UI_TEXT.shift_gotov,12,UI_H-15,12,'#e5cd88');
-  if(player && player.armor) text('★ '+(player.upgrade>=2?UI_TEXT.is_2_ii:UI_TEXT.is_2)+UI_TEXT.broneboynye,UI_W/2,42,12,'#ffc477','center');
-  ctx.fillStyle = 'rgba(12,16,14,.6)';
-  roundRect(ctx, 8, 8, 570, 32, 8); ctx.fill();
-  const maxHp = player.maxHp;
-  if (maxHp <= 5) {
-    for (let i = 0; i < maxHp; i++) {
-      ctx.fillStyle = i < player.hp ? '#e5484d' : '#3a3f44';
-      roundRect(ctx, 18 + i * 18, 17, 13, 14, 3); ctx.fill();
+// HUD uses its own canvas; none of these labels cover battlefield cells.
+function drawHud(force = false) {
+  if (!player || !hudCanvas || !gameLayout || !gameLayout.hud || !gameHasHud()) return;
+  if (!force && state === 'over' && !victory) return;
+  const h = gameLayout.hud, width = h.width, height = h.height;
+  const ratio = typeof devicePixelRatio === 'number' ? Math.min(2, devicePixelRatio) : 1;
+  const pw = Math.round(width * ratio), ph = Math.round(height * ratio);
+  if (hudCanvas.width !== pw || hudCanvas.height !== ph) { hudCanvas.width = pw; hudCanvas.height = ph; }
+  const c = hudCanvas.getContext('2d'), p = player;
+  c.setTransform(ratio, 0, 0, ratio, 0, 0);
+  c.globalAlpha = 1; c.fillStyle = '#2b1018'; c.fillRect(0, 0, width, height);
+  c.strokeStyle = '#a34b45'; c.lineWidth = 1; c.strokeRect(.5, .5, width - 1, height - 1);
+  const tank = p.upgrade >= 2 ? UI_TEXT.is_2_ii : p.upgrade ? UI_TEXT.is_2 : UI_TEXT.hudBaseTank;
+  const header = h.compact ? 34 : 62;
+  c.fillStyle = '#4b1720'; c.fillRect(1, 1, width - 2, header - 1);
+  c.textAlign = 'left'; c.textBaseline = 'middle';
+  c.font = '700 12px "Segoe UI", sans-serif'; c.fillStyle = '#e9be69';
+  c.fillText(UI_TEXT.hudTitle, 12, h.compact ? 17 : 20);
+  c.font = '700 ' + (h.compact ? 12 : 20) + 'px "Segoe UI", sans-serif'; c.fillStyle = '#fff0ce';
+  if (h.compact) { c.textAlign = 'right'; c.fillText(tank, width - 12, 17); c.textAlign = 'left'; }
+  else c.fillText(tank, 12, 43);
+  const seconds = value => value > 0 ? Math.ceil(value) + UI_TEXT.s : '—';
+  const rows = [
+    [UI_TEXT.khp, p.hp + ' / ' + p.maxHp, '#ed7775', clamp(p.hp / p.maxHp, 0, 1)],
+    [UI_TEXT.ochki.trim(), String(score), '#ffe3a1'],
+    [campaign ? UI_TEXT.hudLevel : UI_TEXT.hudWave, campaign ? wave + ' / ' + campaign.length : String(wave), '#ffe3a1'],
+    [UI_TEXT.hudEnemies, String(toSpawn.length + enemies.length), '#ffe3a1'],
+    [UI_TEXT.metallolom_5, String(scrap), '#dec187'],
+    [ITEMS.rail.name, String(p.rail), ITEMS.rail.color],
+    [ITEMS.shield.name, seconds(p.pw.shield), ITEMS.shield.color, clamp(p.pw.shield / CFG.powerupTime, 0, 1)],
+    [ITEMS.rapid.name, seconds(p.pw.rapid), ITEMS.rapid.color, clamp(p.pw.rapid / CFG.powerupTime, 0, 1)],
+    [UI_TEXT.hudBoost, p.boostLeft > 0 ? seconds(p.boostLeft) : p.boostCooldown > 0 ? seconds(p.boostCooldown) : UI_TEXT.hudReady, '#e9c76f'],
+  ];
+  const columns = h.compact ? (width >= 600 ? 3 : 2) : 1;
+  const columnWidth = (width - 16) / columns, rowHeight = (height - header - 10) / Math.ceil(rows.length / columns);
+  rows.forEach(([label, value, color, progress], i) => {
+    const x = 12 + i % columns * columnWidth, y = header + Math.floor(i / columns) * rowHeight;
+    c.font = (h.compact ? '10' : '11') + 'px "Segoe UI", sans-serif'; c.fillStyle = '#c5a3a2';
+    c.fillText(label, x, y + rowHeight * .25, columnWidth - 16);
+    c.font = '700 ' + (h.compact ? '15' : '21') + 'px "Segoe UI", sans-serif'; c.fillStyle = color;
+    c.fillText(value, x, y + rowHeight * .64, columnWidth - 16);
+    if (progress !== undefined) {
+      c.fillStyle = '#501f29'; c.fillRect(x, y + rowHeight - 5, columnWidth - 18, 2);
+      c.fillStyle = color; c.fillRect(x, y + rowHeight - 5, (columnWidth - 18) * progress, 2);
     }
-  } else {
-    ctx.fillStyle = '#3a3f44'; roundRect(ctx, 18, 16, 86, 16, 4); ctx.fill();
-    ctx.fillStyle = '#e5484d'; roundRect(ctx, 18, 16, 86 * clamp(player.hp / maxHp, 0, 1), 16, 4); ctx.fill();
-    text(`${player.hp}/${maxHp}`, 61, 24, 11, '#fff', 'center', '700');
+  });
+  if (muted && !h.compact) {
+    c.font = '9px "Segoe UI", sans-serif'; c.fillStyle = '#b69697'; c.fillText(UI_TEXT.zvuk_vykl_m, 12, height - 5);
   }
-  text(`${UI_TEXT.ochki}${score}`, 118, 24, 15, '#eef5e8');
-  text(campaign ? `${UI_TEXT.ur}${wave}/${campaign.length}` : `${UI_TEXT.volna}${wave}`, 230, 24, 15, '#eef5e8');
-  text(`${UI_TEXT.vragi}${toSpawn.length + enemies.length}`, 320, 24, 15, '#eef5e8');
-  text(`${UI_TEXT.metallolom_3}${scrap}`, 425, 24, 15, '#d9c27a');
-
-  let x = UI_W - 12;
-  if (player.rail > 0) {
-    const I = ITEMS.rail;
-    ctx.fillStyle = 'rgba(12,16,14,.6)'; roundRect(ctx, x - 150, 8, 150, 32, 8); ctx.fill();
-    text(`${I.glyph} ${I.name} ×${player.rail}`, x - 140, 20, 13, I.color);
-    text(UI_TEXT.pkm_e, x - 140, 33, 10, '#b9a6d6', 'left', '400');
-    x -= 158;
-  }
-  for (const k of ['shield', 'rapid']) {
-    const v = player.pw[k];
-    if (v <= 0) continue;
-    const I = ITEMS[k];
-    ctx.fillStyle = 'rgba(12,16,14,.6)'; roundRect(ctx, x - 120, 8, 120, 32, 8); ctx.fill();
-    text(I.glyph + ' ' + I.name, x - 110, 21, 13, I.color);
-    ctx.fillStyle = '#3a3f44'; ctx.fillRect(x - 110, 31, 100, 3);
-    ctx.fillStyle = I.color; ctx.fillRect(x - 110, 31, Math.min(100, v / CFG.powerupTime * 100), 3);
-    x -= 128;
-  }
-  if (muted) text(UI_TEXT.zvuk_vykl_m, UI_W - 12, UI_H - 14, 12, '#aab', 'right', '400');
 }
 
 function overlay(alpha) { ctx.fillStyle = `rgba(38,7,14,${alpha})`; ctx.fillRect(0, 0, UI_W, UI_H); }
@@ -84,8 +93,7 @@ function drawMenu() {
 
 function drawUI() {
   if(state==='menu')return;
-  if (state === 'over' && !victory) { drawDefeatScreen(); return; }
-  drawHud();
+  if (state === 'over' && !victory) return;
   if (banner.t > 0) {
     const a = clamp(banner.t, 0, 1);
     ctx.globalAlpha = a;
@@ -109,6 +117,9 @@ function drawUI() {
   }
 }
 
+// Compose opaque artwork separately, then fade the whole layer once.
+// Applying alpha to each primitive separately would darken the frozen field twice.
+let defeatArtworkCanvas = null;
 // Full viewport, separate from the scaled battlefield: never crop Marx or the tank.
 function drawDefeatScreen() {
   if (!defeatCanvas) return;
@@ -118,8 +129,29 @@ function drawDefeatScreen() {
   if (defeatCanvas.width !== pixelWidth || defeatCanvas.height !== pixelHeight) {
     defeatCanvas.width = pixelWidth; defeatCanvas.height = pixelHeight;
   }
-  const c = defeatCanvas.getContext('2d');
+  const output = defeatCanvas.getContext('2d');
+  output.setTransform(ratio, 0, 0, ratio, 0, 0);
+  output.globalAlpha = 1;
+  const c = output;
+  c.fillStyle = '#14181c'; c.fillRect(0, 0, width, height);
+  if (defeatFrame) {
+    const scale = Math.min(width / defeatFrame.width, height / defeatFrame.height);
+    const w = defeatFrame.width * scale, h = defeatFrame.height * scale;
+    c.drawImage(defeatFrame, (width - w) / 2, (height - h) / 2, w, h);
+  }
+  if (!defeatArtworkCanvas) defeatArtworkCanvas = document.createElement('canvas');
+  if (defeatArtworkCanvas.width !== pixelWidth || defeatArtworkCanvas.height !== pixelHeight) {
+    defeatArtworkCanvas.width = pixelWidth; defeatArtworkCanvas.height = pixelHeight;
+  }
+  paintDefeatArtwork(defeatArtworkCanvas.getContext('2d'), width, height, ratio);
+  output.globalAlpha = defeatOpacity();
+  output.drawImage(defeatArtworkCanvas, 0, 0, width, height);
+  output.globalAlpha = 1;
+}
+
+function paintDefeatArtwork(c, width, height, ratio) {
   c.setTransform(ratio, 0, 0, ratio, 0, 0);
+  c.globalAlpha = 1;
   c.fillStyle = '#18090d'; c.fillRect(0, 0, width, height);
   const entry = defeatImages[defeatTier === null ? 0 : defeatTier];
   if (entry && entry.loaded) {

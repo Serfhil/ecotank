@@ -6,7 +6,10 @@
 <title data-ui-text="appTitle"></title>
 <style>
   html, body { margin: 0; height: 100%; background: #14181c; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; }
-  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #wrap { position:fixed; inset:0; }
+  #c { position:absolute; }
+  #gameHud { position:absolute; overflow:hidden; border-radius:6px; box-shadow:0 6px 30px #0006; }
+  #hudCanvas { width:100%; height:100%; box-shadow:none; border-radius:0; cursor:default; }
   canvas { display: block; cursor: crosshair; box-shadow: 0 0 0 2px #2a3238, 0 12px 40px #000a; border-radius: 4px; }
   [hidden] { display: none !important; }
   button { font: 600 15px "Segoe UI", system-ui, sans-serif; color: #eef5e8; background: #2a3a2c; border: 1px solid #4f7a44; border-radius: 8px; padding: 10px 18px; cursor: pointer; }
@@ -79,7 +82,7 @@
   .me-thumb { display: block; flex: none; border: 1px solid #0b0f11; }
   .me-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; color: #9fb39a; font-size: 12px; }
   .me-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
-  #defeatScreen { position:fixed; inset:0; z-index:50; background:#18090d; }
+  #defeatScreen { position:fixed; inset:0; z-index:50; background:transparent; }
   #defeatScreen[hidden], #defeatRestart[hidden] { display:none; }
   #defeatCanvas { width:100%; height:100%; display:block; border-radius:0; box-shadow:none; cursor:default; }
   #defeatRestart { position:absolute; left:0; right:0; margin:0 auto; bottom:max(28px,7vh); box-sizing:border-box; width:max-content; max-width:calc(100vw - 32px); padding:16px 38px; min-width:min(270px,calc(100vw - 32px)); border:1px solid #edc668; border-radius:6px; color:#ffe7a3; background:linear-gradient(#a63138,#681320); font-size:clamp(17px,2.4vw,23px); font-weight:700; box-shadow:0 6px 28px #0008; }
@@ -101,6 +104,7 @@
 <script src="js/render-world.js"></script>
 <script src="js/render-tanks.js"></script>
 <script src="js/effects.js"></script>
+<script src="js/layout.js"></script>
 <script src="js/defeat.js"></script>
 <script src="js/render-ui.js"></script>
 <script src="js/renderer.js"></script>
@@ -126,7 +130,7 @@
 <button id="btnEditor" class="ghost" style="font-size:12px;padding:4px 10px" data-ui-text="btnEditor"></button>
 <button id="btnMapEditor" class="ghost" style="font-size:12px;padding:4px 10px" data-ui-text="btnMapEditor"></button></div>
 </div></section>
-<div id="wrap"><canvas id="c" width="960" height="640"></canvas></div>
+<div id="wrap"><canvas id="c" width="960" height="640"></canvas><aside id="gameHud" hidden aria-label="" data-ui-aria-label="hudTitle"><canvas id="hudCanvas"></canvas></aside></div>
 <section id="defeatScreen" hidden tabindex="-1" role="region" aria-label="" data-ui-aria-label="defeatScreen">
   <canvas id="defeatCanvas" aria-hidden="true"></canvas>
   <button id="defeatRestart" hidden data-ui-text="newGame"></button>
@@ -253,7 +257,7 @@ addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (state === 'play') state = 'pause'; });
 cv.addEventListener('mousemove', e => {
   const b = cv.getBoundingClientRect();
-  mouse.x = (e.clientX - b.left) * W / b.width; mouse.y = (e.clientY - b.top) * H / b.height;
+  Object.assign(mouse, pointerToWorld(e.clientX, e.clientY, b));
 });
 cv.addEventListener('mousedown', e => {
   if (e.button === 2 && (state === 'play' || state === 'between')) { fireRail(player); return; }
@@ -268,8 +272,7 @@ addEventListener('mouseup', () => { mouse.down = false; });
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
 function fit() {
-  const s = Math.min(innerWidth / W, innerHeight / H) * .97;
-  cv.style.width = W * s + 'px'; cv.style.height = H * s + 'px';
+  applyGameLayout();
 }
 addEventListener('resize', fit); fit();
 
@@ -278,7 +281,7 @@ addEventListener('resize', fit); fit();
 function update(dt) {
   time += dt;
   if (state === 'menu' || state === 'pause') return;
-  if (state === 'over' && !victory) { overT += dt; return; }
+  if (state === 'over' && !victory) { updateDefeat(dt); return; }
   updateBaseCollapse(dt);
   if (hitstop > 0) { hitstop -= dt; return; }
   updateParts(dt);
@@ -439,6 +442,7 @@ document.getElementById('mapMode').addEventListener('change', e=>{
   if(state==='menu')toMenu();
 });
 function syncUI() {
+  fit();
   syncDefeatUI();
   const mapPick=document.getElementById('mapPick'),campaignPick=document.getElementById('campaignPick');
   const fixed=CFG.mapMode==='map',camp=CFG.mapMode==='campaign';

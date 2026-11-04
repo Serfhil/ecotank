@@ -33,7 +33,9 @@ const MENU_TRACK='assets/red-steel-menu.mp3',LEVEL_TRACKS=['assets/mehvod.mp3','
 const MAP_SIZES = [30, 45, 60];
 
 const UPGRADE_DURATION=1.5;
+const DEFEAT_FADE_DURATION = 1;
 const DEFEAT_RESTART_DELAY = 2;
+const HUD_LAYOUT = Object.freeze({ breakpoint: 900, width: 240, gap: 12, padding: 12, toolbarHeight: 52, compactHeight: 220 });
 const DEFEAT_IMAGES = Object.freeze(['assets/defeat-t34.png', 'assets/defeat-is2.png', 'assets/defeat-is2-ii.png']);
 
 const UI_W = 960, UI_H = 640;
