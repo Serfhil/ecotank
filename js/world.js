@@ -3,7 +3,7 @@
 // Зависит от config.js/ui-text.js и maps.js (данные). Загрузка не создаёт DOM/Canvas
 // и не читает сохранения. При вызове использует rnd/ri/clamp/DIRS, cv/fit и saveDev
 // из игры; genMap использует masonry из destruction.js. flow хранится здесь,
-// а buildFlow (алгоритм ИИ) пока остаётся в index.html.
+// а buildFlow (алгоритм ИИ) находится в enemy-ai.js.
 
 let COLS=30,ROWS=20,W=COLS*T,H=ROWS*T;
 
