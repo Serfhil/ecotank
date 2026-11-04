@@ -1,6 +1,7 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
 require('./check-modules.cjs')(__dirname);
 require('./check-audio.cjs')(__dirname);
+require('./check-editors.cjs')(__dirname);
 const html=fs.readFileSync(__dirname+'/index.html','utf8');
 const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].map(([,attrs,inline])=>({src:attrs.match(/\bsrc="([^"]+)"/)?.[1],inline}));
 const code=scripts.map(s=>s.src?fs.readFileSync(__dirname+'/'+s.src,'utf8'):s.inline).join('\n');

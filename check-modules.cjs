@@ -3,13 +3,15 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 module.exports=function checkModules(root){
   const html=fs.readFileSync(root+'/index.html','utf8');
   const sources=[...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map(m=>m[1]);
-  assert.deepEqual(sources,['js/ui-text.js','js/config.js','js/audio.js','maps.js','js/world.js','js/destruction.js']);
+  assert.deepEqual(sources,['js/ui-text.js','js/config.js','js/audio.js','maps.js','js/world.js','js/destruction.js','js/editor-common.js','js/preset-editor.js','js/map-editor.js']);
   assert(!/<script\b[^>]*type="module"/.test(html),'Direct file opening must not require ES-module loading');
   // Catalog and parameters must be usable without the browser, audio or stored settings.
   const context=vm.createContext({});
   for(const src of sources.slice(0,2))vm.runInContext(fs.readFileSync(root+'/'+src,'utf8'),context,{filename:src});
   // World definitions also load without creating a canvas, reading storage or starting a game.
   for(const src of ['js/world.js','js/destruction.js'])vm.runInContext(fs.readFileSync(root+'/'+src,'utf8'),context,{filename:src});
+  // Editor modules define state and functions without reading storage or touching the DOM.
+  for(const src of ['js/editor-common.js','js/preset-editor.js','js/map-editor.js'])vm.runInContext(fs.readFileSync(root+'/'+src,'utf8'),context,{filename:src});
   const catalog=vm.runInContext('UI_TEXT',context);
   for(const [,key]of html.matchAll(/data-ui-(?:text|leading|aria-label|alt|placeholder|title)="([^"]+)"/g)){
     assert.equal(typeof catalog[key],'string','Missing static interface text: '+key);
