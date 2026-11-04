@@ -1,0 +1,90 @@
+'use strict';
+// Урон танкам и базе, гибель, цепные взрывы и обновление обломков.
+// Окружение повреждается через destruction.js, эффекты создаются существующими
+// burst/explosion/floatText, звук — sfx. Состояние счёта, обломков и объектов остаётся
+// в игровом цикле. Подключение файла само по себе не наносит урон и не создаёт эффекты.
+
+function blastDamage(x,y,diameter=30,options={}) {
+  const radius=diameter*1.5,damage=options.damage||1;
+  damageTerrainFromBlast(x,y,radius,damage);
+  // Marked-dead tanks are ignored, so chain explosions cannot award duplicate kills.
+  for(const e of [...enemies]) if(!e.dead && e.spawnT<=0 && Math.hypot(e.x-x,e.y-y)<=radius)hitEnemy(e,{x,y,dmg:damage,blast:true});
+  if(!options.safePlayer&&player&&!player.dead&&Math.hypot(player.x-x,player.y-y)<=radius)hitPlayer({x,y,dmg:damage,blast:true});
+}
+
+function hitEnemy(e, b) {
+  if(e.dead || e.spawnT > 0) return;
+  e.hp -= b.dmg; e.flash = .13;shake=Math.max(shake,2);
+  burst(b.x,b.y,18,['#fff4bd','#ffb650','#d7e6ed'],260,.35,4,'spark');
+  if (e.hp > 0) { burst(b.x, b.y, 10, ['#fff', '#ffd76a'], 180, .3, 4); sfx('hit'); return; }
+  e.dead = true;
+  const K = KINDS[e.kind];
+  score += K.score;
+  floatText(e.x, e.y - 10, '+' + K.score, '#ffe08a');
+
+  wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret, tread:e.tread, recoil:e.recoil, flash:0, age: 0, smokeT: 0, detonateAt:rnd(.5,1.5)*(b.blast?.5:1), exploded:false });
+  if (Math.random() < CFG.dropChance + (e.kind === 'heavy' ? CFG.heavyDropBonus : 0)) {
+    const types = availableItemTypes();
+    items.push({ x: e.x, y: e.y, type: types[ri(0, types.length - 1)], life: 12 });
+  }
+}
+
+function hitPlayer(b) {
+  const p = player;
+  if (!p || p.dead) return;
+  if (p.pw.shield > 0 || CFG.godMode) { burst(b.x, b.y, 10, ['#9ff5aa', '#e0ffe4'], 160, .3, 3); sfx('deflect'); return; }
+  if (p.inv > 0 || p.upgradeT>0) return;
+  p.hp -= b.dmg; p.inv = CFG.invulnTime; p.flash = .15;
+  shake = Math.max(shake, 10);
+  sfx('hurt');
+  if (p.hp <= 0) { p.hp = 0; p.dead = true; p.armor=false; const delay=rnd(.5,1.5)*(b.blast?.5:1); wrecks.push({x:p.x,y:p.y,kind:'player',angle:p.angle,turret:p.turret,tread:p.tread,recoil:p.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:delay,exploded:false,blastTotal:3+2*(p.upgrade||0),upgrade:p.upgrade||0}); deadT = delay+2+(p.upgrade||0); }
+}
+
+function hitBase(dmg) {
+  if(!base || base.dead)return;
+  base.hp=Math.max(0,base.hp-dmg);
+  burst(base.x,base.y,12,['#ffd66b','#e45638'],100,.3,3);
+  if(!base.hp) {base.dead=true;deadT=Math.max(deadT,2.5);base.collapseAge=0;base.collapseCount=0;updateBaseCollapse(0);}
+}
+
+function updateBaseCollapse(dt) {
+  if(!base||!base.dead||base.collapseCount===undefined||base.collapseCount>=3)return;
+  base.collapseAge+=dt;
+  const offsets=[[-36,-22],[34,-9],[-3,10]];
+  while(base.collapseCount<3&&base.collapseAge>=base.collapseCount*.5) {
+    const [dx,dy]=offsets[base.collapseCount++],x=base.x+dx,y=base.y+dy;
+    explosion(x,y,true,'#d74432',2);blastDamage(x,y,60);
+  }
+}
+
+function updateWrecks(dt) {
+  for (const w of wrecks) {
+    w.age += dt; w.smokeT -= dt;
+    if(w.exploded===false && w.age>=w.detonateAt) {
+      if(w.kind==='player'||w.kind==='heavy') {
+        w.blastCount=w.blastCount||0;
+        const offsets=[[-9,-5],[9,-3],[0,8],[-11,5],[8,-8],[-4,-11],[11,7]],total=w.blastTotal||3;
+        while(w.blastCount<total&&w.age>=w.detonateAt+w.blastCount*.5) {
+          const [dx,dy]=offsets[w.blastCount++];
+          explosion(w.x+dx,w.y+dy,false,KINDS[w.kind].color);blastDamage(w.x+dx,w.y+dy,30);
+        }
+        if(w.blastCount===total){w.exploded=true;w.blastAge=w.age;}
+      } else {
+        w.exploded=true;w.blastAge=w.age;
+        explosion(w.x,w.y,w.kind==='heavy',KINDS[w.kind].color);blastDamage(w.x,w.y,30*KINDS[w.kind].scale);
+      }
+    }
+    if (w.smokeT <= 0 && w.age < 2) {
+      w.smokeT = .12 + w.age * .05;
+      parts.push({ x: w.x + rnd(-6, 6), y: w.y + rnd(-6, 6), vx: rnd(-8, 8), vy: rnd(-30, -15), life: 1.4, max: 1.4, size: rnd(5, 9), color: '#3d3d3d', kind: 'smoke' });
+    }
+    if (!w.taken && w.kind !== 'player' && w.exploded!==false && w.age >= (w.blastAge||0)+2 && player && !player.dead && Math.hypot(player.x - w.x, player.y - w.y) < 24) {
+      const n = KINDS[w.kind].scrap;
+      scrap += n; w.taken = true;
+      floatText(w.x, w.y - 12, `+${n}${UI_TEXT.metallolom}`, '#d9c27a');
+      burst(w.x, w.y, 10, ['#8a8a8a', '#b5a27a', '#555'], 140, .5, 4, 'debris');
+      sfx('scrap');
+    }
+  }
+  wrecks = wrecks.filter(w => !w.taken || w.exploded===false || w.age < (w.blastAge||0)+2);
+}

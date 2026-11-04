@@ -87,6 +87,10 @@
 <script src="maps.js"></script>
 <script src="js/world.js"></script>
 <script src="js/destruction.js"></script>
+<script src="js/tanks.js"></script>
+<script src="js/weapons.js"></script>
+<script src="js/damage.js"></script>
+<script src="js/pickups.js"></script>
 <script src="js/editor-common.js"></script>
 <script src="js/preset-editor.js"></script>
 <script src="js/map-editor.js"></script>
@@ -185,22 +189,10 @@ let state = 'menu', player = null, enemies = [], bullets = [], parts = [], items
 let base = null;
 let artilleryShells=[],itemSpawnTimer=10,barrageMarkers=[],barrageTrajectories=[],barrageSoundShots=0,barrageFrame=0;
 
-function resetArtillery(){artilleryShells=[];barrageMarkers=[];barrageTrajectories=[];barrageSoundShots=0;barrageFrame=0;}
-function hasPendingBarrage(){return barrageMarkers.length||barrageTrajectories.length||barrageSoundShots;}
 let score = 0, scrap = 0, hitstop = 0, wave = 0, toSpawn = [], spawnTimer = 0, flowTimer = 0, betweenT = 0, deadT = 0, overT = 0;
 let shake = 0, time = 0, banner = { text: '', sub: '', t: 0 };
 let best = 0;
 try { best = +localStorage.getItem('ecotank-best') || 0; } catch (e) {}
-
-function makeTank(x, y, kind) {
-  const K = KINDS[kind];
-  return {
-    x, y, kind, r: 13 * K.scale*(kind==='player'?.9:1), angle: -Math.PI / 2, turret: -Math.PI / 2,
-    hp: K.hp, maxHp: K.hp, cd: rnd(.6, 1.4), vx: 0, vy: 0, tread: 0, trackAcc: 0, recoil: 0, flash: 0,
-    tx: x, ty: y, stuck: 0, decideT: 0, brick: null, spawnT: 0, inv: 0, rail: 0, armor: false, boostLeft:0, boostCooldown:0, shiftHeld:false,
-    upgrade:0, pw: { rapid: 0, shield: 0 },
-  };
-}
 
 function waveList(w) {
   const n = CFG.waveBase + (w - 1) * CFG.wavePerLevel, list = [], pH = Math.min(.07 * w, .35);
@@ -301,58 +293,7 @@ function fit() {
 }
 addEventListener('resize', fit); fit();
 
-// ---------- физика танков ----------
-
-function collideTiles(t) {
-  const c0=Math.floor((t.x-t.r)/T),c1=Math.floor((t.x+t.r)/T),r0=Math.floor((t.y-t.r)/T),r1=Math.floor((t.y+t.r)/T);
-  for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++) {
-    const type=tileAt(c,r);if(!blocksTank(type))continue;
-    const rects=tileRects(c,r,type);
-    for(const b of rects){const px=clamp(t.x,b.x,b.x+b.w),py=clamp(t.y,b.y,b.y+b.h),dx=t.x-px,dy=t.y-py,d=Math.hypot(dx,dy);
-      if(d>=t.r)continue;
-      if(d===0){const sides=[{v:t.x-b.x,dx:-1,dy:0},{v:b.x+b.w-t.x,dx:1,dy:0},{v:t.y-b.y,dx:0,dy:-1},{v:b.y+b.h-t.y,dx:0,dy:1}].sort((a,b)=>a.v-b.v);t.x+=sides[0].dx*(sides[0].v+t.r);t.y+=sides[0].dy*(sides[0].v+t.r);}
-      else {t.x+=dx/d*(t.r-d);t.y+=dy/d*(t.r-d);}
-    }
-  }
-}
-
-function moveTank(t, dx, dy, dt) {
-  const terrain=sand[Math.floor(t.y/T)*COLS+Math.floor(t.x/T)]?.5:1;dx*=terrain;dy*=terrain;
-  const ox = t.x, oy = t.y;
-  t.x += dx; collideTiles(t);
-  t.y += dy; collideTiles(t);
-  if(base && !base.dead) {
-    const bx=t.x-base.x,by=t.y-base.y,d=Math.hypot(bx,by),min=t.r+base.r;
-    if(d<min) {t.x=base.x+(d?bx/d:1)*min;t.y=base.y+(d?by/d:0)*min;}
-  }
-  const m = Math.hypot(t.x - ox, t.y - oy);
-  t.vx = (t.x - ox) / dt; t.vy = (t.y - oy) / dt;
-  t.tread = (t.tread + m) % 6;
-  t.trackAcc += m;
-  if (t.trackAcc > 6) { t.trackAcc = 0; trackMark(t); }
-  return m;
-}
-
-function trackMark(t) {
-  const s = KINDS[t.kind].scale;
-  gctx.save(); gctx.translate(t.x, t.y); gctx.rotate(t.angle);
-  gctx.fillStyle = 'rgba(35,28,15,.12)';
-  gctx.fillRect(-2, -13 * s, 4, 5 * s); gctx.fillRect(-2, 8 * s, 4, 5 * s);
-  gctx.restore();
-}
-
-function separate() {
-  const all = enemies.filter(e => !e.dead);
-  if (player && !player.dead) all.push(player);
-  for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
-    const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
-    if (d >= min || d === 0) continue;
-    const push = (min - d) / 2, nx = dx / d, ny = dy / d;
-    const fixedA=a===player&&a.upgradeT>0,fixedB=b===player&&b.upgradeT>0;
-    if(!fixedA){a.x-=nx*push*(fixedB?2:1);a.y-=ny*push*(fixedB?2:1);collideTiles(a);}
-    if(!fixedB){b.x+=nx*push*(fixedA?2:1);b.y+=ny*push*(fixedA?2:1);collideTiles(b);}
-  }
-}
+// Видимость для ИИ (геометрия и движение танков — tanks.js).
 
 function los(x0, y0, x1, y1) {
   const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 8);
@@ -361,60 +302,6 @@ function los(x0, y0, x1, y1) {
     if (bulletBlocked(x,y)) return false;
   }
   return true;
-}
-
-function playerMaxHp(tier){return tier>=2?7:tier===1?5:KINDS.player.hp;}
-function tankScale(t){return KINDS[t.kind].scale*(t.kind==='player'?(t.upgrade>=2?1.15:t.upgrade>0?1:.9):1);}
-function setPlayerUpgrade(p,tier,heal=true){p.upgrade=clamp(tier,0,2);p.armor=p.upgrade>0;p.maxHp=playerMaxHp(p.upgrade);p.r=13*tankScale(p);if(heal)p.hp=p.maxHp;else p.hp=Math.min(p.hp,p.maxHp);if(p.upgrade>=2)items=items.filter(it=>it.type!=='upgrade');}
-function availableItemTypes(){return Object.keys(ITEMS).filter(k=>k!=='upgrade'||!player||player.upgrade<2);}
-function beginPlayerUpgrade(p){
-  if(p.upgrade>=2||p.upgradeT>0)return;
-  p.upgradeFrom=p.upgrade||0;setPlayerUpgrade(p,p.upgradeFrom+1);p.upgradeT=UPGRADE_DURATION;p.upgradeFx=0;p.inv=Math.max(p.inv,UPGRADE_DURATION);p.vx=p.vy=0;
-}
-function playerGunLength(t){return (t.upgrade>0?35:30)*(t.upgrade>=2?.8:1);}
-function fire(t) {
-  const K = KINDS[t.kind], isP = t === player;
-  const ap = (isP && t.armor)||t.kind==='heavy', speed=t.kind==='heavy'?3000:K.bulletSpeed*(ap?1.5:1);
-  const shotScale=tankScale(t),barrels=isP&&t.upgrade>=2?[-4*shotScale,4*shotScale]:[0];
-  const muzzle=(isP?playerGunLength(t):20)*shotScale;
-  const mx = t.x + (isP?Math.cos(t.angle)*5*shotScale:0) + Math.cos(t.turret)*muzzle, my = t.y + (isP?Math.sin(t.angle)*5*shotScale:0) + Math.sin(t.turret)*muzzle;
-  for (const offset of barrels) {
-    const a = t.turret;
-    bullets.push({ x: mx-Math.sin(a)*offset, y: my+Math.cos(a)*offset, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-      owner: isP ? 'p' : 'e', armor: ap, trail: [], dmg: t.kind==='heavy'?2:K.dmg*(ap?2:1), r: t.kind === 'heavy' ? 4 : 3, life: 2.5 });
-  }
-  t.recoilMax = t.recoil = 5;
-  for (let i = 0; i < 6; i++) {
-    const a = t.turret + rnd(-.5, .5), s = rnd(40, 140);
-    parts.push({ x: mx, y: my, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: .15, max: .15, size: rnd(2, 4), color: '#ffd76a' });
-  }
-  sfx(isP?'shoot':t.kind==='heavy'?'heavyShoot':'eshoot');
-}
-
-// рельсотрон: мгновенный луч до стали или края карты, пробивает кирпич и всех врагов на пути
-function fireRail(p) {
-  if (!p || p.dead || p.upgradeT>0 || p.rail <= 0) return;
-  p.rail--;
-  const dx = Math.cos(p.turret), dy = Math.sin(p.turret);
-  const x0 = p.x + Math.cos(p.angle)*5 + dx*20, y0 = p.y + Math.sin(p.angle)*5 + dy*20, hit = new Set();
-  let len = 0; const foliageRay = {};
-  for (; len < 1400; len += 4) {
-    const x = x0 + dx * len, y = y0 + dy * len, c = Math.floor(x / T), r = Math.floor(y / T), t = tileAt(c, r);
-    if (t === STEEL) break;
-    if (t === TREE) hitFoliage(c,r,x,y,foliageRay);
-    if (t === BRICK && bulletBlocked(x,y)) hitBrick(c, r, 99);
-    if (t === FENCE && bulletBlocked(x,y)) hitFence(c, r, x, y);
-    for (const e of enemies) {
-      if (e.dead || e.spawnT > 0 || hit.has(e)) continue;
-      if ((e.x - x) ** 2 + (e.y - y) ** 2 < (e.r + 4) ** 2) { hit.add(e); hitEnemy(e, { x, y, dmg: 99 }); }
-    }
-    for (const b of bullets) if (b.owner === 'e' && (b.x - x) ** 2 + (b.y - y) ** 2 < 64) b.dead = true;
-    if (len % 24 === 0) parts.push({ x, y, vx: rnd(-40, 40) - dy * rnd(-60, 60), vy: rnd(-40, 40) + dx * rnd(-60, 60), life: .5, max: .5, size: rnd(2, 4), color: '#e2c4ff', kind: 'fire' });
-  }
-  rails.push({ x0, y0, x1: x0 + dx * len, y1: y0 + dy * len, life: .45, max: .45 });
-  p.recoilMax = p.recoil = 9; p.cd = p.reloadDuration = .4;
-  shake = Math.max(shake, 9);
-  sfx('rail');
 }
 
 // ---------- эффекты ----------
@@ -427,13 +314,7 @@ function burst(x, y, n, colors, speed, life, size, kind) {
     parts.push(p);
   }
 }
-function blastDamage(x,y,diameter=30,options={}) {
-  const radius=diameter*1.5,damage=options.damage||1;
-  damageTerrainFromBlast(x,y,radius,damage);
-  // Marked-dead tanks are ignored, so chain explosions cannot award duplicate kills.
-  for(const e of [...enemies]) if(!e.dead && e.spawnT<=0 && Math.hypot(e.x-x,e.y-y)<=radius)hitEnemy(e,{x,y,dmg:damage,blast:true});
-  if(!options.safePlayer&&player&&!player.dead&&Math.hypot(player.x-x,player.y-y)<=radius)hitPlayer({x,y,dmg:damage,blast:true});
-}
+
 function explosion(x, y, big, color, sizeMultiplier=1) {
   const k = (big ? 1.4 : 1)*sizeMultiplier;
   parts.push({ x, y, vx: 0, vy: 0, life: .2, max: .2, size: 70 * k, kind: 'flash' });
@@ -458,62 +339,6 @@ function floatText(x, y, text, color) {
 }
 
 // ---------- обновление ----------
-
-function hitEnemy(e, b) {
-  if(e.dead || e.spawnT > 0) return;
-  e.hp -= b.dmg; e.flash = .13;shake=Math.max(shake,2);
-  burst(b.x,b.y,18,['#fff4bd','#ffb650','#d7e6ed'],260,.35,4,'spark');
-  if (e.hp > 0) { burst(b.x, b.y, 10, ['#fff', '#ffd76a'], 180, .3, 4); sfx('hit'); return; }
-  e.dead = true;
-  const K = KINDS[e.kind];
-  score += K.score;
-  floatText(e.x, e.y - 10, '+' + K.score, '#ffe08a');
-
-  wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret, tread:e.tread, recoil:e.recoil, flash:0, age: 0, smokeT: 0, detonateAt:rnd(.5,1.5)*(b.blast?.5:1), exploded:false });
-  if (Math.random() < CFG.dropChance + (e.kind === 'heavy' ? CFG.heavyDropBonus : 0)) {
-    const types = availableItemTypes();
-    items.push({ x: e.x, y: e.y, type: types[ri(0, types.length - 1)], life: 12 });
-  }
-}
-
-function hitPlayer(b) {
-  const p = player;
-  if (!p || p.dead) return;
-  if (p.pw.shield > 0 || CFG.godMode) { burst(b.x, b.y, 10, ['#9ff5aa', '#e0ffe4'], 160, .3, 3); sfx('deflect'); return; }
-  if (p.inv > 0 || p.upgradeT>0) return;
-  p.hp -= b.dmg; p.inv = CFG.invulnTime; p.flash = .15;
-  shake = Math.max(shake, 10);
-  sfx('hurt');
-  if (p.hp <= 0) { p.hp = 0; p.dead = true; p.armor=false; const delay=rnd(.5,1.5)*(b.blast?.5:1); wrecks.push({x:p.x,y:p.y,kind:'player',angle:p.angle,turret:p.turret,tread:p.tread,recoil:p.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:delay,exploded:false,blastTotal:3+2*(p.upgrade||0),upgrade:p.upgrade||0}); deadT = delay+2+(p.upgrade||0); }
-}
-
-function updatePlayer(dt) {
-  const p = player;
-  if (p.dead) return;
-  if(p.upgradeT>0){
-    p.upgradeT=Math.max(0,p.upgradeT-dt);p.inv=Math.max(p.upgradeT,p.inv-dt);p.vx=p.vy=0;p.upgradeFx-=dt;
-    if(p.upgradeFx<=0){p.upgradeFx=.12;burst(p.x,p.y,5,['#fff4bf','#ffd65d','#b2e8ff'],60,.5,2,'spark');}
-    return;
-  }
-  p.boostCooldown=Math.max(0,p.boostCooldown-dt);
-  if(p.boostLeft>0){p.boostLeft=Math.max(0,p.boostLeft-dt);if(!p.boostLeft)p.boostCooldown=10;}
-  const shift=!!(keys.ShiftLeft||keys.ShiftRight);
-  if((p.boostQueued||(shift&&!p.shiftHeld))&&p.boostLeft<=0&&p.boostCooldown<=0){p.boostLeft=2;sfx('pick');}
-  p.boostQueued=false;
-  p.shiftHeld=shift;
-  const steer = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
-  const throttle = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
-  p.angle += steer * 2.2 * dt;
-  p.vx = p.vy = 0;
-  if (throttle) moveTank(p, Math.cos(p.angle)*throttle*KINDS.player.speed*(p.boostLeft>0?2:1)*dt, Math.sin(p.angle)*throttle*KINDS.player.speed*(p.boostLeft>0?2:1)*dt, dt);
-  p.turret = turnTo(p.turret, Math.atan2(mouse.y - p.y, mouse.x - p.x), dt * KINDS.player.turretSpeed);
-  p.cd -= dt; p.inv -= dt; p.recoil=(p.recoilMax||5)*(1-reloadProgress(p));
-  for (const k in p.pw) p.pw[k] = Math.max(0, p.pw[k] - dt);
-  if ((mouse.down || keys.Space) && p.cd <= 0) {
-    fire(p);
-    p.cd = p.reloadDuration = KINDS.player.fireRate * (p.pw.rapid > 0 ? .45 : 1);
-  }
-}
 
 function decide(e, random) {
   const K = KINDS[e.kind], c = Math.floor(e.x / T), r = Math.floor(e.y / T);
@@ -652,21 +477,6 @@ function updateEnemy(e, dt) {
   }
 }
 
-function hitBase(dmg) {
-  if(!base || base.dead)return;
-  base.hp=Math.max(0,base.hp-dmg);
-  burst(base.x,base.y,12,['#ffd66b','#e45638'],100,.3,3);
-  if(!base.hp) {base.dead=true;deadT=Math.max(deadT,2.5);base.collapseAge=0;base.collapseCount=0;updateBaseCollapse(0);}
-}
-function updateBaseCollapse(dt) {
-  if(!base||!base.dead||base.collapseCount===undefined||base.collapseCount>=3)return;
-  base.collapseAge+=dt;
-  const offsets=[[-36,-22],[34,-9],[-3,10]];
-  while(base.collapseCount<3&&base.collapseAge>=base.collapseCount*.5) {
-    const [dx,dy]=offsets[base.collapseCount++],x=base.x+dx,y=base.y+dy;
-    explosion(x,y,true,'#d74432',2);blastDamage(x,y,60);
-  }
-}
 function drawBase() {
   if(!base)return;
   ctx.save();ctx.translate(base.x,base.y);
@@ -680,99 +490,6 @@ function drawBase() {
   } else {ctx.strokeStyle='#111';ctx.beginPath();ctx.moveTo(-12,-10);ctx.lineTo(10,12);ctx.moveTo(11,-11);ctx.lineTo(-9,10);ctx.stroke();}
   for(let i=0;i<5;i++){ctx.fillStyle=i<base.hp?'#ffcf60':'#382e28';ctx.fillRect(-15+i*6,-23,5,4);}
   ctx.restore();
-}
-function downgradeShell(b) {
-  if(!b.armor)return;
-  b.armor=false;b.trail=[];b.brickPierced=true;b.dmg=Math.max(1,b.dmg/2);b.vx/=1.5;b.vy/=1.5;b.r=3;
-}
-function collideShells() {
-  for(let i=0;i<bullets.length;i++)for(let j=i+1;j<bullets.length;j++) {
-    const a=bullets[i],b=bullets[j];if(a.dead||b.dead||(a.owner===b.owner&&!!a.armor===!!b.armor))continue;
-    if(Math.hypot(a.x-b.x,a.y-b.y)>a.r+b.r+2)continue;
-    if(!!a.armor!==!!b.armor){const ap=a.armor?a:b,normal=a.armor?b:a;normal.dead=true;downgradeShell(ap);}
-    else a.dead=b.dead=true;
-    burst((a.x+b.x)/2,(a.y+b.y)/2,16,['#fff','#ffd76a','#ff9e38'],250,.35,4,'spark');
-  }
-}
-function updateBullets(dt) {
-  const steps=Math.max(3,Math.ceil(Math.max(0,...bullets.map(b=>Math.hypot(b.vx,b.vy)))*dt/3));
-  for(const b of bullets){b.life-=dt;if(b.life<=0)b.dead=true;if(b.armor){b.trail=b.trail||[];b.trail.push({x:b.x,y:b.y});if(b.trail.length>9)b.trail.shift();}}
-  for(let step=0;step<steps;step++) {
-    collideShells();
-    for(const b of bullets) {
-      if(b.dead)continue;
-      const nx=b.x+b.vx*dt/steps,ny=b.y+b.vy*dt/steps,c=Math.floor(nx/T),r=Math.floor(ny/T),t=tileAt(c,r);
-      if(t===TREE)hitFoliage(c,r,nx,ny,b);
-      if(bulletBlocked(nx,ny,b.r)) {
-        // бронебойный пролетает забор насквозь, не тратя пробитие кирпича
-        if(t===FENCE&&b.armor){hitFence(c,r,nx,ny);}
-        else if(t===FENCE){hitFence(c,r,nx,ny);b.dead=true;continue;}
-        else if(t===BRICK&&b.armor&&!b.brickPierced){hitBrick(c,r,99,nx,ny);b.brickPierced=true;}
-        else {if(t===BRICK)hitBrick(c,r,1,nx,ny);else burst(nx,ny,6,['#e8eef2'],120,.25,2);b.dead=true;continue;}
-      }
-      b.x=nx;b.y=ny;
-      if(base&&!base.dead&&Math.hypot(b.x-base.x,b.y-base.y)<base.r+b.r){hitBase(b.dmg);b.dead=true;continue;}
-      if(b.owner==='p'){for(const e of enemies){if(!e.dead&&e.spawnT<=0&&Math.hypot(e.x-b.x,e.y-b.y)<e.r+b.r){hitEnemy(e,b);b.dead=true;break;}}}
-      else if(player&&!player.dead&&Math.hypot(player.x-b.x,player.y-b.y)<player.r+b.r){hitPlayer(b);b.dead=true;}
-    }
-    collideShells();
-  }
-  bullets=bullets.filter(b=>!b.dead);
-}
-
-function updateItems(dt) {
-  for (const it of items) {
-    it.life -= dt;
-    if (player && !player.dead && !(player.upgradeT>0) && Math.hypot(player.x - it.x, player.y - it.y) < 24) {
-      it.life = 0;
-      if (it.type === 'repair') player.hp = Math.min(player.maxHp, player.hp + CFG.repairAmount);
-      else if(it.type==='upgrade')beginPlayerUpgrade(player);
-      else if(it.type==='barrage')callBarrage();
-      else if (it.type === 'rail') player.rail = Math.min(CFG.railMax, player.rail + 1);
-      else player.pw[it.type] = CFG.powerupTime;
-      floatText(it.x, it.y - 12, ITEMS[it.type].name, ITEMS[it.type].color);
-      sfx('pick');
-    }
-  }
-  items = items.filter(it => it.life > 0);
-}
-
-function collectRemainingScrap() {
-  let collected=0;
-  for(const w of wrecks)if(!w.taken && w.kind!=='player'){collected+=KINDS[w.kind].scrap;w.taken=true;}
-  scrap+=collected;
-  return collected;
-}
-function updateWrecks(dt) {
-  for (const w of wrecks) {
-    w.age += dt; w.smokeT -= dt;
-    if(w.exploded===false && w.age>=w.detonateAt) {
-      if(w.kind==='player'||w.kind==='heavy') {
-        w.blastCount=w.blastCount||0;
-        const offsets=[[-9,-5],[9,-3],[0,8],[-11,5],[8,-8],[-4,-11],[11,7]],total=w.blastTotal||3;
-        while(w.blastCount<total&&w.age>=w.detonateAt+w.blastCount*.5) {
-          const [dx,dy]=offsets[w.blastCount++];
-          explosion(w.x+dx,w.y+dy,false,KINDS[w.kind].color);blastDamage(w.x+dx,w.y+dy,30);
-        }
-        if(w.blastCount===total){w.exploded=true;w.blastAge=w.age;}
-      } else {
-        w.exploded=true;w.blastAge=w.age;
-        explosion(w.x,w.y,w.kind==='heavy',KINDS[w.kind].color);blastDamage(w.x,w.y,30*KINDS[w.kind].scale);
-      }
-    }
-    if (w.smokeT <= 0 && w.age < 2) {
-      w.smokeT = .12 + w.age * .05;
-      parts.push({ x: w.x + rnd(-6, 6), y: w.y + rnd(-6, 6), vx: rnd(-8, 8), vy: rnd(-30, -15), life: 1.4, max: 1.4, size: rnd(5, 9), color: '#3d3d3d', kind: 'smoke' });
-    }
-    if (!w.taken && w.kind !== 'player' && w.exploded!==false && w.age >= (w.blastAge||0)+2 && player && !player.dead && Math.hypot(player.x - w.x, player.y - w.y) < 24) {
-      const n = KINDS[w.kind].scrap;
-      scrap += n; w.taken = true;
-      floatText(w.x, w.y - 12, `+${n}${UI_TEXT.metallolom}`, '#d9c27a');
-      burst(w.x, w.y, 10, ['#8a8a8a', '#b5a27a', '#555'], 140, .5, 4, 'debris');
-      sfx('scrap');
-    }
-  }
-  wrecks = wrecks.filter(w => !w.taken || w.exploded===false || w.age < (w.blastAge||0)+2);
 }
 
 function updateSpawns(dt) {
@@ -1401,37 +1118,6 @@ function syncUI() {
   if (devEl.hidden === dv) devEl.hidden = !dv;
 }
 
-// Artillery uses a committed target position and an airborne flight, independent of bullet collisions.
-function launchArtillery(sx,sy,tx,ty,friendly=false){
-  const speed=friendly?3000:KINDS.artillery.bulletSpeed;
-  const shell={sx,sy,tx:clamp(tx,0,W),ty:clamp(ty,0,H),age:0,delay:friendly?2:0,speed,friendly,radius:45,damage:2};
-  prepareArtilleryTrajectory(shell);artilleryShells.push(shell);
-  if(!friendly)sfx('heavyShoot');
-}
-function prepareArtilleryTrajectory(shell){
-  shell.dx=shell.tx-shell.sx;shell.dy=shell.ty-shell.sy;shell.angle=Math.atan2(shell.dy,shell.dx);
-  shell.duration=Math.max(.01,Math.hypot(shell.dx,shell.dy)/shell.speed);shell.pending=false;
-}
-function callBarrage(){
-  for(const e of enemies)if(!e.dead&&!e.entering&&e.spawnT<=0)barrageMarkers.push({tx:e.x,ty:e.y});
-  barrageSoundShots+=5;
-}
-function processBarrageFrame(){
-  barrageFrame++;
-  if(barrageSoundShots&&barrageFrame%2===1){sfx('heavyShoot');barrageSoundShots--;}
-  if(barrageMarkers.length){
-    const target=barrageMarkers.shift(),shell={...target,sx:clamp(target.tx+rnd(-40,40),16,W-16),sy:H+24,age:0,delay:2,speed:3000,friendly:true,radius:45,damage:2,pending:true,duration:Infinity};
-    artilleryShells.push(shell);barrageTrajectories.push(shell);
-  }
-  if(barrageFrame%5===0&&barrageTrajectories.length)prepareArtilleryTrajectory(barrageTrajectories.shift());
-}
-function updateArtilleryShells(dt){
-  processBarrageFrame();
-  for(const shell of artilleryShells){shell.age=shell.pending?Math.min(shell.delay,shell.age+dt):shell.age+dt;if(!shell.pending&&shell.age>=shell.delay+shell.duration){shell.done=true;explosion(shell.tx,shell.ty,false,'#d6b56c');
-    blastDamage(shell.tx,shell.ty,30,{safePlayer:shell.friendly,damage:shell.damage});
-    if(!shell.friendly&&base&&!base.dead&&Math.hypot(base.x-shell.tx,base.y-shell.ty)<=shell.radius)hitBase(shell.damage);
-  }}artilleryShells=artilleryShells.filter(s=>!s.done);
-}
 function updateArtillery(e,dt){
   const alive=player&&!player.dead,range=20*T,playerInRange=alive&&Math.hypot(player.x-e.x,player.y-e.y)<=range;
   const baseInRange=base&&!base.dead&&Math.hypot(base.x-e.x,base.y-e.y)<=range;
@@ -1447,14 +1133,7 @@ function updateArtillery(e,dt){
     if(e.cd<=0&&Math.abs(angDiff(e.turret,aim))<.15){launchArtillery(e.x,e.y,target.x,target.y);e.cd=enemyInterval('artillery');e.recoilMax=e.recoil=8;}
   }
 }
-function updateRandomItems(dt){
-  if(state!=='play'||!player||player.dead||base&&base.dead)return;
-  itemSpawnTimer-=dt;if(itemSpawnTimer>0)return;itemSpawnTimer+=10;
-  const candidates=[];for(let r=2;r<ROWS-2;r++)for(let c=1;c<COLS-1;c++)if(!blocksTank(tileAt(c,r))) {
-    const x=c*T+16,y=r*T+16;if((!base||Math.hypot(x-base.x,y-base.y)>50)&&!items.some(it=>Math.hypot(x-it.x,y-it.y)<30))candidates.push({x,y});
-  }
-  if(candidates.length){const spot=candidates[ri(0,candidates.length-1)],types=availableItemTypes();items.push({...spot,type:types[ri(0,types.length-1)],life:24});}
-}
+
 function drawArtilleryShells(){
   for(const shell of artilleryShells){
     const pulse=.5+.5*Math.sin(time*7),p=clamp((shell.age-shell.delay)/shell.duration,0,1);
