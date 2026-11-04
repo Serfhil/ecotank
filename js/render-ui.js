@@ -84,6 +84,7 @@ function drawMenu() {
 
 function drawUI() {
   if(state==='menu')return;
+  if (state === 'over' && !victory) { drawDefeatScreen(); return; }
   drawHud();
   if (banner.t > 0) {
     const a = clamp(banner.t, 0, 1);
@@ -106,4 +107,33 @@ function drawUI() {
       if (overT > .6 && Math.floor(time * 2) % 2 === 0) text(again, UI_W / 2, UI_H / 2 + 80, 18, '#f2d3b1', 'center', '400');
     }
   }
+}
+
+// Full viewport, separate from the scaled battlefield: never crop Marx or the tank.
+function drawDefeatScreen() {
+  if (!defeatCanvas) return;
+  const width = Math.max(1, innerWidth), height = Math.max(1, innerHeight);
+  const ratio = typeof devicePixelRatio === 'number' ? Math.min(2, devicePixelRatio) : 1;
+  const pixelWidth = Math.round(width * ratio), pixelHeight = Math.round(height * ratio);
+  if (defeatCanvas.width !== pixelWidth || defeatCanvas.height !== pixelHeight) {
+    defeatCanvas.width = pixelWidth; defeatCanvas.height = pixelHeight;
+  }
+  const c = defeatCanvas.getContext('2d');
+  c.setTransform(ratio, 0, 0, ratio, 0, 0);
+  c.fillStyle = '#18090d'; c.fillRect(0, 0, width, height);
+  const entry = defeatImages[defeatTier === null ? 0 : defeatTier];
+  if (entry && entry.loaded) {
+    const image = entry.image, scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+    const w = image.naturalWidth * scale, h = image.naturalHeight * scale;
+    c.drawImage(image, (width - w) / 2, (height - h) / 2, w, h);
+  }
+  const shade = c.createLinearGradient(0, 0, 0, height);
+  shade.addColorStop(0, 'rgba(25,3,9,.85)'); shade.addColorStop(.24, 'rgba(25,3,9,0)');
+  shade.addColorStop(.65, 'rgba(25,3,9,0)'); shade.addColorStop(1, 'rgba(25,3,9,.88)');
+  c.fillStyle = shade; c.fillRect(0, 0, width, height);
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = '800 ' + clamp(Math.min(width * .1, height * .14), 32, 108) + 'px "Segoe UI", sans-serif';
+  c.shadowColor = '#630f20'; c.shadowBlur = 18; c.shadowOffsetY = 4;
+  c.fillStyle = '#f1cc72'; c.fillText(UI_TEXT.defeat, width / 2, Math.max(44, height * .1));
+  c.shadowBlur = 0; c.shadowOffsetY = 0;
 }

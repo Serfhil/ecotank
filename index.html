@@ -79,6 +79,11 @@
   .me-thumb { display: block; flex: none; border: 1px solid #0b0f11; }
   .me-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; color: #9fb39a; font-size: 12px; }
   .me-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+  #defeatScreen { position:fixed; inset:0; z-index:50; background:#18090d; }
+  #defeatScreen[hidden], #defeatRestart[hidden] { display:none; }
+  #defeatCanvas { width:100%; height:100%; display:block; border-radius:0; box-shadow:none; cursor:default; }
+  #defeatRestart { position:absolute; left:0; right:0; margin:0 auto; bottom:max(28px,7vh); box-sizing:border-box; width:max-content; max-width:calc(100vw - 32px); padding:16px 38px; min-width:min(270px,calc(100vw - 32px)); border:1px solid #edc668; border-radius:6px; color:#ffe7a3; background:linear-gradient(#a63138,#681320); font-size:clamp(17px,2.4vw,23px); font-weight:700; box-shadow:0 6px 28px #0008; }
+  #defeatRestart:hover, #defeatRestart:focus-visible { background:#b73e42; outline:2px solid #edc668; outline-offset:4px; }
 </style>
 <!-- «Карты Клода»: готовые карты в текстовом виде, формат описан в самом файле -->
 <script src="js/ui-text.js"></script>
@@ -96,6 +101,7 @@
 <script src="js/render-world.js"></script>
 <script src="js/render-tanks.js"></script>
 <script src="js/effects.js"></script>
+<script src="js/defeat.js"></script>
 <script src="js/render-ui.js"></script>
 <script src="js/renderer.js"></script>
 <script src="js/editor-common.js"></script>
@@ -121,6 +127,10 @@
 <button id="btnMapEditor" class="ghost" style="font-size:12px;padding:4px 10px" data-ui-text="btnMapEditor"></button></div>
 </div></section>
 <div id="wrap"><canvas id="c" width="960" height="640"></canvas></div>
+<section id="defeatScreen" hidden tabindex="-1" role="region" aria-label="" data-ui-aria-label="defeatScreen">
+  <canvas id="defeatCanvas" aria-hidden="true"></canvas>
+  <button id="defeatRestart" hidden data-ui-text="newGame"></button>
+</section>
 <div id="pauseMenu" hidden>
   <button id="btnResume" data-ui-text="resume"></button>
   <button id="btnNewGame" class="ghost" data-ui-text="newGame"></button>
@@ -171,6 +181,7 @@ let best = 0;
 try { best = +localStorage.getItem('ecotank-best') || 0; } catch (e) {}
 
 function startGame() {
+  resetDefeat();
   applyMapChoice();score = 0; scrap = 0; wave = campaign ? CFG.campaignStart : 0; player = null; victory = false;
   base = { ...BASE_POS, hp: 5, maxHp: 5, dead: false };
   nextWave(); syncMusic();
@@ -229,9 +240,11 @@ addEventListener('keydown', e => {
   if (['INPUT','SELECT'].includes(e.target.tagName)) return;
   if(state==='menu'&&devOpen)return;
   if((e.code==='ShiftLeft'||e.code==='ShiftRight')&&!e.repeat&&player&&!player.dead&&state==='play')player.boostQueued=true;
+  const held = !!keys[e.code];
   keys[e.code] = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
-  if (e.code === 'Enter' && (state === 'menu' || (state === 'over' && overT > .6))) startGame();
+  if (e.code === 'Enter' && state === 'over' && !victory) requestDefeatRestart(e.repeat || held);
+  else if (e.code === 'Enter' && (state === 'menu' || (state === 'over' && victory && overT > .6))) startGame();
   else if ((e.code === 'KeyP' || e.code === 'Escape') && (state === 'play' || state === 'pause')) { state = state === 'play' ? 'pause' : 'play'; devOpen = false; }
   else if (e.code === 'KeyM') { muted = !muted; syncMusic(); }
   else if (e.code === 'KeyE' && (state === 'play' || state === 'between')) fireRail(player);
@@ -245,8 +258,10 @@ cv.addEventListener('mousemove', e => {
 cv.addEventListener('mousedown', e => {
   if (e.button === 2 && (state === 'play' || state === 'between')) { fireRail(player); return; }
   if (e.button !== 0) return;
+  const held = mouse.down;
   mouse.down = true;
-  if (state === 'menu' || (state === 'over' && overT > .6)) startGame();
+  if (state === 'over' && !victory) { requestDefeatRestart(held); return; }
+  if (state === 'menu' || (state === 'over' && victory && overT > .6)) startGame();
   else if (state === 'pause' && !devOpen) state = 'play';
 });
 addEventListener('mouseup', () => { mouse.down = false; });
@@ -263,6 +278,7 @@ addEventListener('resize', fit); fit();
 function update(dt) {
   time += dt;
   if (state === 'menu' || state === 'pause') return;
+  if (state === 'over' && !victory) { overT += dt; return; }
   updateBaseCollapse(dt);
   if (hitstop > 0) { hitstop -= dt; return; }
   updateParts(dt);
@@ -281,7 +297,7 @@ function update(dt) {
   }
   updatePlayer(dt); updateTreadSound(dt);
   updateArtilleryShells(dt);updateRandomItems(dt);
-  if (state === 'play') updateSpawns(dt);
+  if (state === 'play' && !player.dead && !(base && base.dead)) updateSpawns(dt);
   formColumns();
   for (const e of enemies) updateEnemy(e, dt);
   enemies = enemies.filter(e => !e.dead);
@@ -293,12 +309,7 @@ function update(dt) {
 
   if (player.dead || (base && base.dead)) {
     deadT -= dt;
-    if (deadT <= 0 && !(base&&base.dead&&base.collapseCount<3)) {
-      state = 'over'; overT = 0;
-      if (score > best) { best = score; try { localStorage.setItem('ecotank-best', best); } catch (e) {} }
-      // повтор кампании начинается с проигранного уровня
-      if (campaign) { CFG.campaignStart = wave - 1; saveDev(); }
-    }
+    if (deadT <= 0 && defeatBlastsFinished()) enterDefeat();
   } else if (state === 'play' && !player.upgradeT && !toSpawn.length && !enemies.length && !wrecks.some(w=>w.exploded===false)&&!artilleryShells.length&&!hasPendingBarrage()) {
     const bonus = CFG.waveBonus * wave;
     score += bonus;
@@ -411,6 +422,7 @@ document.getElementById('mapPick').addEventListener('change', e => {
 
 // стартовый экран: фон-превью собирается из выбранных размера и режима карты
 function toMenu() {
+  resetDefeat();
   resetArtillery();itemSpawnTimer=10;state = 'menu'; player = null; base = null; enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
   applyMapChoice(); genMap(1);
 }
@@ -427,6 +439,7 @@ document.getElementById('mapMode').addEventListener('change', e=>{
   if(state==='menu')toMenu();
 });
 function syncUI() {
+  syncDefeatUI();
   const mapPick=document.getElementById('mapPick'),campaignPick=document.getElementById('campaignPick');
   const fixed=CFG.mapMode==='map',camp=CFG.mapMode==='campaign';
   document.getElementById('mapSize').value=String(CFG.mapSize||30);
@@ -454,6 +467,7 @@ document.getElementById('menuHome').addEventListener('click',()=>{devOpen=false;
 for(const mode of ['original','preset01','map','campaign'])document.getElementById('mode-'+mode).addEventListener('click',()=>{CFG.mapMode=mode;saveDev();toMenu();});
 
 // ---------- запуск ----------
+initDefeat();
 renderMapPick();
 toMenu();
 let last = performance.now();

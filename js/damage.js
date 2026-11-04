@@ -37,14 +37,14 @@ function hitPlayer(b) {
   p.hp -= b.dmg; p.inv = CFG.invulnTime; p.flash = .15;
   shake = Math.max(shake, 10);
   sfx('hurt');
-  if (p.hp <= 0) { p.hp = 0; p.dead = true; p.armor=false; const delay=rnd(.5,1.5)*(b.blast?.5:1); wrecks.push({x:p.x,y:p.y,kind:'player',angle:p.angle,turret:p.turret,tread:p.tread,recoil:p.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:delay,exploded:false,blastTotal:3+2*(p.upgrade||0),upgrade:p.upgrade||0}); deadT = delay+2+(p.upgrade||0); }
+  if (p.hp <= 0) { rememberDefeatTier(); p.hp = 0; p.dead = true; p.armor=false; const delay=rnd(.5,1.5)*(b.blast?.5:1); wrecks.push({x:p.x,y:p.y,kind:'player',angle:p.angle,turret:p.turret,tread:p.tread,recoil:p.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:delay,exploded:false,blastTotal:3+2*(p.upgrade||0),upgrade:p.upgrade||0}); deadT = delay+2+(p.upgrade||0); }
 }
 
 function hitBase(dmg) {
   if(!base || base.dead)return;
   base.hp=Math.max(0,base.hp-dmg);
   burst(base.x,base.y,12,['#ffd66b','#e45638'],100,.3,3);
-  if(!base.hp) {base.dead=true;deadT=Math.max(deadT,2.5);base.collapseAge=0;base.collapseCount=0;updateBaseCollapse(0);}
+  if(!base.hp) {rememberDefeatTier();base.dead=true;deadT=Math.max(deadT,2.5);base.collapseAge=0;base.collapseCount=0;updateBaseCollapse(0);}
 }
 
 function updateBaseCollapse(dt) {

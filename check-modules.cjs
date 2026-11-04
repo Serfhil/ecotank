@@ -6,7 +6,7 @@ module.exports=function checkModules(root){
   assert.deepEqual(sources,[
     'js/ui-text.js','js/config.js','js/audio.js','maps.js','js/world.js','js/destruction.js',
     'js/tanks.js','js/weapons.js','js/damage.js','js/pickups.js','js/enemy-ai.js','js/waves.js',
-    'js/render-world.js','js/render-tanks.js','js/effects.js','js/render-ui.js','js/renderer.js',
+    'js/render-world.js','js/render-tanks.js','js/effects.js','js/defeat.js','js/render-ui.js','js/renderer.js',
     'js/editor-common.js','js/preset-editor.js','js/map-editor.js',
   ]);
   assert(!/<script\b[^>]*type="module"/.test(html),'Direct file opening must not require ES-module loading');

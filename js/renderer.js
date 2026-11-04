@@ -49,6 +49,7 @@ function drawBullets() {
 }
 
 function draw() {
+  if (state === 'over' && !victory) { drawDefeatScreen(); return; }
   ctx.save();
   const sk = shake * CFG.shake * .5;
   if (sk > 0) ctx.translate(rnd(-sk, sk), rnd(-sk, sk));
