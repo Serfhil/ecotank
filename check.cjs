@@ -1,14 +1,19 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
-const code=fs.readFileSync(__dirname+'/index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+require('./check-modules.cjs')(__dirname);
+const html=fs.readFileSync(__dirname+'/index.html','utf8');
+const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].map(([,attrs,inline])=>({src:attrs.match(/\bsrc="([^"]+)"/)?.[1],inline}));
+const code=scripts.filter(s=>!s.src).map(s=>s.inline).join('\n');
 const context=new Proxy({}, {get:(o,k)=>k in o?o[k]:(()=>context)});
 context.globalAlpha=1;
 context.arc=(x,y,r)=>{if(!Number.isFinite(r)||r<0)throw Error('Invalid Canvas arc radius '+r);};
 context.ellipse=(x,y,rx,ry)=>{if(!Number.isFinite(rx)||!Number.isFinite(ry)||rx<0||ry<0)throw Error('Invalid Canvas ellipse radius');};
 const element={style:{},classList:{toggle(){}},addEventListener(){},getContext:()=>context,querySelector:()=>element,querySelectorAll:()=>[],blur(){}};
 const store=new Map([['ecotank-dev',JSON.stringify({KINDS:{player:{speed:999}},CFG:{brickHp:2}})]]);
-const box={console,document:{getElementById:()=>({...element}),createElement:()=>({...element}),activeElement:element},window:{},innerWidth:960,innerHeight:640,addEventListener(){},requestAnimationFrame(){},performance:{now:()=>0},setTimeout(){},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)}};
+const box={console,document:{getElementById:()=>({...element}),createElement:()=>({...element}),querySelectorAll:()=>[],createTextNode:text=>({textContent:text}),activeElement:element},window:{},innerWidth:960,innerHeight:640,addEventListener(){},requestAnimationFrame(){},performance:{now:()=>0},setTimeout(){},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)}};
 box.Audio=class {constructor(){this.handlers={};} addEventListener(name,fn){this.handlers[name]=fn;} play(){this.paused=false;return Promise.resolve();} pause(){this.paused=true;}};
-vm.createContext(box);vm.runInContext(fs.readFileSync(__dirname+'/maps.js','utf8'),box);vm.runInContext(code,box);
+vm.createContext(box);
+// Use the same classic-script order as index.html, including file://-compatible modules.
+for(const script of scripts)vm.runInContext(script.src?fs.readFileSync(__dirname+'/'+script.src,'utf8'):script.inline,box,{filename:script.src||'index.html'});
 vm.runInContext(`
 muted=true;
 if(KINDS.player.speed!==60||KINDS.player.bulletSpeed!==1200||KINDS.heavy.hp!==3)throw Error('Defaults or legacy settings');

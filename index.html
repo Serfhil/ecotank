@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EcoTank</title>
+<title data-ui-text="appTitle"></title>
 <style>
   html, body { margin: 0; height: 100%; background: #14181c; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; }
   #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
@@ -81,46 +81,47 @@
   .me-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
 </style>
 <!-- «Карты Клода»: готовые карты в текстовом виде, формат описан в самом файле -->
+<script src="js/ui-text.js"></script>
+<script src="js/config.js"></script>
 <script src="maps.js"></script>
 <link rel="stylesheet" href="assets/menu.css">
 <link rel="stylesheet" href="assets/theme.css">
 </head>
 <body>
 <div id="musicControls" style="position:fixed;top:8px;right:10px;z-index:2;display:flex;align-items:center;gap:8px;background:#14181cdd;padding:5px;border-radius:6px;color:#bbc9b5;font-size:12px">
-<button id="musicToggle" style="font-size:11px;padding:5px 8px" aria-label="Включить или выключить музыку">♫ Радио «Союз»</button><span class="audioLabel">Музыка</span><input id="musicVolume" aria-label="Громкость музыки" type="range" min="0" max="1" step="0.01" value="0.22" style="width:70px"><span class="audioLabel">Общая</span><input id="gameVolume" aria-label="Общая громкость игры" type="range" min="0" max="1" step="0.01" value="0.65" style="width:70px"></div>
-<button id="menuHome" class="homeButton" hidden>⌂ В штаб</button>
-<section id="mainMenu" aria-label="Главное меню EcoTank">
-<div class="menuSmoke" aria-hidden="true"></div><div class="menuHero"><img class="menuForeground" src="assets/menu-marx-cutout.png" alt="Карл Маркс держит модель танка"><img class="menuLight" src="assets/menu-marx-cutout.png" alt="" aria-hidden="true"><div class="heroFade"></div><div class="risingTitle" aria-hidden="true">ECOTANK</div><div class="heroCaption">СТАЛЬ. ТАКТИКА. ОБЩЕЕ ДЕЛО.</div></div>
-<div class="menuLower"><div class="menuHeading"><span>ВЫБЕРИ ОПЕРАЦИЮ</span><small>Танковый полигон</small></div>
-<div class="modeButtons"><button id="mode-original">Манёвры<small>Случайная карта</small></button><button id="mode-preset01">Типовые операции<small>Готовые участки</small></button><button id="mode-map">Свой плацдарм<small>Выбор и редактор</small></button><button id="mode-campaign">Дорога к победе<small>Последовательные уровни</small></button></div>
-<div class="menuActions"><button id="menuStart" class="startButton">В бой, товарищ!</button><button id="menuSettings" class="ghost">Постановления</button><span>WASD — танк · Мышь — башня · Пробел — огонь · Shift — ускорение</span></div>
-<div id="mapControl" style="position:fixed;top:8px;left:10px;z-index:2;background:#14181cdd;padding:7px;color:#d5dfcc;font-size:12px;border-radius:6px">Карта (новая игра)
-<select id="mapSize" aria-label="Размер карты для новой игры" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="30">30×20</option><option value="45">45×30</option><option value="60">60×40</option></select>
-<select id="mapMode" aria-label="Режим расстановки декораций для новой игры" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="original">Оригинальный</option><option value="preset01">Пресет тест 0.1</option><option value="map">Карта</option><option value="campaign">Кампания</option></select>
-<select id="campaignPick" aria-label="Уровень, с которого начать кампанию" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:220px"></select>
-<select id="mapPick" aria-label="Готовая карта для новой игры" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:200px"></select>
-<button id="btnEditor" class="ghost" style="font-size:12px;padding:4px 10px">Бюро типовых проектов</button>
-<button id="btnMapEditor" class="ghost" style="font-size:12px;padding:4px 10px">Военно-топографический отдел</button></div>
+<button id="musicToggle" style="font-size:11px;padding:5px 8px" aria-label="" data-ui-aria-label="vklyuchit_ili_vyklyuchit_muzyku" data-ui-text="musicToggle"></button><span class="audioLabel" data-ui-text="muzyka"></span><input id="musicVolume" aria-label="" data-ui-aria-label="gromkost_muzyki" type="range" min="0" max="1" step="0.01" value="0.22" style="width:70px"><span class="audioLabel" data-ui-text="obshchaya"></span><input id="gameVolume" aria-label="" data-ui-aria-label="obshchaya_gromkost_igry" type="range" min="0" max="1" step="0.01" value="0.65" style="width:70px"></div>
+<button id="menuHome" class="homeButton" hidden data-ui-text="menuHome"></button>
+<section id="mainMenu" aria-label="" data-ui-aria-label="glavnoe_menyu_ecotank">
+<div class="menuSmoke" aria-hidden="true"></div><div class="menuHero"><img class="menuForeground" src="assets/menu-marx-cutout.png" alt="" data-ui-alt="karl_marks_derzhit_model_tanka"><img class="menuLight" src="assets/menu-marx-cutout.png" alt="" aria-hidden="true"><div class="heroFade"></div><div class="risingTitle" aria-hidden="true" data-ui-text="logo"></div><div class="heroCaption" data-ui-text="stal_taktika_obshchee_delo"></div></div>
+<div class="menuLower"><div class="menuHeading"><span data-ui-text="vyberi_operatsiyu"></span><small data-ui-text="tankovyy_poligon"></small></div>
+<div class="modeButtons"><button id="mode-original" data-ui-leading="modeOriginal"><small data-ui-text="sluchaynaya_karta"></small></button><button id="mode-preset01" data-ui-leading="modePresets"><small data-ui-text="gotovye_uchastki"></small></button><button id="mode-map" data-ui-leading="modeMap"><small data-ui-text="vybor_i_redaktor"></small></button><button id="mode-campaign" data-ui-leading="modeCampaign"><small data-ui-text="posledovatelnye_urovni"></small></button></div>
+<div class="menuActions"><button id="menuStart" class="startButton" data-ui-text="startBattle"></button><button id="menuSettings" class="ghost" data-ui-text="settings"></button><span data-ui-text="wasd_tank_mysh_bashnya_probel_ogon_shift_uskorenie"></span></div>
+<div id="mapControl" style="position:fixed;top:8px;left:10px;z-index:2;background:#14181cdd;padding:7px;color:#d5dfcc;font-size:12px;border-radius:6px" data-ui-leading="mapControl"><select id="mapSize" aria-label="" data-ui-aria-label="razmer_karty_dlya_novoy_igry" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="30">30×20</option><option value="45">45×30</option><option value="60">60×40</option></select>
+<select id="mapMode" aria-label="" data-ui-aria-label="rezhim_rasstanovki_dekoratsiy_dlya_novoy_igry" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="original" data-ui-text="originalnyy"></option><option value="preset01" data-ui-text="preset_test_0_1"></option><option value="map" data-ui-text="karta"></option><option value="campaign" data-ui-text="kampaniya"></option></select>
+<select id="campaignPick" aria-label="" data-ui-aria-label="uroven_s_kotorogo_nachat_kampaniyu" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:220px"></select>
+<select id="mapPick" aria-label="" data-ui-aria-label="gotovaya_karta_dlya_novoy_igry" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:200px"></select>
+<button id="btnEditor" class="ghost" style="font-size:12px;padding:4px 10px" data-ui-text="btnEditor"></button>
+<button id="btnMapEditor" class="ghost" style="font-size:12px;padding:4px 10px" data-ui-text="btnMapEditor"></button></div>
 </div></section>
 <div id="wrap"><canvas id="c" width="960" height="640"></canvas></div>
 <div id="pauseMenu" hidden>
-  <button id="btnResume">Продолжить выполнение</button>
-  <button id="btnNewGame" class="ghost">Новая операция</button>
-  <button id="btnDev" class="ghost">Особый конструкторский отдел</button>
+  <button id="btnResume" data-ui-text="resume"></button>
+  <button id="btnNewGame" class="ghost" data-ui-text="newGame"></button>
+  <button id="btnDev" class="ghost" data-ui-text="developerSettings"></button>
 </div>
 <div id="dev" hidden>
   <div id="devPanel">
-    <div class="devHead"><b>Особый конструкторский отдел</b><button id="btnDevClose" class="ghost">Закончить совещание</button></div>
+    <div class="devHead"><b data-ui-text="developerSettings"></b><button id="btnDevClose" class="ghost" data-ui-text="close"></button></div>
     <div class="devActions">
-      <button data-act="heal" class="ghost">Вызвать рембригаду</button>
-      <button data-act="rail" class="ghost">+1 снаряд из НИИ</button>
-      <button data-act="powerups" class="ghost">Всё лучшее — экипажу</button>
-      <button data-act="kill" class="ghost">Вопрос решён</button>
-      <button data-act="skip" class="ghost">Следующий эшелон</button>
-      <button data-act="reset" class="ghost">Вернуть штатные нормативы</button>
+      <button data-act="heal" class="ghost" data-ui-text="vyzvat_rembrigadu"></button>
+      <button data-act="rail" class="ghost" data-ui-text="1_snaryad_iz_nii"></button>
+      <button data-act="powerups" class="ghost" data-ui-text="vsyo_luchshee_ekipazhu"></button>
+      <button data-act="kill" class="ghost" data-ui-text="vopros_reshyon"></button>
+      <button data-act="skip" class="ghost" data-ui-text="sleduyushchiy_eshelon"></button>
+      <button data-act="reset" class="ghost" data-ui-text="vernut_shtatnye_normativy"></button>
     </div>
     <div id="devBody"></div>
-    <p class="note">Изменения применяются сразу и сохраняются в браузере. ХП врагов действует на новых врагов. Количество групп элементов применяется к следующей карте; больше групп — плотнее карта.</p>
+    <p class="note" data-ui-text="izmeneniya_primenyayutsya_srazu_i_sokhranyayutsya_v_brauzere_khp_vragov_deystvuet_na_"></p>
   </div>
 </div>
 <div id="editor" hidden><div id="editorPanel" class="epanel"></div></div>
@@ -128,9 +129,10 @@
 <input type="file" id="mapImport" accept=".json,application/json" hidden>
 <script>
 'use strict';
+applyInterfaceTexts();
 // ---------- базовые константы и утилиты ----------
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
-const T=32; let COLS=30,ROWS=20,W=COLS*T,H=ROWS*T;
+let COLS=30,ROWS=20,W=COLS*T,H=ROWS*T;
 const EMPTY = 0, BRICK = 1, STEEL = 2, WATER = 3, TREE = 4, FENCE = 5;
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -159,34 +161,16 @@ function roundedPolygon(c,points,amount) {
     c.quadraticCurveTo(x,y,bx,by);
   });c.closePath();
 }
-const KINDS = {
-  player:  { hp: 3, speed: 60, turretSpeed: 1, fireRate: 1, color: '#6cc24a', dark: '#2e6b26', bulletSpeed: 1200, dmg: 1, scale: 1 },
-  scout:   { hp: 1, speed: 80,  fireRate: 1/.33, color: '#e9b949', dark: '#8c6a1a', bulletSpeed: 380, dmg: 1, scale: .8415, score: 100, scrap: 1, wander: .25, hold: 0,   turretSpeed: 1 },
-  soldier: { hp: 2, speed: 50,  fireRate: 2, color: '#e0603f', dark: '#7f2d1b', bulletSpeed: 420, dmg: 1, scale: 1,   score: 200, scrap: 2, wander: .12, hold: 150, turretSpeed: 1 },
-  heavy:   { hp: 3, speed: 35,  fireRate: 5, color: '#9483d6', dark: '#463b80', bulletSpeed: 600, dmg: 2, scale: 1.357, score: 500, scrap: 4, wander: .05, hold: 260, turretSpeed: 1 },
-};
-KINDS.artillery={hp:2,speed:35,fireRate:6,turretSpeed:1,color:'#d5be7d',dark:'#566048',bulletSpeed:182,dmg:2,scale:1.1,score:400,scrap:3,wander:0,hold:640};
-const ITEMS = {
-  upgrade:{color:'#ffd45c',glyph:'★',name:'Улучшение танка'},
-  barrage:{color:'#ffab52',glyph:'✹',name:'Артподготовка'},
-  repair: { color: '#e5484d', glyph: '+',  name: 'Ремонт' },
-  rapid:  { color: '#f2c94c', glyph: '»',  name: 'Скорострел' },
-  shield: { color: '#7be38a', glyph: '◯',  name: 'Щит' },
-  rail:   { color: '#c58cff', glyph: '⌁',  name: 'Рельсотрон' },
-};
+
 // общие параметры игры (правятся в «Настройках разработчика» в меню паузы)
-const CFG = {
-  dropChance: .22, heavyDropBonus: .3, powerupTime: 10, repairAmount: 2, railMax: 3,
-  waveBase: 6, wavePerLevel: 2, maxAliveBase: 3, maxAliveCap: 7, enemySpeedPerWave: .02, waveBonus: 300, waveHeal: 1,
-  mapSize:30, mapMode:'original', mapPick:'', campaignStart:0, mapElements: 42, brickHp: 4, invulnTime: .7, enemySight: 460, treeStealth: 90, shake: 1, hitstop: .06, godMode: false,
-};
+
 const SPAWNS = Array.from({length:5},(_,i)=>({c:1+Math.round(27*i/4),r:1}));
 const PLAYER_START = { x: W / 2 - 80, y: H - 48 };
 const BASE_POS = { x: W / 2 + 16, y: H - 16, r: 16 };
 
 // ---------- звук ----------
 let actx = null, noiseBuf = null, muted = false, cannonNoiseLayers=null,heavyImpulse=null;
-const MENU_TRACK='assets/red-steel-menu.mp3',LEVEL_TRACKS=['assets/mehvod.mp3','assets/red-steel-1.mp3','assets/red-steel-2.mp3'];
+
 const music = new Audio(MENU_TRACK);music.loop=false;music.volume=.22;music.preload='metadata';
 let musicOff=false,musicWanted=false,musicLevel=.22,musicScene='',musicTrack=MENU_TRACK,musicBlocked=false,audioUnlocked=false;
 let gameVolume=.65,sfxVolume=1,masterGain=null;
@@ -201,7 +185,7 @@ function syncMusic(){
     musicWanted=wanted;
     if(wanted)music.play().catch(e=>{if(e.name!=='AbortError'){musicWanted=false;musicBlocked=true;audioUnlocked=false;}});else music.pause();
   }
-  document.getElementById('musicToggle').textContent=musicOff?'♫ Радиоточка выключена':musicBlocked?'♫ Включить радиоточку':'♫ Радио «Союз»';
+  document.getElementById('musicToggle').textContent=musicOff?UI_TEXT.radiotochka_vyklyuchena:musicBlocked?UI_TEXT.vklyuchit_radiotochku:UI_TEXT.musicToggle;
 }
 function unlockAudio(){audioUnlocked=true;musicBlocked=false;syncMusic();}
 addEventListener('pointerdown',unlockAudio);addEventListener('keydown',unlockAudio);
@@ -287,7 +271,6 @@ let grid, brickHp, brickMask, brickVariant, fenceArms, foliageMask, foliageShake
 let flow = new Int32Array(COLS * ROWS);
 const tileAt = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS) ? STEEL : grid[r * COLS + c];
 
-const MAP_SIZES = [30, 45, 60];
 const spawnCols = cols => Array.from({length:5},(_,i)=>1+Math.round((cols-3)*i/4));
 // клетки, которые игра всегда расчищает: подъезд к базе и точки появления врагов
 function reservedCell(cols, c, r) {
@@ -308,29 +291,29 @@ let mapMode = CFG.mapMode;
 // группы декораций для «Пресет тест 0.1»: B кирпич, F забор, S сталь, W вода, T дерево, P песок, . пусто,
 // b/t — кирпич/дерево с шансом 60% (руины, редкий подлесок), пробел — клетка не трогается
 const PREFABS = [
-  { name: 'Пост',       rows: ['TBT'] },
-  { name: 'Угол',       rows: ['BB', 'B.'] },
-  { name: 'Изгородь',   rows: ['FFFF'] },
-  { name: 'Плетень',    rows: ['FFF', 'F  ', 'F  '] },
-  { name: 'Огород',     rows: ['FF.FF', 'F.t.F', 'F...F', 'FFFFF'] },
-  { name: 'Хутор',      rows: ['FFFF.FF', 'F.....F', 'F.BB..F', 'F.BB.tF', 'FFF.FFF'] },
-  { name: 'Кусты',      rows: ['tTt', 'Tt '] },
-  { name: 'Блиндаж',    rows: ['BBB', 'BSB'] },
-  { name: 'Окоп',       rows: ['BBb.BBB'] },
-  { name: 'Руины',      rows: ['BBb.', 'B...', 'b..B', '.bBB'] },
-  { name: 'Роща',       rows: [' tT ', 'tTTt', '.TTt', ' t  '] },
-  { name: 'Пруд',       rows: [' tt ', 'tWWt', 'WWWW', ' WWt'] },
-  { name: 'Склад',      rows: ['BBBBB', 'B...B', 'B.S.B', 'BB.BB'] },
-  { name: 'Переправа',  rows: ['tt...tt', 'WWW.WWW', 'WWW.WWW', 'tt...tt'] },
-  { name: 'Форт',       rows: ['BB..BB', 'B....B', '..SS..', 'B....B', 'BB..BB'] },
-  { name: 'Деревня',    rows: ['BBB..t.', 'B.b.BBB', '....B.B', 't......', '.BBB.tt', '.B.B.t.'] },
-  { name: 'Карьер',     rows: [' PPP ', 'PPBPP', 'PbPPP', ' PPP '] },
+  { name: UI_TEXT.post,       rows: ['TBT'] },
+  { name: UI_TEXT.ugol,       rows: ['BB', 'B.'] },
+  { name: UI_TEXT.izgorod,   rows: ['FFFF'] },
+  { name: UI_TEXT.pleten,    rows: ['FFF', 'F  ', 'F  '] },
+  { name: UI_TEXT.ogorod,     rows: ['FF.FF', 'F.t.F', 'F...F', 'FFFFF'] },
+  { name: UI_TEXT.khutor,      rows: ['FFFF.FF', 'F.....F', 'F.BB..F', 'F.BB.tF', 'FFF.FFF'] },
+  { name: UI_TEXT.kusty,      rows: ['tTt', 'Tt '] },
+  { name: UI_TEXT.blindazh,    rows: ['BBB', 'BSB'] },
+  { name: UI_TEXT.okop,       rows: ['BBb.BBB'] },
+  { name: UI_TEXT.ruiny,      rows: ['BBb.', 'B...', 'b..B', '.bBB'] },
+  { name: UI_TEXT.roshcha,       rows: [' tT ', 'tTTt', '.TTt', ' t  '] },
+  { name: UI_TEXT.prud,       rows: [' tt ', 'tWWt', 'WWWW', ' WWt'] },
+  { name: UI_TEXT.sklad,      rows: ['BBBBB', 'B...B', 'B.S.B', 'BB.BB'] },
+  { name: UI_TEXT.pereprava,  rows: ['tt...tt', 'WWW.WWW', 'WWW.WWW', 'tt...tt'] },
+  { name: UI_TEXT.fort,       rows: ['BB..BB', 'B....B', '..SS..', 'B....B', 'BB..BB'] },
+  { name: UI_TEXT.derevnya,    rows: ['BBB..t.', 'B.b.BBB', '....B.B', 't......', '.BBB.tt', '.B.B.t.'] },
+  { name: UI_TEXT.karer,     rows: [' PPP ', 'PPBPP', 'PbPPP', ' PPP '] },
 ];
 // песок — грунт под пустой клеткой (замедляет танки), а не отдельный тип клетки
 const PREFAB_TILES = { B: BRICK, F: FENCE, S: STEEL, W: WATER, T: TREE, P: EMPTY, '.': EMPTY };
 // пресеты живут в паках, паки хранятся в браузере; PREFABS — исходное содержимое пака «Пресеты Клода»
-const PACKS_KEY = 'ecotank-packs-v1', OLD_PRESETS_KEY = 'ecotank-presets-v1', PRESET_MAX = 12;
-const CLAUDE_PACK = 'claude', CLAUDE_PACK_NAME = 'Пресеты Клода';
+const PACKS_KEY = 'ecotank-packs-v1', OLD_PRESETS_KEY = 'ecotank-presets-v1';
+const CLAUDE_PACK = 'claude', CLAUDE_PACK_NAME = UI_TEXT.presety_kloda;
 const validPreset = p => p && typeof p.name === 'string' && p.name.trim() && Array.isArray(p.rows)
   && p.rows.length >= 1 && p.rows.length <= PRESET_MAX
   && p.rows.every(r => typeof r === 'string' && r.length === p.rows[0].length && r.length <= PRESET_MAX && /^[BFSWTPbt. ]+$/.test(r))
@@ -342,10 +325,10 @@ function loadPacks() {
   if (!Array.isArray(packs)) {
     packs = [defaultClaudePack()];
     // пресеты из первой версии редактора переезжают в отдельный пак
-    try { const old = JSON.parse(localStorage.getItem(OLD_PRESETS_KEY)); if (Array.isArray(old) && old.some(validPreset)) packs.push({ id: 'mine', name: 'Мои пресеты', enabled: true, presets: old.filter(validPreset) }); } catch (e) {}
+    try { const old = JSON.parse(localStorage.getItem(OLD_PRESETS_KEY)); if (Array.isArray(old) && old.some(validPreset)) packs.push({ id: 'mine', name: UI_TEXT.moi_presety, enabled: true, presets: old.filter(validPreset) }); } catch (e) {}
   }
   packs = packs.filter(p => p && typeof p.id === 'string' && typeof p.name === 'string' && Array.isArray(p.presets))
-    .map(p => ({ id: p.id, name: p.id === CLAUDE_PACK ? CLAUDE_PACK_NAME : p.name.trim() || 'Без имени', enabled: p.enabled !== false, presets: p.presets.filter(validPreset) }));
+    .map(p => ({ id: p.id, name: p.id === CLAUDE_PACK ? CLAUDE_PACK_NAME : p.name.trim() || UI_TEXT.bez_imeni, enabled: p.enabled !== false, presets: p.presets.filter(validPreset) }));
   if (!packs.some(p => p.id === CLAUDE_PACK)) packs.unshift(defaultClaudePack());
   return packs;
 }
@@ -576,7 +559,7 @@ function drawSandGround() {
 let state = 'menu', player = null, enemies = [], bullets = [], parts = [], items = [], wrecks = [], rails = [];
 let base = null;
 let artilleryShells=[],itemSpawnTimer=10,barrageMarkers=[],barrageTrajectories=[],barrageSoundShots=0,barrageFrame=0;
-const UPGRADE_DURATION=1.5;
+
 function resetArtillery(){artilleryShells=[];barrageMarkers=[];barrageTrajectories=[];barrageSoundShots=0;barrageFrame=0;}
 function hasPendingBarrage(){return barrageMarkers.length||barrageTrajectories.length||barrageSoundShots;}
 let score = 0, scrap = 0, hitstop = 0, wave = 0, toSpawn = [], spawnTimer = 0, flowTimer = 0, betweenT = 0, deadT = 0, overT = 0;
@@ -643,8 +626,8 @@ function nextWave() {
   enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; resetArtillery();itemSpawnTimer=10;
   toSpawn = waveList(wave); spawnTimer = 1.2; flowTimer = 0;
   banner = campaign
-    ? { text: `Уровень ${wave} из ${campaign.length}`, sub: `${activeMap.name} · Врагов: ${toSpawn.length}`, t: 2.4 }
-    : { text: `Волна ${wave}`, sub: `Врагов: ${toSpawn.length}`, t: 2.2 };
+    ? { text: `${UI_TEXT.uroven}${wave}${UI_TEXT.iz}${campaign.length}`, sub: `${activeMap.name}${UI_TEXT.vragov}${toSpawn.length}`, t: 2.4 }
+    : { text: `${UI_TEXT.volna}${wave}`, sub: `${UI_TEXT.vragov_2}${toSpawn.length}`, t: 2.2 };
   state = 'play';
   sfx('wave');
 }
@@ -1261,7 +1244,7 @@ function updateWrecks(dt) {
     if (!w.taken && w.kind !== 'player' && w.exploded!==false && w.age >= (w.blastAge||0)+2 && player && !player.dead && Math.hypot(player.x - w.x, player.y - w.y) < 24) {
       const n = KINDS[w.kind].scrap;
       scrap += n; w.taken = true;
-      floatText(w.x, w.y - 12, `+${n} металлолом`, '#d9c27a');
+      floatText(w.x, w.y - 12, `+${n}${UI_TEXT.metallolom}`, '#d9c27a');
       burst(w.x, w.y, 10, ['#8a8a8a', '#b5a27a', '#555'], 140, .5, 4, 'debris');
       sfx('scrap');
     }
@@ -1345,7 +1328,7 @@ function update(dt) {
     score += bonus;
     const collected=collectRemainingScrap();
     if (campaign) unlockCampaign(Math.min(wave + 1, campaign.length));
-    banner = { text: campaign ? (wave >= campaign.length ? 'Последний уровень пройден!' : 'Уровень пройден!') : 'Волна пройдена!', sub: `Бонус +${bonus} · Металлолом +${collected}`, t: 2.5 };
+    banner = { text: campaign ? (wave >= campaign.length ? UI_TEXT.posledniy_uroven_proyden : UI_TEXT.uroven_proyden) : UI_TEXT.volna_proydena, sub: `${UI_TEXT.bonus}${bonus}${UI_TEXT.metallolom_2}${collected}`, t: 2.5 };
     state = 'between'; betweenT = 2.8;
     sfx('wave');
   } else if (state === 'between') {
@@ -1646,10 +1629,10 @@ function text(str, x, y, size, color, align = 'left', weight = '600') {
 
 // интерфейс рисуется в постоянных координатах 960×640 и масштабируется под холст,
 // чтобы размер карты не менял размер HUD и меню на экране
-const UI_W = 960, UI_H = 640;
+
 function drawHud() {
-  if(player) text(player.boostLeft>0?'SHIFT · Ускорение':player.boostCooldown>0?'SHIFT · '+Math.ceil(player.boostCooldown)+' с':'SHIFT · Готов',12,UI_H-15,12,'#e5cd88');
-  if(player && player.armor) text('★ '+(player.upgrade>=2?'ИС-2-II':'ИС-2')+' · Бронебойные',UI_W/2,42,12,'#ffc477','center');
+  if(player) text(player.boostLeft>0?UI_TEXT.shift_uskorenie:player.boostCooldown>0?'SHIFT · '+Math.ceil(player.boostCooldown)+UI_TEXT.s:UI_TEXT.shift_gotov,12,UI_H-15,12,'#e5cd88');
+  if(player && player.armor) text('★ '+(player.upgrade>=2?UI_TEXT.is_2_ii:UI_TEXT.is_2)+UI_TEXT.broneboynye,UI_W/2,42,12,'#ffc477','center');
   ctx.fillStyle = 'rgba(12,16,14,.6)';
   roundRect(ctx, 8, 8, 570, 32, 8); ctx.fill();
   const maxHp = player.maxHp;
@@ -1663,17 +1646,17 @@ function drawHud() {
     ctx.fillStyle = '#e5484d'; roundRect(ctx, 18, 16, 86 * clamp(player.hp / maxHp, 0, 1), 16, 4); ctx.fill();
     text(`${player.hp}/${maxHp}`, 61, 24, 11, '#fff', 'center', '700');
   }
-  text(`Очки ${score}`, 118, 24, 15, '#eef5e8');
-  text(campaign ? `Ур. ${wave}/${campaign.length}` : `Волна ${wave}`, 230, 24, 15, '#eef5e8');
-  text(`Враги ${toSpawn.length + enemies.length}`, 320, 24, 15, '#eef5e8');
-  text(`Металлолом ${scrap}`, 425, 24, 15, '#d9c27a');
+  text(`${UI_TEXT.ochki}${score}`, 118, 24, 15, '#eef5e8');
+  text(campaign ? `${UI_TEXT.ur}${wave}/${campaign.length}` : `${UI_TEXT.volna}${wave}`, 230, 24, 15, '#eef5e8');
+  text(`${UI_TEXT.vragi}${toSpawn.length + enemies.length}`, 320, 24, 15, '#eef5e8');
+  text(`${UI_TEXT.metallolom_3}${scrap}`, 425, 24, 15, '#d9c27a');
 
   let x = UI_W - 12;
   if (player.rail > 0) {
     const I = ITEMS.rail;
     ctx.fillStyle = 'rgba(12,16,14,.6)'; roundRect(ctx, x - 150, 8, 150, 32, 8); ctx.fill();
     text(`${I.glyph} ${I.name} ×${player.rail}`, x - 140, 20, 13, I.color);
-    text('ПКМ / E', x - 140, 33, 10, '#b9a6d6', 'left', '400');
+    text(UI_TEXT.pkm_e, x - 140, 33, 10, '#b9a6d6', 'left', '400');
     x -= 158;
   }
   for (const k of ['shield', 'rapid']) {
@@ -1686,7 +1669,7 @@ function drawHud() {
     ctx.fillStyle = I.color; ctx.fillRect(x - 110, 31, Math.min(100, v / CFG.powerupTime * 100), 3);
     x -= 128;
   }
-  if (muted) text('звук выкл (M)', UI_W - 12, UI_H - 14, 12, '#aab', 'right', '400');
+  if (muted) text(UI_TEXT.zvuk_vykl_m, UI_W - 12, UI_H - 14, 12, '#aab', 'right', '400');
 }
 
 function overlay(alpha) { ctx.fillStyle = `rgba(38,7,14,${alpha})`; ctx.fillRect(0, 0, UI_W, UI_H); }
@@ -1694,18 +1677,18 @@ function overlay(alpha) { ctx.fillStyle = `rgba(38,7,14,${alpha})`; ctx.fillRect
 function drawMenu() {
   overlay(.72);
   text('EcoTank', UI_W / 2, 150, 72, '#8be06a', 'center', '800');
-  text('Защищай лес — круши вражескую технику', UI_W / 2, 205, 18, '#cfe0c6', 'center', '400');
+  text(UI_TEXT.zashchishchay_les_krushi_vrazheskuyu_tekhniku, UI_W / 2, 205, 18, '#cfe0c6', 'center', '400');
   const lines = [
-    ['W/S · ↑/↓', 'вперёд / назад'], ['A/D · ←/→', 'поворот корпуса'],
-    ['Мышь', 'прицел башни'],
-    ['ЛКМ / Пробел', 'огонь'],
-    ['ПКМ / E', 'рельсотрон (если есть заряд)'],
-    ['P / Esc', 'пауза'],
-    ['M', 'звук'],
+    ['W/S · ↑/↓', UI_TEXT.vperyod_nazad], ['A/D · ←/→', UI_TEXT.povorot_korpusa],
+    [UI_TEXT.mysh, UI_TEXT.pritsel_bashni],
+    [UI_TEXT.lkm_probel, UI_TEXT.ogon],
+    [UI_TEXT.pkm_e, UI_TEXT.relsotron_esli_est_zaryad],
+    ['P / Esc', UI_TEXT.pauza],
+    ['M', UI_TEXT.zvuk],
   ];
   lines.forEach(([k, v], i) => { text(k, UI_W / 2 - 20, 260 + i * 27, 16, '#ffe08a', 'right'); text(v, UI_W / 2, 260 + i * 27, 16, '#dde6d8', 'left', '400'); });
-  text('Забор ломается с выстрела, кирпич — с четырёх, сталь и вода — нет. В кронах враги тебя не видят.', UI_W / 2, 438, 14, '#9fb39a', 'center', '400');
-  text('Проезжай по обломкам врагов, чтобы собрать металлолом.', UI_W / 2, 460, 14, '#d9c27a', 'center', '400');
+  text(UI_TEXT.zabor_lomaetsya_s_vystrela_kirpich_s_chetyryokh_stal_i_voda_net_v_kronakh_vragi_tebya, UI_W / 2, 438, 14, '#9fb39a', 'center', '400');
+  text(UI_TEXT.proezzhay_po_oblomkam_vragov_chtoby_sobrat_metallolom, UI_W / 2, 460, 14, '#d9c27a', 'center', '400');
   const types = Object.entries(ITEMS);
   types.forEach(([k, I], i) => {
     const x = UI_W / 2 - 370 + i * 160, y = 505;
@@ -1714,8 +1697,8 @@ function drawMenu() {
     text(I.glyph, x, y + 1, 14, I.color, 'center', '700');
     text(I.name, x + 20, y, 14, '#dde6d8', 'left', '400');
   });
-  if (Math.floor(time * 2) % 2 === 0) text('Нажми Enter или кликни, чтобы начать', UI_W / 2, 565, 20, '#fff', 'center');
-  if (best) text(`Рекорд: ${best}`, UI_W / 2, 605, 15, '#ffe08a', 'center', '400');
+  if (Math.floor(time * 2) % 2 === 0) text(UI_TEXT.nazhmi_enter_ili_klikni_chtoby_nachat, UI_W / 2, 565, 20, '#fff', 'center');
+  if (best) text(`${UI_TEXT.rekord}${best}`, UI_W / 2, 605, 15, '#ffe08a', 'center', '400');
 }
 
 function draw() {
@@ -1755,61 +1738,22 @@ function drawUI() {
   }
   if (state === 'pause') {
     overlay(.55);
-    text('Пауза', UI_W / 2, UI_H / 2 - 50, 52, '#f0cc77', 'center', '800');
+    text(UI_TEXT.pause, UI_W / 2, UI_H / 2 - 50, 52, '#f0cc77', 'center', '800');
   }
   if (state === 'over') {
     overlay(clamp(overT * 1.5, 0, .7));
     if (overT > .3) {
-      text(victory ? 'Кампания пройдена!' : base && base.dead ? 'База уничтожена' : 'Танк уничтожен', UI_W / 2, UI_H / 2 - 70, 52, victory ? '#f0cc77' : '#ef6452', 'center', '800');
-      text(`Очки: ${score}   ·   ${campaign ? 'Уровень' : 'Волна'}: ${campaign ? `${wave} из ${campaign.length}` : wave}   ·   Металлолом: ${scrap}`, UI_W / 2, UI_H / 2 - 10, 22, '#fff', 'center');
-      text(score >= best && score > 0 ? 'Новый рекорд!' : `Рекорд: ${best}`, UI_W / 2, UI_H / 2 + 25, 18, '#ffe08a', 'center');
-      const again = !campaign ? 'Enter или клик — ещё раз' : victory ? 'Enter или клик — пройти кампанию заново' : `Enter или клик — повторить уровень ${wave}`;
+      text(victory ? UI_TEXT.kampaniya_proydena : base && base.dead ? UI_TEXT.baza_unichtozhena : UI_TEXT.tank_unichtozhen, UI_W / 2, UI_H / 2 - 70, 52, victory ? '#f0cc77' : '#ef6452', 'center', '800');
+      text(`${UI_TEXT.ochki_2}${score}   ·   ${campaign ? UI_TEXT.uroven_2 : UI_TEXT.volna_2}: ${campaign ? `${wave}${UI_TEXT.iz}${campaign.length}` : wave}${UI_TEXT.metallolom_4}${scrap}`, UI_W / 2, UI_H / 2 - 10, 22, '#fff', 'center');
+      text(score >= best && score > 0 ? UI_TEXT.novyy_rekord : `${UI_TEXT.rekord}${best}`, UI_W / 2, UI_H / 2 + 25, 18, '#ffe08a', 'center');
+      const again = !campaign ? UI_TEXT.enter_ili_klik_eshchyo_raz : victory ? UI_TEXT.enter_ili_klik_proyti_kampaniyu_zanovo : `${UI_TEXT.enter_ili_klik_povtorit_uroven}${wave}`;
       if (overT > .6 && Math.floor(time * 2) % 2 === 0) text(again, UI_W / 2, UI_H / 2 + 80, 18, '#f2d3b1', 'center', '400');
     }
   }
 }
 
 // ---------- настройки разработчика ----------
-const KIND_NAMES = { player: 'Игрок', scout: 'Разведчик', soldier: 'Солдат', heavy: 'Тяжёлый', artillery:'Артиллерия' };
-const TANK_FIELDS = [
-  ['hp', 'ХП', 1, 99, 1],
-  ['speed', 'Скорость танка', 0, 400, 5],
-  ['bulletSpeed', 'Скорость снаряда', 50, 2000, 10],
-  ['fireRate', 'Перезарядка, с', .05, 10, .05],
-  ['dmg', 'Урон снаряда', 0, 20, 1],
-  ['turretSpeed', 'Скорость поворота башни, рад/с', .1, 20, .1],
-  ['hold', 'Дистанция стоянки', 0, 600, 10],
-  ['wander', 'Случайность пути', 0, 1, .05],
-  ['score', 'Очки за уничтожение', 0, 5000, 50],
-  ['scrap', 'Металлолом', 0, 50, 1],
-];
-const CFG_FIELDS = [
-  ['Бонусы', [
-    ['dropChance', 'Шанс выпадения', 0, 1, .05],
-    ['heavyDropBonus', 'Доп. шанс с тяжёлого', 0, 1, .05],
-    ['powerupTime', 'Длительность бонусов, с', 1, 60, 1],
-    ['repairAmount', 'Ремонт, ХП', 1, 20, 1],
-    ['railMax', 'Макс. зарядов рельсотрона', 1, 20, 1],
-  ]],
-  ['Волны', [
-    ['waveBase', 'Врагов в 1-й волне', 1, 50, 1],
-    ['wavePerLevel', 'Прирост врагов за волну', 0, 20, 1],
-    ['maxAliveBase', 'Врагов одновременно (база)', 1, 20, 1],
-    ['maxAliveCap', 'Врагов одновременно (макс.)', 1, 30, 1],
-    ['enemySpeedPerWave', 'Ускорение врагов за волну', 0, .2, .01],
-    ['waveBonus', 'Бонус за волну (× номер)', 0, 5000, 50],
-    ['waveHeal', 'Лечение между волнами', 0, 20, 1],
-  ]],
-  ['Мир и эффекты', [
-    ['mapElements', 'Групп элементов на 30×20 (плотность)', 0, 180, 1],
-    ['invulnTime', 'Неуязвимость после урона, с', 0, 5, .1],
-    ['enemySight', 'Дальность обзора врагов', 50, 1500, 10],
-    ['treeStealth', 'Видят в кронах ближе чем', 0, 500, 10],
-    ['shake', 'Тряска экрана (×)', 0, 3, .1],
-    ['hitstop', 'Стоп-кадр при взрыве, с', 0, .3, .01],
-    ['godMode', 'Режим бога', 'bool'],
-  ]],
-];
+
 const DEV_DEFAULTS = JSON.stringify({ KINDS, CFG, balanceVersion:2,artilleryVersion:2 });
 let devOpen = false;
 const pauseMenu = document.getElementById('pauseMenu'), devEl = document.getElementById('dev'), devBody = document.getElementById('devBody');
@@ -1831,7 +1775,7 @@ function numInput(obj, key, min, max, step, value) {
 }
 function buildDev() {
   const kinds = Object.keys(KINDS);
-  let h = '<h3>Танки</h3><table><tr><th></th>' + kinds.map(k => `<th style="color:${KINDS[k].color}">${KIND_NAMES[k]}</th>`).join('') + '</tr>';
+  let h = ("<h3>" + UI_TEXT.tanki + "</h3><table><tr><th></th>") + kinds.map(k => `<th style="color:${KINDS[k].color}">${KIND_NAMES[k]}</th>`).join('') + '</tr>';
   for (const [key, label, min, max, step] of TANK_FIELDS) {
     h += `<tr><td>${label}</td>` + kinds.map(k => key in KINDS[k] ? `<td>${numInput(k, key, min, max, step, KINDS[k][key])}</td>` : '<td class="na">—</td>').join('') + '</tr>';
   }
@@ -1894,7 +1838,7 @@ function setFolded(id, folded) {
   try { localStorage.setItem(FOLD_KEY, JSON.stringify([...foldedPacks])); } catch (e) {}
 }
 const editorEl = document.getElementById('editor'), editorPanel = document.getElementById('editorPanel');
-const BRUSHES = [['B', 'Кирпич'], ['F', 'Забор'], ['S', 'Бронеплита'], ['W', 'Вода'], ['T', 'Лесопосадка'], ['P', 'Песок'], ['b', 'Кирпич · 60%'], ['t', 'Лесопосадка · 60%'], ['.', 'Расчистить'], [' ', 'Не трогать']];
+
 const cellClass = ch => 'pe-cell t-' + (ch === ' ' ? 'none' : ch === '.' ? 'clear' : ch);
 const escapeHtml = s => s.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 function miniGrid(rows) {
@@ -1905,7 +1849,7 @@ function closeEditor() { editorOpen = false; edit = null; painting = null; if (s
 // keep=true — правка существующего пресета, иначе новый (p=null) или копия p
 function startEdit(packId, p, keep) {
   const rows = p ? p.rows : Array.from({ length: 5 }, () => ' '.repeat(5));
-  edit = { packId: keep ? packId : null, orig: keep ? p.name : null, target: packId, name: keep ? p.name : p ? p.name + ' (копия)' : '', cells: rows.map(r => [...r]) };
+  edit = { packId: keep ? packId : null, orig: keep ? p.name : null, target: packId, name: keep ? p.name : p ? p.name + UI_TEXT.kopiya : '', cells: rows.map(r => [...r]) };
   editorMsg = ''; renderEditor();
 }
 const newPackId = () => 'p' + Date.now().toString(36) + ri(0, 1e6).toString(36);
@@ -1927,10 +1871,10 @@ function trimRows(cells) {
 function saveEdit() {
   const name = edit.name.trim(), rows = trimRows(edit.cells), packs = loadPacks();
   const target = packs.find(p => p.id === edit.target), source = packs.find(p => p.id === edit.packId);
-  if (!name) { editorMsg = 'Введите имя пресета.'; return renderEditor(); }
-  if (!rows.length) { editorMsg = 'Пресет пуст: нарисуйте хотя бы одну клетку.'; return renderEditor(); }
-  if (!target) { editorMsg = 'Выбранный пак не найден.'; return renderEditor(); }
-  if (target.presets.some(p => p.name === name && !(target === source && p.name === edit.orig))) { editorMsg = `В паке «${target.name}» уже есть пресет с таким именем.`; return renderEditor(); }
+  if (!name) { editorMsg = UI_TEXT.vvedite_imya_preseta; return renderEditor(); }
+  if (!rows.length) { editorMsg = UI_TEXT.preset_pust_narisuyte_khotya_by_odnu_kletku; return renderEditor(); }
+  if (!target) { editorMsg = UI_TEXT.vybrannyy_pak_ne_nayden; return renderEditor(); }
+  if (target.presets.some(p => p.name === name && !(target === source && p.name === edit.orig))) { editorMsg = `${UI_TEXT.v_pake}${target.name}${UI_TEXT.uzhe_est_preset_s_takim_imenem}`; return renderEditor(); }
   const preset = { name, rows }, i = source ? source.presets.findIndex(p => p.name === edit.orig) : -1;
   // правка на месте сохраняет порядок; смена пака переносит пресет в конец нового
   if (i >= 0 && source === target) target.presets[i] = preset;
@@ -1939,38 +1883,38 @@ function saveEdit() {
 }
 function renderEditor() {
   const packs = loadPacks();
-  let h = '<div class="devHead"><b>Бюро типовых проектов</b>' + (edit ? '' : '<button data-act="close" class="ghost">Закончить совещание</button>') + '</div>';
+  let h = ("<div class=\"devHead\"><b>" + UI_TEXT.btnEditor + "</b>") + (edit ? '' : ("<button data-act=\"close\" class=\"ghost\">" + UI_TEXT.close + "</button>")) + '</div>';
   if (!edit) {
-    h += '<div class="pe-actions" style="margin-top:0"><button data-act="newPack">Открыть проектное дело</button><button data-act="foldAll" class="ghost">Свернуть сборники</button><button data-act="unfoldAll" class="ghost">Развернуть сборники</button></div>';
-    if (!packs.some(p => p.enabled && p.presets.length)) h += '<p class="pe-warn">Ни один пак с пресетами не включён — в режиме «Пресет тест 0.1» карта будет пустой.</p>';
+    h += ("<div class=\"pe-actions\" style=\"margin-top:0\"><button data-act=\"newPack\">" + UI_TEXT.otkryt_proektnoe_delo + "</button><button data-act=\"foldAll\" class=\"ghost\">" + UI_TEXT.svernut_sborniki + "</button><button data-act=\"unfoldAll\" class=\"ghost\">" + UI_TEXT.razvernut_sborniki + "</button></div>");
+    if (!packs.some(p => p.enabled && p.presets.length)) h += ("<p class=\"pe-warn\">" + UI_TEXT.ni_odin_pak_s_presetami_ne_vklyuchyon_v_rezhime_preset_test_0_1_karta_budet_pustoy + "</p>");
     for (const pack of packs) {
       const id = escapeHtml(pack.id), claude = pack.id === CLAUDE_PACK, folded = foldedPacks.has(pack.id);
       h += `<div class="pe-pack${folded ? ' folded' : ''}"><div class="pe-packhead">`
-        + `<button data-act="fold" data-pack="${id}" class="ghost pe-fold" aria-expanded="${!folded}" aria-label="${folded ? 'Открыть' : 'Закрыть'} дело">▾</button>`
-        + (claude ? `<b>${CLAUDE_PACK_NAME}</b>` : `<input class="pe-packname" data-pack="${id}" maxlength="40" value="${escapeHtml(pack.name)}" aria-label="Имя пака">`)
-        + `<span class="pe-size">${pack.presets.length} шт.</span>`
-        + `<label><input type="checkbox" data-act="toggle" data-pack="${id}"${pack.enabled ? ' checked' : ''}>В игре</label>`
-        + `<button data-act="new" data-pack="${id}">Новый типовой проект</button>`
-        + (claude ? `<button data-act="resetPack" data-pack="${id}" class="ghost">Вернуться к нормативу</button>` : `<button data-act="deletePack" data-pack="${id}" class="ghost">Списать проектное дело</button>`)
+        + `<button data-act="fold" data-pack="${id}" class="ghost pe-fold" aria-expanded="${!folded}" aria-label="${folded ? UI_TEXT.otkryt : UI_TEXT.zakryt}${UI_TEXT.delo}">▾</button>`
+        + (claude ? `<b>${CLAUDE_PACK_NAME}</b>` : `<input class="pe-packname" data-pack="${id}" maxlength="40" value="${escapeHtml(pack.name)}" aria-label="${UI_TEXT.imya_paka}">`)
+        + `<span class="pe-size">${pack.presets.length}${UI_TEXT.sht}</span>`
+        + `<label><input type="checkbox" data-act="toggle" data-pack="${id}"${pack.enabled ? ' checked' : ''}>${UI_TEXT.v_igre}</label>`
+        + `<button data-act="new" data-pack="${id}">${UI_TEXT.novyy_tipovoy_proekt}</button>`
+        + (claude ? `<button data-act="resetPack" data-pack="${id}" class="ghost">${UI_TEXT.vernutsya_k_normativu}</button>` : `<button data-act="deletePack" data-pack="${id}" class="ghost">${UI_TEXT.spisat_proektnoe_delo}</button>`)
         + '</div>';
       if (folded) { h += '</div>'; continue; }
       h += pack.presets.length ? pack.presets.map((p, i) => `<div class="pe-row">${miniGrid(p.rows)}<span class="pe-name">${escapeHtml(p.name)}</span><span class="pe-size">${p.rows[0].length}×${p.rows.length}</span>`
-        + `<button data-act="edit" data-pack="${id}" data-i="${i}" class="ghost">Внести поправки</button><button data-act="copy" data-pack="${id}" data-i="${i}" class="ghost">Снять копию</button><button data-act="delete" data-pack="${id}" data-i="${i}" class="ghost">Списать</button></div>`).join('')
-        : '<p class="note" style="margin:4px 0 8px">Пак пуст.</p>';
+        + `<button data-act="edit" data-pack="${id}" data-i="${i}" class="ghost">${UI_TEXT.edit}</button><button data-act="copy" data-pack="${id}" data-i="${i}" class="ghost">${UI_TEXT.copy}</button><button data-act="delete" data-pack="${id}" data-i="${i}" class="ghost">${UI_TEXT.remove}</button></div>`).join('')
+        : ("<p class=\"note\" style=\"margin:4px 0 8px\">" + UI_TEXT.pak_pust + "</p>");
       h += '</div>';
     }
-    h += '<p class="note">В режиме «Пресет тест 0.1» на карту ставятся пресеты всех паков, отмеченных «В игре».</p>';
+    h += ("<p class=\"note\">" + UI_TEXT.v_rezhime_preset_test_0_1_na_kartu_stavyatsya_presety_vsekh_pakov_otmechennykh_v_igre + "</p>");
   } else {
     const w = edit.cells[0].length, hh = edit.cells.length;
-    h += `<div class="pe-tools"><label>Имя <input id="peName" maxlength="40" value="${escapeHtml(edit.name)}"></label>`
-      + `<label>Пак <select id="pePack">${packs.map(p => `<option value="${escapeHtml(p.id)}"${p.id === edit.target ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}</select></label>`
-      + `<label>Ширина <input type="number" id="peW" min="1" max="${PRESET_MAX}" value="${w}"></label>`
-      + `<label>Высота <input type="number" id="peH" min="1" max="${PRESET_MAX}" value="${hh}"></label>`
-      + '<button data-act="clear" class="ghost">Расчистить участок</button></div>';
+    h += `<div class="pe-tools"><label>${UI_TEXT.imya}<input id="peName" maxlength="40" value="${escapeHtml(edit.name)}"></label>`
+      + `<label>${UI_TEXT.pak}<select id="pePack">${packs.map(p => `<option value="${escapeHtml(p.id)}"${p.id === edit.target ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}</select></label>`
+      + `<label>${UI_TEXT.shirina}<input type="number" id="peW" min="1" max="${PRESET_MAX}" value="${w}"></label>`
+      + `<label>${UI_TEXT.vysota}<input type="number" id="peH" min="1" max="${PRESET_MAX}" value="${hh}"></label>`
+      + ("<button data-act=\"clear\" class=\"ghost\">" + UI_TEXT.clearArea + "</button></div>");
     h += '<div class="pe-palette">' + BRUSHES.map(([ch, label]) => `<button data-act="brush" data-ch="${ch}" class="ghost${ch === brush ? ' on' : ''}"><span class="${cellClass(ch)}"></span>${label}</button>`).join('') + '</div>';
     h += `<div class="pe-grid" style="grid-template-columns:repeat(${w},30px)">` + edit.cells.map((r, y) => r.map((ch, x) => `<div class="${cellClass(ch)}" data-x="${x}" data-y="${y}"></div>`).join('')).join('') + '</div>';
-    h += '<p class="note">ЛКМ — рисовать выбранной кистью, ПКМ — стереть («не трогать»). «Расчистить» освобождает клетку на карте. Пустые края обрезаются при сохранении, группа на карте случайно поворачивается и отражается, частота зависит от размера.</p>';
-    h += `<div class="pe-msg">${escapeHtml(editorMsg)}</div><div class="pe-actions"><button data-act="save">Утвердить проект</button><button data-act="cancel" class="ghost">Отставить!</button></div>`;
+    h += ("<p class=\"note\">" + UI_TEXT.lkm_risovat_vybrannoy_kistyu_pkm_steret_ne_trogat_raschistit_osvobozhdaet_kletku_na_k + "</p>");
+    h += `<div class="pe-msg">${escapeHtml(editorMsg)}</div><div class="pe-actions"><button data-act="save">${UI_TEXT.saveProject}</button><button data-act="cancel" class="ghost">${UI_TEXT.cancel}</button></div>`;
   }
   editorPanel.innerHTML = h;
 }
@@ -1986,13 +1930,13 @@ editorPanel.addEventListener('click', e => {
   if (act === 'close') closeEditor();
   else if (act === 'fold' && pack) { setFolded(pack.id, !foldedPacks.has(pack.id)); renderEditor(); }
   else if (act === 'foldAll' || act === 'unfoldAll') { for (const p of packs) setFolded(p.id, act === 'foldAll'); renderEditor(); }
-  else if (act === 'newPack') { packs.push({ id: newPackId(), name: 'Новый пак ' + packs.length, enabled: true, presets: [] }); savePacks(packs); renderEditor(); }
-  else if (act === 'deletePack' && pack && pack.id !== CLAUDE_PACK && (!pack.presets.length || confirm(`Удалить пак «${pack.name}» вместе с ${pack.presets.length} пресетами?`))) { packs.splice(packs.indexOf(pack), 1); savePacks(packs); renderEditor(); }
-  else if (act === 'resetPack' && pack && confirm(`Вернуть «${CLAUDE_PACK_NAME}» к исходным? Правки в этом паке пропадут.`)) { packs[packs.indexOf(pack)] = { ...defaultClaudePack(), enabled: pack.enabled }; savePacks(packs); renderEditor(); }
+  else if (act === 'newPack') { packs.push({ id: newPackId(), name: UI_TEXT.novyy_pak + packs.length, enabled: true, presets: [] }); savePacks(packs); renderEditor(); }
+  else if (act === 'deletePack' && pack && pack.id !== CLAUDE_PACK && (!pack.presets.length || confirm(`${UI_TEXT.udalit_pak}${pack.name}${UI_TEXT.vmeste_s}${pack.presets.length}${UI_TEXT.presetami}`))) { packs.splice(packs.indexOf(pack), 1); savePacks(packs); renderEditor(); }
+  else if (act === 'resetPack' && pack && confirm(`${UI_TEXT.vernut}${CLAUDE_PACK_NAME}${UI_TEXT.k_iskhodnym_pravki_v_etom_pake_propadut}`)) { packs[packs.indexOf(pack)] = { ...defaultClaudePack(), enabled: pack.enabled }; savePacks(packs); renderEditor(); }
   else if (act === 'new' && pack) startEdit(pack.id, null, false);
   else if (act === 'edit' && preset) startEdit(pack.id, preset, true);
   else if (act === 'copy' && preset) startEdit(pack.id, preset, false);
-  else if (act === 'delete' && preset && confirm(`Удалить пресет «${preset.name}»?`)) { pack.presets.splice(i, 1); savePacks(packs); renderEditor(); }
+  else if (act === 'delete' && preset && confirm(`${UI_TEXT.udalit_preset}${preset.name}»?`)) { pack.presets.splice(i, 1); savePacks(packs); renderEditor(); }
   else if (act === 'brush') { brush = btn.dataset.ch; renderEditor(); }
   else if (act === 'clear') { edit.cells = edit.cells.map(r => r.map(() => ' ')); renderEditor(); }
   else if (act === 'save') saveEdit();
@@ -2030,7 +1974,7 @@ let mapEdOpen = false, mapEd = null, mapBrush = 'B', mapPaint = null, mapMirror 
 // штамп — пресет из любого пака, который ставится на карту кликом: { pack, i, turns, flip }; mapHover — клетка под курсором
 let mapStamp = null, mapHover = null;
 const mapEditorEl = document.getElementById('mapEditor'), mapEditorPanel = document.getElementById('mapEditorPanel');
-const MAP_BRUSHES = BRUSHES.filter(([ch]) => ch !== ' ').map(([ch, label]) => [ch, ch === '.' ? 'Пусто' : label]);
+const MAP_BRUSHES = BRUSHES.filter(([ch]) => ch !== ' ').map(([ch, label]) => [ch, ch === '.' ? UI_TEXT.pusto : label]);
 const MAP_COLORS = { '.': '#56693f', B: '#b3633a', b: '#b3633a', F: '#56693f', S: '#9aa6af', W: '#2c6d96', T: '#56693f', t: '#56693f', P: '#b59e64' };
 const blankMapRows = cols => Array.from({ length: cols * 2 / 3 }, () => '.'.repeat(cols));
 // рисует карту по клеткам размером cs; marks — показать базу, точки появления врагов и запретные зоны
@@ -2072,7 +2016,7 @@ function openMapEditor() { mapEdOpen = true; mapEd = null; mapEdMsg = ''; render
 function closeMapEditor() { mapEdOpen = false; mapEd = null; mapPaint = null; renderMapPick(); if (state === 'menu') toMenu(); }
 function startMapEdit(map, keep, cols = 30) {
   const rows = map ? map.rows : blankMapRows(cols);
-  mapEd = { id: keep ? map.id : null, name: keep ? map.name : map ? map.name + ' (копия)' : '', cols: rows[0].length, cells: rows.map(r => [...r]) };
+  mapEd = { id: keep ? map.id : null, name: keep ? map.name : map ? map.name + UI_TEXT.kopiya : '', cols: rows[0].length, cells: rows.map(r => [...r]) };
   mapEdMsg = ''; renderMapEditor();
 }
 // смена размера держит низ и центр на месте — там база
@@ -2105,9 +2049,9 @@ function placeStamp(c, r) {
 }
 function saveMapEdit() {
   const name = mapEd.name.trim(), rows = mapEd.cells.map(r => r.join('')), list = loadUserMaps();
-  if (!name) { mapEdMsg = 'Введите имя карты.'; return renderMapEditor(); }
-  if (list.some(m => m.name === name && m.id !== mapEd.id)) { mapEdMsg = 'Карта с таким именем уже есть.'; return renderMapEditor(); }
-  if (!mapPassable(mapEd.cols, rows)) { mapEdMsg = 'Враги не могут доехать до базы хотя бы от одной точки появления: уберите сталь или воду с пути.'; return renderMapEditor(); }
+  if (!name) { mapEdMsg = UI_TEXT.vvedite_imya_karty; return renderMapEditor(); }
+  if (list.some(m => m.name === name && m.id !== mapEd.id)) { mapEdMsg = UI_TEXT.karta_s_takim_imenem_uzhe_est; return renderMapEditor(); }
+  if (!mapPassable(mapEd.cols, rows)) { mapEdMsg = UI_TEXT.vragi_ne_mogut_doekhat_do_bazy_khotya_by_ot_odnoy_tochki_poyavleniya_uberite_stal_ili; return renderMapEditor(); }
   const map = { id: mapEd.id || newPackId(), name, cols: mapEd.cols, rows }, i = list.findIndex(m => m.id === mapEd.id);
   if (i >= 0) list[i] = map; else list.push(map);
   saveUserMaps(list); mapEd = null; mapEdMsg = ''; renderMapPick(); renderMapEditor();
@@ -2134,35 +2078,35 @@ function exportMap(m) {
 function mapRow(m, i, mine) {
   const k = `data-src="${mine ? 'mine' : 'claude'}" data-i="${i}"`;
   return `<div class="pe-row"><canvas class="me-thumb" width="120" height="80" ${k}></canvas><span class="pe-name">${escapeHtml(m.name)}</span><span class="pe-size">${m.cols}×${m.rows.length}</span>`
-    + `<button data-act="play" ${k}>Начать операцию</button>` + (mine ? `<button data-act="edit" ${k} class="ghost">Внести поправки</button>` : '')
-    + `<button data-act="copy" ${k} class="ghost">Снять копию</button><button data-act="export" ${k} class="ghost">Передать документацию</button>`
-    + (mine ? `<button data-act="delete" ${k} class="ghost">Списать</button>` : '') + '</div>';
+    + `<button data-act="play" ${k}>${UI_TEXT.nachat_operatsiyu}</button>` + (mine ? `<button data-act="edit" ${k} class="ghost">${UI_TEXT.edit}</button>` : '')
+    + `<button data-act="copy" ${k} class="ghost">${UI_TEXT.copy}</button><button data-act="export" ${k} class="ghost">${UI_TEXT.peredat_dokumentatsiyu}</button>`
+    + (mine ? `<button data-act="delete" ${k} class="ghost">${UI_TEXT.remove}</button>` : '') + '</div>';
 }
 function renderMapEditor() {
-  let h = '<div class="devHead"><b>Военно-топографический отдел</b>' + (mapEd ? '' : '<button data-act="close" class="ghost">Закончить совещание</button>') + '</div>';
+  let h = ("<div class=\"devHead\"><b>" + UI_TEXT.btnMapEditor + "</b>") + (mapEd ? '' : ("<button data-act=\"close\" class=\"ghost\">" + UI_TEXT.close + "</button>")) + '</div>';
   if (!mapEd) {
     const claude = claudeMaps(), mine = loadUserMaps();
-    h += '<div class="pe-tools"><button data-act="new">Начертить план операции</button><select id="meNewSize" aria-label="Размер новой карты">' + MAP_SIZES.map(s => `<option value="${s}">${s}×${s * 2 / 3}</option>`).join('') + '</select>'
-      + '<button data-act="import" class="ghost">Получить из архива</button></div>';
+    h += ("<div class=\"pe-tools\"><button data-act=\"new\">" + UI_TEXT.nachertit_plan_operatsii + "</button><select id=\"meNewSize\" aria-label=\"" + UI_TEXT.razmer_novoy_karty + "\">") + MAP_SIZES.map(s => `<option value="${s}">${s}×${s * 2 / 3}</option>`).join('') + '</select>'
+      + ("<button data-act=\"import\" class=\"ghost\">" + UI_TEXT.poluchit_iz_arkhiva + "</button></div>");
     if (mapEdMsg) h += `<div class="pe-msg">${escapeHtml(mapEdMsg)}</div>`;
-    h += '<h3>Карты Клода</h3>' + (claude.length ? claude.map((m, i) => mapRow(m, i, false)).join('') : '<p class="note">Файл maps.js не найден или пуст.</p>');
-    h += '<h3>Мои карты</h3>' + (mine.length ? mine.map((m, i) => mapRow(m, i, true)).join('') : '<p class="note">Своих карт пока нет. Создайте новую или скопируйте карту Клода.</p>');
-    h += '<p class="note">Карты Клода хранятся в файле maps.js и меняются только в нём — копия попадает в «Мои карты». Экспорт сохраняет карту в JSON: его можно импортировать в другом браузере или передать модели, чтобы добавить карту в maps.js.</p>';
+    h += ("<h3>" + UI_TEXT.karty_kloda + "</h3>") + (claude.length ? claude.map((m, i) => mapRow(m, i, false)).join('') : ("<p class=\"note\">" + UI_TEXT.fayl_maps_js_ne_nayden_ili_pust + "</p>"));
+    h += ("<h3>" + UI_TEXT.moi_karty + "</h3>") + (mine.length ? mine.map((m, i) => mapRow(m, i, true)).join('') : ("<p class=\"note\">" + UI_TEXT.svoikh_kart_poka_net_sozdayte_novuyu_ili_skopiruyte_kartu_kloda + "</p>"));
+    h += ("<p class=\"note\">" + UI_TEXT.karty_kloda_khranyatsya_v_fayle_maps_js_i_menyayutsya_tolko_v_nyom_kopiya_popadaet_v_ + "</p>");
   } else {
-    h += `<div class="pe-tools"><label>Имя <input id="meName" maxlength="40" value="${escapeHtml(mapEd.name)}"></label>`
-      + '<label>Размер <select id="meSize">' + MAP_SIZES.map(s => `<option value="${s}"${s === mapEd.cols ? ' selected' : ''}>${s}×${s * 2 / 3}</option>`).join('') + '</select></label>'
-      + `<label><input type="checkbox" id="meMirror"${mapMirror ? ' checked' : ''}> Зеркально</label><button data-act="clear" class="ghost">Расчистить участок</button></div>`;
+    h += `<div class="pe-tools"><label>${UI_TEXT.imya}<input id="meName" maxlength="40" value="${escapeHtml(mapEd.name)}"></label>`
+      + ("<label>" + UI_TEXT.razmer + "<select id=\"meSize\">") + MAP_SIZES.map(s => `<option value="${s}"${s === mapEd.cols ? ' selected' : ''}>${s}×${s * 2 / 3}</option>`).join('') + '</select></label>'
+      + `<label><input type="checkbox" id="meMirror"${mapMirror ? ' checked' : ''}>${UI_TEXT.zerkalno}</label><button data-act="clear" class="ghost">${UI_TEXT.clearArea}</button></div>`;
     h += '<div class="pe-palette">' + MAP_BRUSHES.map(([ch, label]) => `<button data-act="brush" data-ch="${ch}" class="ghost${!mapStamp && ch === mapBrush ? ' on' : ''}"><span class="${cellClass(ch)}"></span>${label}</button>`).join('') + '</div>';
     const packs = loadPacks(), stamp = stampRows(), sel = mapStamp ? `${mapStamp.pack}:${mapStamp.i}` : '';
-    h += '<div class="pe-tools"><label>Пресет <select id="meStamp"><option value="">— кисть —</option>'
+    h += ("<div class=\"pe-tools\"><label>" + UI_TEXT.preset + "<select id=\"meStamp\"><option value=\"\">" + UI_TEXT.kist + "</option>")
       + packs.filter(p => p.presets.length).map(p => `<optgroup label="${escapeHtml(p.name)}">` + p.presets.map((pr, i) => { const v = escapeHtml(`${p.id}:${i}`); return `<option value="${v}"${v === escapeHtml(sel) ? ' selected' : ''}>${escapeHtml(pr.name)} · ${pr.rows[0].length}×${pr.rows.length}</option>`; }).join('') + '</optgroup>').join('')
       + '</select></label>'
-      + (stamp ? `${miniGrid(stamp)}<button data-act="turn" class="ghost">↻ Повернуть (R)</button><button data-act="flip" class="ghost">⇋ Отразить (F)</button><button data-act="unstamp" class="ghost">Ручная разметка</button>` : '')
+      + (stamp ? `${miniGrid(stamp)}<button data-act="turn" class="ghost">${UI_TEXT.povernut_r}</button><button data-act="flip" class="ghost">${UI_TEXT.otrazit_f}</button><button data-act="unstamp" class="ghost">${UI_TEXT.ruchnaya_razmetka}</button>` : '')
       + '</div>';
     h += `<canvas id="meCanvas" class="me-canvas" width="${mapEd.cols * mapCellSize(mapEd.cols)}" height="${mapEd.cells.length * mapCellSize(mapEd.cols)}"></canvas>`;
-    h += '<div class="me-legend"><span><i style="background:#e5484d"></i>Точки появления врагов</span><span><i style="background:#ffd05a"></i>База и подъезд к ней</span><span><i style="background:#7be38a;border-radius:50%"></i>Старт игрока</span><span>Подсвеченные зоны игра всегда расчищает, рисовать там нельзя.</span></div>';
-    h += '<p class="note">ЛКМ — рисовать, ПКМ — стереть. Выбранный пресет ставится кликом по центру под курсором; R поворачивает, F отражает, клетки «не трогать» карту не меняют. «Зеркально» повторяет мазок и пресет на другой половине карты. Кирпич и забор враги простреливают, а через сталь и воду должен оставаться путь к базе.</p>';
-    h += `<div class="pe-msg">${escapeHtml(mapEdMsg)}</div><div class="pe-actions"><button data-act="save">Утвердить проект</button><button data-act="cancel" class="ghost">Отставить!</button></div>`;
+    h += ("<div class=\"me-legend\"><span><i style=\"background:#e5484d\"></i>" + UI_TEXT.tochki_poyavleniya_vragov + "</span><span><i style=\"background:#ffd05a\"></i>" + UI_TEXT.baza_i_podezd_k_ney + "</span><span><i style=\"background:#7be38a;border-radius:50%\"></i>" + UI_TEXT.start_igroka + "</span><span>" + UI_TEXT.podsvechennye_zony_igra_vsegda_raschishchaet_risovat_tam_nelzya + "</span></div>");
+    h += ("<p class=\"note\">" + UI_TEXT.lkm_risovat_pkm_steret_vybrannyy_preset_stavitsya_klikom_po_tsentru_pod_kursorom_r_po + "</p>");
+    h += `<div class="pe-msg">${escapeHtml(mapEdMsg)}</div><div class="pe-actions"><button data-act="save">${UI_TEXT.saveProject}</button><button data-act="cancel" class="ghost">${UI_TEXT.cancel}</button></div>`;
   }
   mapEditorPanel.innerHTML = h;
   drawMapEditor();
@@ -2191,8 +2135,8 @@ function drawMapEditor() {
 function renderMapPick() {
   const el = document.getElementById('mapPick'), claude = claudeMaps(), mine = loadUserMaps();
   const opt = m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)} · ${m.cols}×${m.rows.length}</option>`;
-  el.innerHTML = (claude.length ? `<optgroup label="Карты Клода">${claude.map(opt).join('')}</optgroup>` : '')
-    + (mine.length ? `<optgroup label="Мои карты">${mine.map(opt).join('')}</optgroup>` : '') || '<option value="">Нет карт</option>';
+  el.innerHTML = (claude.length ? `<optgroup label="${UI_TEXT.karty_kloda}">${claude.map(opt).join('')}</optgroup>` : '')
+    + (mine.length ? `<optgroup label="${UI_TEXT.moi_karty}">${mine.map(opt).join('')}</optgroup>` : '') || ("<option value=\"\">" + UI_TEXT.net_kart + "</option>");
   if (!findMap(CFG.mapPick)) CFG.mapPick = (claude[0] || mine[0] || { id: '' }).id;
 }
 function mapEdCell(e) {
@@ -2210,7 +2154,7 @@ mapEditorPanel.addEventListener('click', e => {
   else if (act === 'edit' && m) startMapEdit(m, true);
   else if (act === 'copy' && m) startMapEdit(m, false);
   else if (act === 'export' && m) exportMap(m);
-  else if (act === 'delete' && m && confirm(`Удалить карту «${m.name}»?`)) { saveUserMaps(mine.filter(x => x.id !== m.id)); renderMapPick(); renderMapEditor(); }
+  else if (act === 'delete' && m && confirm(`${UI_TEXT.udalit_kartu}${m.name}»?`)) { saveUserMaps(mine.filter(x => x.id !== m.id)); renderMapPick(); renderMapEditor(); }
   else if (act === 'brush') { mapBrush = btn.dataset.ch; mapStamp = null; renderMapEditor(); }
   else if (act === 'unstamp') { mapStamp = null; renderMapEditor(); }
   else if ((act === 'turn' || act === 'flip') && mapStamp) { turnStamp(act); renderMapEditor(); }
@@ -2255,7 +2199,7 @@ document.getElementById('mapImport').addEventListener('change', e => {
   if (!file) return;
   file.text().then(text => {
     const n = importMapText(text);
-    mapEdMsg = n ? '' : 'В файле нет подходящих карт EcoTank.';
+    mapEdMsg = n ? '' : UI_TEXT.v_fayle_net_podkhodyashchikh_kart_ecotank;
     renderMapPick(); renderMapEditor();
   });
 });
@@ -2267,8 +2211,8 @@ function renderCampaignPick() {
   if (key === campaignPickKey) return;
   campaignPickKey = key;
   document.getElementById('campaignPick').innerHTML = levels.length
-    ? levels.map((m, i) => `<option value="${i}"${i >= open ? ' disabled' : ''}>${i >= open ? '🔒 ' : ''}Уровень ${i + 1} · ${escapeHtml(m.name)} · ${m.cols}×${m.rows.length}</option>`).join('')
-    : '<option value="0">Нет карт кампании</option>';
+    ? levels.map((m, i) => `<option value="${i}"${i >= open ? ' disabled' : ''}>${i >= open ? '🔒 ' : ''}${UI_TEXT.uroven}${i + 1} · ${escapeHtml(m.name)} · ${m.cols}×${m.rows.length}</option>`).join('')
+    : ("<option value=\"0\">" + UI_TEXT.net_kart_kampanii + "</option>");
 }
 document.getElementById('campaignPick').addEventListener('change', e => {
   CFG.campaignStart = +e.target.value || 0; saveDev(); e.target.blur();
