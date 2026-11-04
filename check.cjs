@@ -1,8 +1,9 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
 require('./check-modules.cjs')(__dirname);
+require('./check-audio.cjs')(__dirname);
 const html=fs.readFileSync(__dirname+'/index.html','utf8');
 const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].map(([,attrs,inline])=>({src:attrs.match(/\bsrc="([^"]+)"/)?.[1],inline}));
-const code=scripts.filter(s=>!s.src).map(s=>s.inline).join('\n');
+const code=scripts.map(s=>s.src?fs.readFileSync(__dirname+'/'+s.src,'utf8'):s.inline).join('\n');
 const context=new Proxy({}, {get:(o,k)=>k in o?o[k]:(()=>context)});
 context.globalAlpha=1;
 context.arc=(x,y,r)=>{if(!Number.isFinite(r)||r<0)throw Error('Invalid Canvas arc radius '+r);};

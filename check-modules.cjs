@@ -3,7 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 module.exports=function checkModules(root){
   const html=fs.readFileSync(root+'/index.html','utf8');
   const sources=[...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map(m=>m[1]);
-  assert.deepEqual(sources,['js/ui-text.js','js/config.js','maps.js']);
+  assert.deepEqual(sources,['js/ui-text.js','js/config.js','js/audio.js','maps.js']);
   assert(!/<script\b[^>]*type="module"/.test(html),'Direct file opening must not require ES-module loading');
   // Catalog and parameters must be usable without the browser, audio or stored settings.
   const context=vm.createContext({});
