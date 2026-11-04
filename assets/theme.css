@@ -1,0 +1,42 @@
+/* Soviet poster palette: vermilion, oxblood, brass gold and warm ivory. */
+:root{color-scheme:dark;--red:#c72c28;--red-bright:#e24032;--wine:#351014;--panel:#281215;--gold:#e9bd62;--ivory:#fff0d6;--muted:#c49b8b;accent-color:var(--red)}
+html,body{background:#180c0e;color:var(--ivory)}
+button{background:#7b1e24;border-color:#b64a43;color:var(--ivory);transition:background .15s,border-color .15s}
+button:hover{background:#a6292c;border-color:var(--gold)}
+button.ghost{background:#37191d;border-color:#784037}button.ghost:hover{background:#582127}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+input[type=range],input[type=checkbox]{accent-color:var(--red-bright)}
+#mainMenu{background:radial-gradient(ellipse at 50% 12%,#6a1e22 0%,#351014 48%,#1c0c0f 100%);color:var(--ivory)}
+.heroFade{background:linear-gradient(0deg,#271014 0%,transparent 35%)}
+.risingTitle{color:#f0cc77;text-shadow:0 4px 25px #260409,0 1px 4px #210307}
+.heroCaption,.menuHeading{color:#edc88d}.menuHeading small{color:#ba9382}
+.menuLower{background:#271014;border-top:1px solid #7a3633;box-shadow:0 -16px 45px #290c1233}
+.modeButtons button{background:#4c1b21;border-color:#8b3d3c;color:var(--ivory)}
+.modeButtons button:hover{background:#72232a;border-color:#e9bd62}
+.modeButtons button small{color:#d7ac96}
+.modeButtons button.selected{background:#a12a2d;border-color:#e9bd62;color:#fff2d2;box-shadow:inset 0 2px #f3cd7b,0 0 22px #bb29231f}
+.modeButtons button.selected small{color:#f5d7ae}
+.menuActions span{color:#c39d8c}
+.menuActions .startButton{background:#d3352c;color:#fff0ce;border:1px solid #f1bf65;box-shadow:0 5px 20px #0d030733}
+.menuActions .startButton:hover{background:#ed4634;color:#fff7dd}
+#mainMenu #mapControl{color:#cfa18e!important}
+#mapControl select{background:#39191e!important;color:#ffe3b5!important;border-color:#92514a!important}
+#musicControls{z-index:12!important;background:#291216ed!important;border-color:#8a4940!important;color:var(--ivory)!important}
+.audioLabel{color:#e2b9a0}.homeButton{background:#641e25;border-color:#ad5144;color:var(--ivory)}
+.menuSmoke{background:radial-gradient(ellipse 22% 12% at 20% 58%,#e4a06b2e,transparent 80%),radial-gradient(ellipse 30% 18% at 75% 35%,#f0c08025,transparent 80%),radial-gradient(ellipse 38% 14% at 50% 84%,#c45b592b,transparent 80%)}
+#pauseMenu{z-index:3}#pauseMenu button{box-shadow:0 5px 20px #16040888}
+#dev,#editor,#mapEditor{z-index:10;background:#1c050bcc}
+#devPanel,.epanel{background:linear-gradient(145deg,#35171d,#241014);border-color:#8c4840;color:var(--ivory);box-shadow:0 20px 60px #100206cc;scrollbar-color:#a54a3f #2c1318}
+.devHead b,.pe-packhead b{color:var(--gold)}
+#devPanel h3,.epanel h3,.me-legend{color:#e6b990}
+#devPanel th{color:#e9bd62!important}#devPanel td,.pe-row{border-color:#603039}
+#devPanel td.na{color:#9e756d}.grid label{color:#f0d0b4}
+#devPanel input[type=number],.epanel input,.epanel select{background:#1c0c10;color:#ffedd5;border-color:#80504a}
+#devPanel input[type=number]:focus,.epanel input:focus,.epanel select:focus{border-color:var(--gold)}
+#devPanel input[type=checkbox]{accent-color:var(--red-bright)}
+.note,.pe-row .pe-size{color:#c69f90}
+.pe-pack{border-color:#7a3a3d;background:#31151b}
+.pe-palette button.on{background:#9b292c;border-color:#e9bd62}
+.pe-warn{color:#f2c878}.pe-msg{color:#ffb7a2}
+.devHead{flex-wrap:wrap}.devHead b{min-width:0;overflow-wrap:anywhere}
+@media(max-width:700px){body:has(#menuHome:not([hidden])) #musicControls{max-width:calc(100vw - 120px)}.menuActions .startButton{white-space:nowrap}}

@@ -82,33 +82,42 @@
 </style>
 <!-- «Карты Клода»: готовые карты в текстовом виде, формат описан в самом файле -->
 <script src="maps.js"></script>
+<link rel="stylesheet" href="assets/menu.css">
+<link rel="stylesheet" href="assets/theme.css">
 </head>
 <body>
 <div id="musicControls" style="position:fixed;top:8px;right:10px;z-index:2;display:flex;align-items:center;gap:8px;background:#14181cdd;padding:5px;border-radius:6px;color:#bbc9b5;font-size:12px">
-<button id="musicToggle" style="font-size:11px;padding:5px 8px" aria-label="Включить или выключить музыку">♫ Музыка</button><input id="musicVolume" aria-label="Громкость музыки" type="range" min="0" max="1" step="0.01" value="0.22" style="width:70px"></div>
+<button id="musicToggle" style="font-size:11px;padding:5px 8px" aria-label="Включить или выключить музыку">♫ Радио «Союз»</button><span class="audioLabel">Музыка</span><input id="musicVolume" aria-label="Громкость музыки" type="range" min="0" max="1" step="0.01" value="0.22" style="width:70px"><span class="audioLabel">Общая</span><input id="gameVolume" aria-label="Общая громкость игры" type="range" min="0" max="1" step="0.01" value="0.65" style="width:70px"></div>
+<button id="menuHome" class="homeButton" hidden>⌂ В штаб</button>
+<section id="mainMenu" aria-label="Главное меню EcoTank">
+<div class="menuSmoke" aria-hidden="true"></div><div class="menuHero"><img class="menuForeground" src="assets/menu-marx-cutout.png" alt="Карл Маркс держит модель танка"><img class="menuLight" src="assets/menu-marx-cutout.png" alt="" aria-hidden="true"><div class="heroFade"></div><div class="risingTitle" aria-hidden="true">ECOTANK</div><div class="heroCaption">СТАЛЬ. ТАКТИКА. ОБЩЕЕ ДЕЛО.</div></div>
+<div class="menuLower"><div class="menuHeading"><span>ВЫБЕРИ ОПЕРАЦИЮ</span><small>Танковый полигон</small></div>
+<div class="modeButtons"><button id="mode-original">Манёвры<small>Случайная карта</small></button><button id="mode-preset01">Типовые операции<small>Готовые участки</small></button><button id="mode-map">Свой плацдарм<small>Выбор и редактор</small></button><button id="mode-campaign">Дорога к победе<small>Последовательные уровни</small></button></div>
+<div class="menuActions"><button id="menuStart" class="startButton">В бой, товарищ!</button><button id="menuSettings" class="ghost">Постановления</button><span>WASD — танк · Мышь — башня · Пробел — огонь · Shift — ускорение</span></div>
 <div id="mapControl" style="position:fixed;top:8px;left:10px;z-index:2;background:#14181cdd;padding:7px;color:#d5dfcc;font-size:12px;border-radius:6px">Карта (новая игра)
 <select id="mapSize" aria-label="Размер карты для новой игры" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="30">30×20</option><option value="45">45×30</option><option value="60">60×40</option></select>
 <select id="mapMode" aria-label="Режим расстановки декораций для новой игры" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="original">Оригинальный</option><option value="preset01">Пресет тест 0.1</option><option value="map">Карта</option><option value="campaign">Кампания</option></select>
 <select id="campaignPick" aria-label="Уровень, с которого начать кампанию" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:220px"></select>
 <select id="mapPick" aria-label="Готовая карта для новой игры" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:200px"></select>
-<button id="btnEditor" class="ghost" style="font-size:12px;padding:4px 10px">Редактор пресетов</button>
-<button id="btnMapEditor" class="ghost" style="font-size:12px;padding:4px 10px">Редактор карт</button></div>
+<button id="btnEditor" class="ghost" style="font-size:12px;padding:4px 10px">Бюро типовых проектов</button>
+<button id="btnMapEditor" class="ghost" style="font-size:12px;padding:4px 10px">Военно-топографический отдел</button></div>
+</div></section>
 <div id="wrap"><canvas id="c" width="960" height="640"></canvas></div>
 <div id="pauseMenu" hidden>
-  <button id="btnResume">Продолжить</button>
-  <button id="btnNewGame" class="ghost">Новая игра</button>
-  <button id="btnDev" class="ghost">Настройки разработчика</button>
+  <button id="btnResume">Продолжить выполнение</button>
+  <button id="btnNewGame" class="ghost">Новая операция</button>
+  <button id="btnDev" class="ghost">Особый конструкторский отдел</button>
 </div>
 <div id="dev" hidden>
   <div id="devPanel">
-    <div class="devHead"><b>Настройки разработчика</b><button id="btnDevClose" class="ghost">Закрыть</button></div>
+    <div class="devHead"><b>Особый конструкторский отдел</b><button id="btnDevClose" class="ghost">Закончить совещание</button></div>
     <div class="devActions">
-      <button data-act="heal" class="ghost">Починить танк</button>
-      <button data-act="rail" class="ghost">+1 заряд рельсотрона</button>
-      <button data-act="powerups" class="ghost">Все бонусы</button>
-      <button data-act="kill" class="ghost">Уничтожить врагов</button>
-      <button data-act="skip" class="ghost">Следующая волна</button>
-      <button data-act="reset" class="ghost">Сбросить настройки</button>
+      <button data-act="heal" class="ghost">Вызвать рембригаду</button>
+      <button data-act="rail" class="ghost">+1 снаряд из НИИ</button>
+      <button data-act="powerups" class="ghost">Всё лучшее — экипажу</button>
+      <button data-act="kill" class="ghost">Вопрос решён</button>
+      <button data-act="skip" class="ghost">Следующий эшелон</button>
+      <button data-act="reset" class="ghost">Вернуть штатные нормативы</button>
     </div>
     <div id="devBody"></div>
     <p class="note">Изменения применяются сразу и сохраняются в браузере. ХП врагов действует на новых врагов. Количество групп элементов применяется к следующей карте; больше групп — плотнее карта.</p>
@@ -151,16 +160,17 @@ function roundedPolygon(c,points,amount) {
   });c.closePath();
 }
 const KINDS = {
-  player:  { hp: 5, speed: 60, turretSpeed: 1, fireRate: 1, color: '#6cc24a', dark: '#2e6b26', bulletSpeed: 1200, dmg: 1, scale: 1 },
+  player:  { hp: 3, speed: 60, turretSpeed: 1, fireRate: 1, color: '#6cc24a', dark: '#2e6b26', bulletSpeed: 1200, dmg: 1, scale: 1 },
   scout:   { hp: 1, speed: 80,  fireRate: 1/.33, color: '#e9b949', dark: '#8c6a1a', bulletSpeed: 380, dmg: 1, scale: .8415, score: 100, scrap: 1, wander: .25, hold: 0,   turretSpeed: 1 },
   soldier: { hp: 2, speed: 50,  fireRate: 2, color: '#e0603f', dark: '#7f2d1b', bulletSpeed: 420, dmg: 1, scale: 1,   score: 200, scrap: 2, wander: .12, hold: 150, turretSpeed: 1 },
   heavy:   { hp: 3, speed: 35,  fireRate: 5, color: '#9483d6', dark: '#463b80', bulletSpeed: 600, dmg: 2, scale: 1.357, score: 500, scrap: 4, wander: .05, hold: 260, turretSpeed: 1 },
 };
+KINDS.artillery={hp:2,speed:35,fireRate:6,turretSpeed:1,color:'#d5be7d',dark:'#566048',bulletSpeed:182,dmg:2,scale:1.1,score:400,scrap:3,wander:0,hold:640};
 const ITEMS = {
-  armor: { color:'#ffb45e', glyph:'AP', name:'Бронебойные' },
+  upgrade:{color:'#ffd45c',glyph:'★',name:'Улучшение танка'},
+  barrage:{color:'#ffab52',glyph:'✹',name:'Артподготовка'},
   repair: { color: '#e5484d', glyph: '+',  name: 'Ремонт' },
   rapid:  { color: '#f2c94c', glyph: '»',  name: 'Скорострел' },
-  triple: { color: '#4cc3f2', glyph: '3×', name: 'Тройной' },
   shield: { color: '#7be38a', glyph: '◯',  name: 'Щит' },
   rail:   { color: '#c58cff', glyph: '⌁',  name: 'Рельсотрон' },
 };
@@ -175,22 +185,31 @@ const PLAYER_START = { x: W / 2 - 80, y: H - 48 };
 const BASE_POS = { x: W / 2 + 16, y: H - 16, r: 16 };
 
 // ---------- звук ----------
-let actx = null, noiseBuf = null, muted = false;
-const music = new Audio('assets/mehvod.mp3');
-music.loop = true; music.volume = .22; music.preload = 'metadata';
-let musicOff = false, musicWanted = false, musicLevel = .22;
-function syncMusic() {
-  const wanted = !muted && !musicOff && state !== 'menu';
-  music.volume = musicLevel * ((state === 'pause' || state === 'over' || (player && player.dead)) ? .3 : 1);
-  if (wanted !== musicWanted) {
-    musicWanted = wanted;
-    if(wanted) music.play().catch(e=>{ if(e.name!=='AbortError'){musicWanted=false;musicOff=true;} });
-    else music.pause();
+let actx = null, noiseBuf = null, muted = false, cannonNoiseLayers=null,heavyImpulse=null;
+const MENU_TRACK='assets/red-steel-menu.mp3',LEVEL_TRACKS=['assets/mehvod.mp3','assets/red-steel-1.mp3','assets/red-steel-2.mp3'];
+const music = new Audio(MENU_TRACK);music.loop=false;music.volume=.22;music.preload='metadata';
+let musicOff=false,musicWanted=false,musicLevel=.22,musicScene='',musicTrack=MENU_TRACK,musicBlocked=false,audioUnlocked=false;
+let gameVolume=.65,sfxVolume=1,masterGain=null;
+function soundBus(){if(!masterGain){masterGain=actx.createGain();masterGain.gain.value=gameVolume*sfxVolume;masterGain.connect(actx.destination);}return masterGain;}
+function pickLevelTrack(){const options=LEVEL_TRACKS.filter(t=>t!==musicTrack);return options[ri(0,options.length-1)];}
+function syncMusic(){
+  const scene=state==='menu'?'menu':'level';
+  if(scene!==musicScene){musicScene=scene;musicTrack=scene==='menu'?MENU_TRACK:pickLevelTrack();music.src=musicTrack;music.loop=scene==='menu';musicWanted=false;}
+  music.volume=gameVolume*musicLevel*((state==='pause'||state==='over'||player&&player.dead)?.3:1);
+  const wanted=!muted&&!musicOff;
+  if(wanted!==musicWanted&&(!musicBlocked||audioUnlocked||!wanted)){
+    musicWanted=wanted;
+    if(wanted)music.play().catch(e=>{if(e.name!=='AbortError'){musicWanted=false;musicBlocked=true;audioUnlocked=false;}});else music.pause();
   }
-  document.getElementById('musicToggle').textContent=musicOff?'♫ Музыка выкл':'♫ Музыка';
+  document.getElementById('musicToggle').textContent=musicOff?'♫ Радиоточка выключена':musicBlocked?'♫ Включить радиоточку':'♫ Радио «Союз»';
 }
-document.getElementById('musicToggle').addEventListener('click', e=>{e.currentTarget.blur();musicOff=!musicOff;syncMusic();});
-document.getElementById('musicVolume').addEventListener('input', e=>{musicLevel=Number(e.target.value);syncMusic();});
+function unlockAudio(){audioUnlocked=true;musicBlocked=false;syncMusic();}
+addEventListener('pointerdown',unlockAudio);addEventListener('keydown',unlockAudio);
+music.addEventListener('ended',()=>{if(musicScene==='level'){musicTrack=pickLevelTrack();music.src=musicTrack;musicWanted=false;syncMusic();}});
+document.getElementById('musicToggle').addEventListener('click',e=>{e.currentTarget.blur();if(musicBlocked){unlockAudio();return;}musicOff=!musicOff;syncMusic();});
+document.getElementById('musicVolume').addEventListener('input',e=>{musicLevel=Number(e.target.value);syncMusic();});
+document.getElementById('gameVolume').addEventListener('input',e=>{gameVolume=Number(e.target.value);if(masterGain)masterGain.gain.value=gameVolume*sfxVolume;syncMusic();});
+
 let treadTimer=0;
 function updateTreadSound(dt) {
   treadTimer-=dt;
@@ -205,7 +224,7 @@ function tone(f0, f1, dur, type, vol) {
   const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
   o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-  o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+  o.connect(g).connect(soundBus()); o.start(t); o.stop(t + dur);
 }
 function noise(dur, vol, freq) {
   if (!noiseBuf) {
@@ -215,21 +234,23 @@ function noise(dur, vol, freq) {
   const s = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain(), t = actx.currentTime;
   s.buffer = noiseBuf; f.type = 'lowpass'; f.frequency.value = freq;
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-  s.connect(f).connect(g).connect(actx.destination); s.start(t); s.stop(t + dur);
+  s.connect(f).connect(g).connect(soundBus()); s.start(t); s.stop(t + dur);
 }
 // Layered cannon transient, pressure wave and diffuse outdoor tail.
 function cannonShot(volume) {
   const t = actx.currentTime, bus = actx.createGain(), comp = actx.createDynamicsCompressor();
   bus.gain.value = volume * .7; comp.threshold.value = -14; comp.ratio.value = 5;
-  bus.connect(comp).connect(actx.destination);
+  bus.connect(comp).connect(soundBus());
   const osc = actx.createOscillator(), sub = actx.createGain();
   osc.frequency.setValueAtTime(115, t); osc.frequency.exponentialRampToValueAtTime(28, t + .4);
   sub.gain.setValueAtTime(.7, t); sub.gain.exponentialRampToValueAtTime(.0001, t + .65);
   osc.connect(sub).connect(bus); osc.start(t); osc.stop(t + .7);
-  for (const [delay, duration, cutoff, gain] of [[0,.07,9000,.65],[0,.38,900,.8],[.06,1.3,420,.45],[.14,.75,1800,.12]]) {
-    const buffer = actx.createBuffer(1, Math.ceil(actx.sampleRate * duration), actx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i=0;i<data.length;i++) data[i]=(Math.random()*2-1)*Math.exp(-i/data.length*5);
+  if(!cannonNoiseLayers)cannonNoiseLayers=[[0,.07,9000,.65],[0,.38,900,.8],[.06,1.3,420,.45],[.14,.75,1800,.12]].map(([delay,duration,cutoff,gain])=>{
+    const buffer=actx.createBuffer(1,Math.ceil(actx.sampleRate*duration),actx.sampleRate),data=buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*Math.exp(-i/data.length*5);
+    return {delay,cutoff,gain,buffer};
+  });
+  for (const {delay,cutoff,gain,buffer} of cannonNoiseLayers) {
     const src=actx.createBufferSource(), filter=actx.createBiquadFilter(), g=actx.createGain();
     src.buffer=buffer; filter.type='lowpass'; filter.frequency.value=cutoff; g.gain.value=gain;
     src.connect(filter).connect(g).connect(bus); src.start(t+delay);
@@ -244,6 +265,7 @@ function sfx(n) {
     if (actx.state === 'suspended') actx.resume();
     switch (n) {
       case 'shoot': cannonShot(1); break;
+      case 'heavyShoot':heavyGunSound();break;
       case 'eshoot': cannonShot(.45); break;
       case 'leaves': noise(.18, .10, 6500); noise(.3,.05,1700); break;
       case 'hit': noise(.09,.23,5200);tone(1050,260,.13,'triangle',.11);noise(.18,.09,500);break;
@@ -553,6 +575,10 @@ function drawSandGround() {
 // ---------- состояние игры ----------
 let state = 'menu', player = null, enemies = [], bullets = [], parts = [], items = [], wrecks = [], rails = [];
 let base = null;
+let artilleryShells=[],itemSpawnTimer=10,barrageMarkers=[],barrageTrajectories=[],barrageSoundShots=0,barrageFrame=0;
+const UPGRADE_DURATION=1.5;
+function resetArtillery(){artilleryShells=[];barrageMarkers=[];barrageTrajectories=[];barrageSoundShots=0;barrageFrame=0;}
+function hasPendingBarrage(){return barrageMarkers.length||barrageTrajectories.length||barrageSoundShots;}
 let score = 0, scrap = 0, hitstop = 0, wave = 0, toSpawn = [], spawnTimer = 0, flowTimer = 0, betweenT = 0, deadT = 0, overT = 0;
 let shake = 0, time = 0, banner = { text: '', sub: '', t: 0 };
 let best = 0;
@@ -561,10 +587,10 @@ try { best = +localStorage.getItem('ecotank-best') || 0; } catch (e) {}
 function makeTank(x, y, kind) {
   const K = KINDS[kind];
   return {
-    x, y, kind, r: 13 * K.scale, angle: -Math.PI / 2, turret: -Math.PI / 2,
+    x, y, kind, r: 13 * K.scale*(kind==='player'?.9:1), angle: -Math.PI / 2, turret: -Math.PI / 2,
     hp: K.hp, maxHp: K.hp, cd: rnd(.6, 1.4), vx: 0, vy: 0, tread: 0, trackAcc: 0, recoil: 0, flash: 0,
     tx: x, ty: y, stuck: 0, decideT: 0, brick: null, spawnT: 0, inv: 0, rail: 0, armor: false, boostLeft:0, boostCooldown:0, shiftHeld:false,
-    pw: { rapid: 0, triple: 0, shield: 0 },
+    upgrade:0, pw: { rapid: 0, shield: 0 },
   };
 }
 
@@ -573,6 +599,7 @@ function waveList(w) {
   for (let i = 0; i < n; i++) {
     const r = Math.random();
     list.push(r < pH ? 'heavy' : r < pH + .38 ? 'scout' : 'soldier');
+    if((i+1)%5===0)list.push('artillery');
   }
   return list;
 }
@@ -606,13 +633,14 @@ function nextWave() {
       grid[i]=wall?BRICK:EMPTY;brickHp[i]=wall?4:0;brickMask[i]=wall?1023:0;
     }
   }
-  const hp = player ? Math.min(KINDS.player.hp, player.hp + CFG.waveHeal) : KINDS.player.hp;
+  const tier=player&&!player.dead?(player.upgrade||0):0;
+  const maxHp=playerMaxHp(tier),hp=player?Math.min(maxHp,player.hp+CFG.waveHeal):maxHp;
   const rail = player ? player.rail : 0;
   const boostState=player?{boostLeft:player.boostLeft,boostCooldown:player.boostCooldown,shiftHeld:player.shiftHeld}:{};
   const armor = !!(player && !player.dead && player.armor);
   player = makeTank(PLAYER_START.x, PLAYER_START.y, 'player');
-  player.hp = hp; player.rail = rail; player.armor=armor; Object.assign(player,boostState); player.cd = .3;
-  enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = [];
+  setPlayerUpgrade(player,tier,false);player.hp = hp; player.rail = rail; player.armor=tier>0; Object.assign(player,boostState); player.cd = .3;
+  enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; resetArtillery();itemSpawnTimer=10;
   toSpawn = waveList(wave); spawnTimer = 1.2; flowTimer = 0;
   banner = campaign
     ? { text: `Уровень ${wave} из ${campaign.length}`, sub: `${activeMap.name} · Врагов: ${toSpawn.length}`, t: 2.4 }
@@ -633,7 +661,8 @@ addEventListener('keydown', e => {
     else if (mapEd && mapStamp && (e.code === 'KeyR' || e.code === 'KeyF') && !['INPUT', 'SELECT'].includes(e.target.tagName)) { turnStamp(e.code === 'KeyR' ? 'turn' : 'flip'); renderMapEditor(); }
     return;
   }
-  if (e.target.tagName === 'INPUT') return;
+  if (['INPUT','SELECT'].includes(e.target.tagName)) return;
+  if(state==='menu'&&devOpen)return;
   if((e.code==='ShiftLeft'||e.code==='ShiftRight')&&!e.repeat&&player&&!player.dead&&state==='play')player.boostQueued=true;
   keys[e.code] = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
@@ -730,8 +759,9 @@ function separate() {
     const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
     if (d >= min || d === 0) continue;
     const push = (min - d) / 2, nx = dx / d, ny = dy / d;
-    a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push;
-    collideTiles(a); collideTiles(b);
+    const fixedA=a===player&&a.upgradeT>0,fixedB=b===player&&b.upgradeT>0;
+    if(!fixedA){a.x-=nx*push*(fixedB?2:1);a.y-=ny*push*(fixedB?2:1);collideTiles(a);}
+    if(!fixedB){b.x+=nx*push*(fixedA?2:1);b.y+=ny*push*(fixedA?2:1);collideTiles(b);}
   }
 }
 
@@ -744,14 +774,24 @@ function los(x0, y0, x1, y1) {
   return true;
 }
 
+function playerMaxHp(tier){return tier>=2?7:tier===1?5:KINDS.player.hp;}
+function tankScale(t){return KINDS[t.kind].scale*(t.kind==='player'?(t.upgrade>=2?1.15:t.upgrade>0?1:.9):1);}
+function setPlayerUpgrade(p,tier,heal=true){p.upgrade=clamp(tier,0,2);p.armor=p.upgrade>0;p.maxHp=playerMaxHp(p.upgrade);p.r=13*tankScale(p);if(heal)p.hp=p.maxHp;else p.hp=Math.min(p.hp,p.maxHp);if(p.upgrade>=2)items=items.filter(it=>it.type!=='upgrade');}
+function availableItemTypes(){return Object.keys(ITEMS).filter(k=>k!=='upgrade'||!player||player.upgrade<2);}
+function beginPlayerUpgrade(p){
+  if(p.upgrade>=2||p.upgradeT>0)return;
+  p.upgradeFrom=p.upgrade||0;setPlayerUpgrade(p,p.upgradeFrom+1);p.upgradeT=UPGRADE_DURATION;p.upgradeFx=0;p.inv=Math.max(p.inv,UPGRADE_DURATION);p.vx=p.vy=0;
+}
+function playerGunLength(t){return (t.upgrade>0?35:30)*(t.upgrade>=2?.8:1);}
 function fire(t) {
   const K = KINDS[t.kind], isP = t === player;
   const ap = (isP && t.armor)||t.kind==='heavy', speed=t.kind==='heavy'?3000:K.bulletSpeed*(ap?1.5:1);
-  const spread = isP && t.pw.triple > 0 ? [-.17, 0, .17] : [0];
-  const mx = t.x + (isP?Math.cos(t.angle)*5:0) + Math.cos(t.turret)*20*K.scale, my = t.y + (isP?Math.sin(t.angle)*5:0) + Math.sin(t.turret)*20*K.scale;
-  for (const da of spread) {
-    const a = t.turret + da;
-    bullets.push({ x: mx, y: my, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+  const shotScale=tankScale(t),barrels=isP&&t.upgrade>=2?[-4*shotScale,4*shotScale]:[0];
+  const muzzle=(isP?playerGunLength(t):20)*shotScale;
+  const mx = t.x + (isP?Math.cos(t.angle)*5*shotScale:0) + Math.cos(t.turret)*muzzle, my = t.y + (isP?Math.sin(t.angle)*5*shotScale:0) + Math.sin(t.turret)*muzzle;
+  for (const offset of barrels) {
+    const a = t.turret;
+    bullets.push({ x: mx-Math.sin(a)*offset, y: my+Math.cos(a)*offset, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
       owner: isP ? 'p' : 'e', armor: ap, trail: [], dmg: t.kind==='heavy'?2:K.dmg*(ap?2:1), r: t.kind === 'heavy' ? 4 : 3, life: 2.5 });
   }
   t.recoilMax = t.recoil = 5;
@@ -759,12 +799,12 @@ function fire(t) {
     const a = t.turret + rnd(-.5, .5), s = rnd(40, 140);
     parts.push({ x: mx, y: my, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: .15, max: .15, size: rnd(2, 4), color: '#ffd76a' });
   }
-  sfx(isP ? 'shoot' : 'eshoot');
+  sfx(isP?'shoot':t.kind==='heavy'?'heavyShoot':'eshoot');
 }
 
 // рельсотрон: мгновенный луч до стали или края карты, пробивает кирпич и всех врагов на пути
 function fireRail(p) {
-  if (!p || p.dead || p.rail <= 0) return;
+  if (!p || p.dead || p.upgradeT>0 || p.rail <= 0) return;
   p.rail--;
   const dx = Math.cos(p.turret), dy = Math.sin(p.turret);
   const x0 = p.x + Math.cos(p.angle)*5 + dx*20, y0 = p.y + Math.sin(p.angle)*5 + dy*20, hit = new Set();
@@ -798,16 +838,18 @@ function burst(x, y, n, colors, speed, life, size, kind) {
     parts.push(p);
   }
 }
-function blastDamage(x,y,diameter=30) {
-  const radius=diameter*1.5;
-  for(let r=Math.max(0,Math.floor((y-radius)/T));r<=Math.min(ROWS-1,Math.floor((y+radius)/T));r++)
-    for(let c=Math.max(0,Math.floor((x-radius)/T));c<=Math.min(COLS-1,Math.floor((x+radius)/T));c++) {
+function blastDamage(x,y,diameter=30,options={}) {
+  const radius=diameter*1.5,damage=options.damage||1;
+  for(let r=Math.max(0,Math.floor((y-radius*2)/T));r<=Math.min(ROWS-1,Math.floor((y+radius*2)/T));r++)
+    for(let c=Math.max(0,Math.floor((x-radius*2)/T));c<=Math.min(COLS-1,Math.floor((x+radius*2)/T));c++) {
       const hx=clamp(x,c*T,(c+1)*T),hy=clamp(y,r*T,(r+1)*T);
-      if(Math.hypot(x-hx,y-hy)<=radius){const t=grid[r*COLS+c];if(t===BRICK)hitBrick(c,r,1,hx,hy);else if(t===FENCE)hitFence(c,r,hx,hy);else if(t===TREE)hitFoliage(c,r,hx,hy,{});}
+      const distance=Math.hypot(x-hx,y-hy),t=grid[r*COLS+c];
+      if(t===TREE&&distance<=radius*2)hitFoliage(c,r,hx,hy,{});
+      else if(distance<=radius){if(t===BRICK){for(let n=0;n<damage;n++)hitBrick(c,r,1,hx,hy);}else if(t===FENCE)hitFence(c,r,hx,hy);}
     }
   // Marked-dead tanks are ignored, so chain explosions cannot award duplicate kills.
-  for(const e of [...enemies]) if(!e.dead && e.spawnT<=0 && Math.hypot(e.x-x,e.y-y)<=radius)hitEnemy(e,{x,y,dmg:1,blast:true});
-  if(player&&!player.dead&&Math.hypot(player.x-x,player.y-y)<=radius)hitPlayer({x,y,dmg:1,blast:true});
+  for(const e of [...enemies]) if(!e.dead && e.spawnT<=0 && Math.hypot(e.x-x,e.y-y)<=radius)hitEnemy(e,{x,y,dmg:damage,blast:true});
+  if(!options.safePlayer&&player&&!player.dead&&Math.hypot(player.x-x,player.y-y)<=radius)hitPlayer({x,y,dmg:damage,blast:true});
 }
 function explosion(x, y, big, color, sizeMultiplier=1) {
   const k = (big ? 1.4 : 1)*sizeMultiplier;
@@ -910,7 +952,7 @@ function hitEnemy(e, b) {
 
   wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret, tread:e.tread, recoil:e.recoil, flash:0, age: 0, smokeT: 0, detonateAt:rnd(.5,1.5)*(b.blast?.5:1), exploded:false });
   if (Math.random() < CFG.dropChance + (e.kind === 'heavy' ? CFG.heavyDropBonus : 0)) {
-    const types = Object.keys(ITEMS);
+    const types = availableItemTypes();
     items.push({ x: e.x, y: e.y, type: types[ri(0, types.length - 1)], life: 12 });
   }
 }
@@ -919,16 +961,21 @@ function hitPlayer(b) {
   const p = player;
   if (!p || p.dead) return;
   if (p.pw.shield > 0 || CFG.godMode) { burst(b.x, b.y, 10, ['#9ff5aa', '#e0ffe4'], 160, .3, 3); sfx('deflect'); return; }
-  if (p.inv > 0) return;
+  if (p.inv > 0 || p.upgradeT>0) return;
   p.hp -= b.dmg; p.inv = CFG.invulnTime; p.flash = .15;
   shake = Math.max(shake, 10);
   sfx('hurt');
-  if (p.hp <= 0) { p.hp = 0; p.dead = true; p.armor=false; const delay=rnd(.5,1.5)*(b.blast?.5:1); wrecks.push({x:p.x,y:p.y,kind:'player',angle:p.angle,turret:p.turret,tread:p.tread,recoil:p.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:delay,exploded:false}); deadT = delay+2; }
+  if (p.hp <= 0) { p.hp = 0; p.dead = true; p.armor=false; const delay=rnd(.5,1.5)*(b.blast?.5:1); wrecks.push({x:p.x,y:p.y,kind:'player',angle:p.angle,turret:p.turret,tread:p.tread,recoil:p.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:delay,exploded:false,blastTotal:3+2*(p.upgrade||0),upgrade:p.upgrade||0}); deadT = delay+2+(p.upgrade||0); }
 }
 
 function updatePlayer(dt) {
   const p = player;
   if (p.dead) return;
+  if(p.upgradeT>0){
+    p.upgradeT=Math.max(0,p.upgradeT-dt);p.inv=Math.max(p.upgradeT,p.inv-dt);p.vx=p.vy=0;p.upgradeFx-=dt;
+    if(p.upgradeFx<=0){p.upgradeFx=.12;burst(p.x,p.y,5,['#fff4bf','#ffd65d','#b2e8ff'],60,.5,2,'spark');}
+    return;
+  }
   p.boostCooldown=Math.max(0,p.boostCooldown-dt);
   if(p.boostLeft>0){p.boostLeft=Math.max(0,p.boostLeft-dt);if(!p.boostLeft)p.boostCooldown=10;}
   const shift=!!(keys.ShiftLeft||keys.ShiftRight);
@@ -970,20 +1017,22 @@ function decide(e, random) {
   }
 }
 
-const enemyInterval=kind=>({scout:1/.33,soldier:2,heavy:5}[kind]);
+const enemyInterval=kind=>({scout:1/.33,soldier:2,heavy:5,artillery:6}[kind]);
 function enemyGoal(e) {
   const choices=[player,base].filter(t=>t&&!t.dead);
   return choices.sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0]||PLAYER_START;
 }
 function formColumns() {
-  const rank={heavy:3,soldier:2,scout:1},pool=enemies.filter(e=>!e.dead&&!e.entering&&!(e.detourTime>0)).sort((a,b)=>rank[b.kind]-rank[a.kind]);
-  for(const e of pool){e.leader=null;e.columnSlot=0;}
-  while(pool.length) {
-    const lead=pool.shift();
-    const near=pool.filter(e=>Math.hypot(e.x-lead.x,e.y-lead.y)<220).sort((a,b)=>Math.hypot(a.x-lead.x,a.y-lead.y)-Math.hypot(b.x-lead.x,b.y-lead.y)).slice(0,2);
+  const rank={heavy:3,soldier:2,scout:1},eligible=enemies.filter(e=>!e.dead&&!e.entering&&!(e.detourTime>0));
+  const pool=eligible.filter(e=>e.kind!=='artillery').sort((a,b)=>rank[b.kind]-rank[a.kind]),guns=eligible.filter(e=>e.kind==='artillery'&&!e.deployed);
+  for(const e of eligible){e.leader=null;e.columnSlot=0;}
+  while(pool.length){const lead=pool.shift(),gun=guns.find(e=>Math.hypot(e.x-lead.x,e.y-lead.y)<260);
+    const near=pool.filter(e=>Math.hypot(e.x-lead.x,e.y-lead.y)<220).sort((a,b)=>Math.hypot(a.x-lead.x,a.y-lead.y)-Math.hypot(b.x-lead.x,b.y-lead.y)).slice(0,gun?1:2);
     near.forEach((e,i)=>{e.leader=lead;e.columnSlot=i+1;pool.splice(pool.indexOf(e),1);});
+    if(gun){gun.leader=lead;gun.columnSlot=near.length+1;guns.splice(guns.indexOf(gun),1);}
   }
 }
+
 function coverClear(x,y,r) {
   return [[0,0],[-r,-r],[r,-r],[-r,r],[r,r]].every(([dx,dy])=>!blocksTank(tileAt(Math.floor((x+dx)/T),Math.floor((y+dy)/T))));
 }
@@ -1035,6 +1084,7 @@ function updateEnemy(e, dt) {
   if (e.spawnT > 0) { e.spawnT -= dt; return; }
   if(e.entering) {e.y+=K.speed*dt;e.ty=e.y;e.tx=e.x;if(e.y>=48){e.y=48;e.entering=false;e.cd=enemyInterval(e.kind);}return;}
   e.cd -= dt; e.decideT -= dt;reconsiderRoute(e,dt);
+  if(e.kind==='artillery'){updateArtillery(e,dt);return;}
   const goal=enemyGoal(e);
   if(!e.leader)buildFlow(Math.floor(goal.x/T),Math.floor(goal.y/T));
 
@@ -1042,6 +1092,7 @@ function updateEnemy(e, dt) {
   const dp = alive ? Math.hypot(p.x - e.x, p.y - e.y) : 1e9;
   const hidden = alive && tileAt(Math.floor(p.x / T), Math.floor(p.y / T)) === TREE && dp > CFG.treeStealth;
   const sees = alive && !hidden && dp < CFG.enemySight && los(e.x, e.y, p.x, p.y);
+  e.engaged=sees;
 
   // движение от клетки к клетке по полю расстояний
   if (e.stuck > .7) { e.stuck = 0; decide(e, true); e.decideT = .5; }
@@ -1166,10 +1217,11 @@ function updateBullets(dt) {
 function updateItems(dt) {
   for (const it of items) {
     it.life -= dt;
-    if (player && !player.dead && Math.hypot(player.x - it.x, player.y - it.y) < 24) {
+    if (player && !player.dead && !(player.upgradeT>0) && Math.hypot(player.x - it.x, player.y - it.y) < 24) {
       it.life = 0;
-      if (it.type === 'repair') player.hp = Math.min(KINDS.player.hp, player.hp + CFG.repairAmount);
-      else if (it.type === 'armor') player.armor=true;
+      if (it.type === 'repair') player.hp = Math.min(player.maxHp, player.hp + CFG.repairAmount);
+      else if(it.type==='upgrade')beginPlayerUpgrade(player);
+      else if(it.type==='barrage')callBarrage();
       else if (it.type === 'rail') player.rail = Math.min(CFG.railMax, player.rail + 1);
       else player.pw[it.type] = CFG.powerupTime;
       floatText(it.x, it.y - 12, ITEMS[it.type].name, ITEMS[it.type].color);
@@ -1189,14 +1241,14 @@ function updateWrecks(dt) {
   for (const w of wrecks) {
     w.age += dt; w.smokeT -= dt;
     if(w.exploded===false && w.age>=w.detonateAt) {
-      if(w.kind==='player') {
+      if(w.kind==='player'||w.kind==='heavy') {
         w.blastCount=w.blastCount||0;
-        const offsets=[[-9,-5],[9,-3],[0,8]];
-        while(w.blastCount<3&&w.age>=w.detonateAt+w.blastCount*.5) {
+        const offsets=[[-9,-5],[9,-3],[0,8],[-11,5],[8,-8],[-4,-11],[11,7]],total=w.blastTotal||3;
+        while(w.blastCount<total&&w.age>=w.detonateAt+w.blastCount*.5) {
           const [dx,dy]=offsets[w.blastCount++];
-          explosion(w.x+dx,w.y+dy,false,KINDS.player.color);blastDamage(w.x+dx,w.y+dy,30);
+          explosion(w.x+dx,w.y+dy,false,KINDS[w.kind].color);blastDamage(w.x+dx,w.y+dy,30);
         }
-        if(w.blastCount===3){w.exploded=true;w.blastAge=w.age;}
+        if(w.blastCount===total){w.exploded=true;w.blastAge=w.age;}
       } else {
         w.exploded=true;w.blastAge=w.age;
         explosion(w.x,w.y,w.kind==='heavy',KINDS[w.kind].color);blastDamage(w.x,w.y,30*KINDS[w.kind].scale);
@@ -1269,6 +1321,7 @@ function update(dt) {
     }
   }
   updatePlayer(dt); updateTreadSound(dt);
+  updateArtilleryShells(dt);updateRandomItems(dt);
   if (state === 'play') updateSpawns(dt);
   formColumns();
   for (const e of enemies) updateEnemy(e, dt);
@@ -1287,7 +1340,7 @@ function update(dt) {
       // повтор кампании начинается с проигранного уровня
       if (campaign) { CFG.campaignStart = wave - 1; saveDev(); }
     }
-  } else if (state === 'play' && !toSpawn.length && !enemies.length && !wrecks.some(w=>w.exploded===false)) {
+  } else if (state === 'play' && !player.upgradeT && !toSpawn.length && !enemies.length && !wrecks.some(w=>w.exploded===false)&&!artilleryShells.length&&!hasPendingBarrage()) {
     const bonus = CFG.waveBonus * wave;
     score += bonus;
     const collected=collectRemainingScrap();
@@ -1397,6 +1450,7 @@ function drawTrees() {
 }
 
 function drawFlames(x,y,strength=1) {
+  strength=clamp(strength,0,1);if(!strength)return;
   for(let i=0;i<3;i++) {
     const f=.5+.5*Math.sin(time*17+i*2+x),h=(8+8*f)*strength;
     ctx.fillStyle='#ed542bdd';ctx.beginPath();ctx.ellipse(x+(i-1)*5,y-h/2,3.5*strength,h/2,0,0,Math.PI*2);ctx.fill();
@@ -1408,10 +1462,11 @@ function recoilOffset(t){if(!Number.isFinite(t.cd))return t.recoil||0;return (t.
 function reloadProgress(p) { return clamp(1-Math.max(0,p.cd)/(p.reloadDuration||KINDS.player.fireRate),0,1); }
 // Pixel geometry based on the supplied olive tank reference; body and turret rotate separately.
 function drawPlayerModel(t) {
+  if(t.kind==='artillery'){drawArtilleryModel(t);return;}
   const isP=t.kind==='player',heavy=t.kind==='heavy',panther=t.kind==='soldier';
-  const base=isP?'#7f8e3e':heavy?'#858c94':panther?'#7c8796':'#89939e';
+  const base=isP?(t.upgrade>0?'#859053':'#7f8e3e'):heavy?'#858c94':panther?'#7c8796':'#89939e';
   const dark=isP?'#3f4c25':'#3e4651',light=isP?'#bac47b':'#b3bac2',flash=t.flash>0;
-  ctx.save();ctx.translate(t.x,t.y);ctx.scale(KINDS[t.kind].scale,KINDS[t.kind].scale);ctx.rotate(t.angle+Math.PI/2);
+  ctx.save();ctx.translate(t.x,t.y);ctx.scale(tankScale(t),tankScale(t));ctx.rotate(t.angle+Math.PI/2);if(isP&&t.upgrade>=2)ctx.scale(1.15,1);
   ctx.fillStyle='#161b1c';ctx.fillRect(-16,-17,32,35);
   for(const x of [-16,10]){ctx.fillStyle='#343a3d';ctx.fillRect(x,-16,6,33);for(let y=-16;y<17;y+=5){ctx.fillStyle='#81858b';ctx.fillRect(x,y+(t.tread%5),6,2);}}
   ctx.fillStyle=flash?'#fff':base;
@@ -1420,23 +1475,31 @@ function drawPlayerModel(t) {
   ctx.fillStyle=dark;ctx.fillRect(-7,5,14,10);ctx.fillRect(-7,-14,14,4);
   ctx.fillStyle=base;for(let y=6;y<15;y+=3)ctx.fillRect(-6,y,12,1);
   if(heavy){ctx.fillStyle='#20262d';for(let x=-7;x<8;x+=3)ctx.fillRect(x,6,1,8);ctx.strokeStyle=light;ctx.strokeRect(-3,9,6,5);}
+  if(isP&&t.upgrade>0){ctx.fillStyle='#c3c994';ctx.fillRect(-7,-13,14,3);ctx.fillStyle='#354321';ctx.fillRect(-9,6,18,8);}
   if(isP){ctx.fillStyle='#24331c';ctx.fillRect(-12,10,6,9);ctx.fillRect(6,10,6,9);ctx.fillStyle='#879655';ctx.fillRect(-11,10,4,8);ctx.fillRect(7,10,4,8);ctx.fillStyle='#bfca85';ctx.fillRect(-11,10,4,2);ctx.fillRect(7,10,4,2);}
-  ctx.restore();ctx.save();ctx.translate(t.x+(isP?Math.cos(t.angle)*5:0),t.y+(isP?Math.sin(t.angle)*5:0));ctx.scale(KINDS[t.kind].scale,KINDS[t.kind].scale);ctx.rotate(t.turret+Math.PI/2);
-  const barrel=-30+(!t.dead?recoilOffset(t):t.recoil);ctx.fillStyle='#171d20';ctx.fillRect(-3,barrel,6,29);ctx.fillRect(-4,barrel-2,8,5);
-  ctx.fillStyle=light;ctx.fillRect(-1,barrel,3,27);
+  ctx.restore();ctx.save();ctx.translate(t.x+(isP?Math.cos(t.angle)*5:0),t.y+(isP?Math.sin(t.angle)*5:0));ctx.scale(tankScale(t),tankScale(t));ctx.rotate(t.turret+Math.PI/2);
+  const gunScale=isP&&t.upgrade>=2?.8:1,barrel=-(isP?playerGunLength(t):30)+(!t.dead?recoilOffset(t):t.recoil),offsets=isP&&t.upgrade>=2?[-4,4]:[0];
+  for(const off of offsets){ctx.fillStyle='#171d20';ctx.fillRect(off-3,barrel,6,29*gunScale);ctx.fillRect(off-4,barrel-2,8,5);ctx.fillStyle=light;ctx.fillRect(off-1,barrel,3,27*gunScale);}
+
   const poly=heavy?[[-10,-10],[9,-10],[12,-5],[12,8],[7,12],[-9,12],[-13,6],[-13,-5]]:panther?[[-6,-12],[6,-12],[13,5],[9,12],[-9,12],[-13,5]]:isP?[[-5,-12],[5,-12],[11,4],[7,12],[-7,12],[-11,4]]:[[-7,-10],[7,-10],[11,8],[6,12],[-8,12],[-11,5]];
-  ctx.fillStyle=flash?'#fff':base;ctx.strokeStyle='#161c20';ctx.lineWidth=2;ctx.beginPath();if(isP)roundedPolygon(ctx,poly,.22);else{poly.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();}ctx.fill();ctx.stroke();
+  ctx.fillStyle=flash?'#fff':base;ctx.strokeStyle='#161c20';ctx.lineWidth=2;ctx.beginPath();if(isP)roundedPolygon(ctx,t.upgrade>0?[[-8,-12],[8,-12],[12,-3],[10,10],[-10,10],[-12,-3]]:poly,.22);else{poly.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();}ctx.fill();ctx.stroke();
   ctx.fillStyle=dark;ctx.fillRect(-6,-3,6,6);ctx.fillRect(3,1,5,5);ctx.fillStyle=light;ctx.fillRect(-5,-4,4,2);ctx.fillRect(4,2,3,2);
   if(isP){ctx.fillStyle='#d55d43';ctx.fillRect(5,5,3,3);}else{ctx.fillStyle='#e0e3df';ctx.fillRect(-2,-7,5,1);ctx.fillRect(0,-9,1,5);}
   ctx.restore();
 }
 
 function drawTank(t) {
-  const K = KINDS[t.kind], s = K.scale;
+  const K = KINDS[t.kind], s = tankScale(t);
   ctx.save();
   if(t.spawnT>0)ctx.globalAlpha=clamp(1-t.spawnT,0,1);
   if(t===player && t.inv>0 && Math.floor(time*20)%2)ctx.globalAlpha=.45;
-  drawPlayerModel(t);ctx.restore();
+  if(t===player&&t.upgradeT>0){
+    const progress=clamp(1-t.upgradeT/UPGRADE_DURATION,0,1),a=ctx.globalAlpha;
+    ctx.globalAlpha=a*(1-progress);drawPlayerModel({...t,upgrade:t.upgradeFrom});
+    ctx.globalAlpha=a*progress;drawPlayerModel(t);ctx.globalAlpha=a;
+    ctx.strokeStyle='#ffe49b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(t.x,t.y,t.r+8+Math.sin(time*9)*3,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle='#8fdbff88';ctx.beginPath();ctx.arc(t.x,t.y,t.r+15,0,Math.PI*2*progress);ctx.stroke();
+  }else drawPlayerModel(t);ctx.restore();
   if((t===player||t.kind==='soldier'||t.kind==='heavy') && t.hp<t.maxHp && t.spawnT<=0) {
     ctx.fillStyle='#282323aa';ctx.beginPath();ctx.ellipse(t.x-6,t.y-12,6,11,0,0,Math.PI*2);ctx.fill();
     drawFlames(t.x-6,t.y+2,t.hp/t.maxHp<=.5?1:.65);
@@ -1500,10 +1563,10 @@ function drawWrecks() {
     ctx.fillStyle = '#423b36'; ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     if (w.exploded!==false && w.age-(w.blastAge||0) < 2) {
-      drawFlames(w.x,w.y,1-w.age*.2);
+      const burnAge=Math.max(0,w.age-(w.blastAge||0));drawFlames(w.x,w.y,1-burnAge/2);
       for (let i = 0; i < 3; i++) {
         const f = Math.sin(time * 13 + i * 2.1 + w.x) * .5 + .5;
-        ctx.fillStyle = `rgba(255,${120 + f * 80 | 0},40,${(1 - w.age / 2) * f})`;
+        ctx.fillStyle = `rgba(255,${120 + f * 80 | 0},40,${clamp(1-burnAge/2,0,1)*f})`;
         ctx.beginPath(); ctx.arc(w.x + (i - 1) * 6, w.y + Math.sin(i * 3) * 5, 2 + f * 2, 0, Math.PI * 2); ctx.fill();
       }
     }
@@ -1586,10 +1649,10 @@ function text(str, x, y, size, color, align = 'left', weight = '600') {
 const UI_W = 960, UI_H = 640;
 function drawHud() {
   if(player) text(player.boostLeft>0?'SHIFT · Ускорение':player.boostCooldown>0?'SHIFT · '+Math.ceil(player.boostCooldown)+' с':'SHIFT · Готов',12,UI_H-15,12,'#e5cd88');
-  if(player && player.armor) text('AP · Бронебойные',UI_W/2,42,12,'#ffc477','center');
+  if(player && player.armor) text('★ '+(player.upgrade>=2?'ИС-2-II':'ИС-2')+' · Бронебойные',UI_W/2,42,12,'#ffc477','center');
   ctx.fillStyle = 'rgba(12,16,14,.6)';
   roundRect(ctx, 8, 8, 570, 32, 8); ctx.fill();
-  const maxHp = KINDS.player.hp;
+  const maxHp = player.maxHp;
   if (maxHp <= 5) {
     for (let i = 0; i < maxHp; i++) {
       ctx.fillStyle = i < player.hp ? '#e5484d' : '#3a3f44';
@@ -1613,7 +1676,7 @@ function drawHud() {
     text('ПКМ / E', x - 140, 33, 10, '#b9a6d6', 'left', '400');
     x -= 158;
   }
-  for (const k of ['shield', 'triple', 'rapid']) {
+  for (const k of ['shield', 'rapid']) {
     const v = player.pw[k];
     if (v <= 0) continue;
     const I = ITEMS[k];
@@ -1626,7 +1689,7 @@ function drawHud() {
   if (muted) text('звук выкл (M)', UI_W - 12, UI_H - 14, 12, '#aab', 'right', '400');
 }
 
-function overlay(alpha) { ctx.fillStyle = `rgba(10,14,16,${alpha})`; ctx.fillRect(0, 0, UI_W, UI_H); }
+function overlay(alpha) { ctx.fillStyle = `rgba(38,7,14,${alpha})`; ctx.fillRect(0, 0, UI_W, UI_H); }
 
 function drawMenu() {
   overlay(.72);
@@ -1667,7 +1730,7 @@ function draw() {
     drawItems();
     for (const e of enemies) drawTank(e);
     if (player && !player.dead) drawTank(player);
-    drawBullets();
+    drawBullets();drawArtilleryShells();
     drawRails();
     drawParts();
   }
@@ -1681,7 +1744,7 @@ function draw() {
 }
 
 function drawUI() {
-  if (state === 'menu') { drawMenu(); return; }
+  if(state==='menu')return;
   drawHud();
   if (banner.t > 0) {
     const a = clamp(banner.t, 0, 1);
@@ -1692,22 +1755,22 @@ function drawUI() {
   }
   if (state === 'pause') {
     overlay(.55);
-    text('Пауза', UI_W / 2, UI_H / 2 - 50, 52, '#fff', 'center', '800');
+    text('Пауза', UI_W / 2, UI_H / 2 - 50, 52, '#f0cc77', 'center', '800');
   }
   if (state === 'over') {
     overlay(clamp(overT * 1.5, 0, .7));
     if (overT > .3) {
-      text(victory ? 'Кампания пройдена!' : base && base.dead ? 'База уничтожена' : 'Танк уничтожен', UI_W / 2, UI_H / 2 - 70, 52, victory ? '#8be06a' : '#ff6b5a', 'center', '800');
+      text(victory ? 'Кампания пройдена!' : base && base.dead ? 'База уничтожена' : 'Танк уничтожен', UI_W / 2, UI_H / 2 - 70, 52, victory ? '#f0cc77' : '#ef6452', 'center', '800');
       text(`Очки: ${score}   ·   ${campaign ? 'Уровень' : 'Волна'}: ${campaign ? `${wave} из ${campaign.length}` : wave}   ·   Металлолом: ${scrap}`, UI_W / 2, UI_H / 2 - 10, 22, '#fff', 'center');
       text(score >= best && score > 0 ? 'Новый рекорд!' : `Рекорд: ${best}`, UI_W / 2, UI_H / 2 + 25, 18, '#ffe08a', 'center');
       const again = !campaign ? 'Enter или клик — ещё раз' : victory ? 'Enter или клик — пройти кампанию заново' : `Enter или клик — повторить уровень ${wave}`;
-      if (overT > .6 && Math.floor(time * 2) % 2 === 0) text(again, UI_W / 2, UI_H / 2 + 80, 18, '#cfe0c6', 'center', '400');
+      if (overT > .6 && Math.floor(time * 2) % 2 === 0) text(again, UI_W / 2, UI_H / 2 + 80, 18, '#f2d3b1', 'center', '400');
     }
   }
 }
 
 // ---------- настройки разработчика ----------
-const KIND_NAMES = { player: 'Игрок', scout: 'Разведчик', soldier: 'Солдат', heavy: 'Тяжёлый' };
+const KIND_NAMES = { player: 'Игрок', scout: 'Разведчик', soldier: 'Солдат', heavy: 'Тяжёлый', artillery:'Артиллерия' };
 const TANK_FIELDS = [
   ['hp', 'ХП', 1, 99, 1],
   ['speed', 'Скорость танка', 0, 400, 5],
@@ -1747,18 +1810,20 @@ const CFG_FIELDS = [
     ['godMode', 'Режим бога', 'bool'],
   ]],
 ];
-const DEV_DEFAULTS = JSON.stringify({ KINDS, CFG });
+const DEV_DEFAULTS = JSON.stringify({ KINDS, CFG, balanceVersion:2,artilleryVersion:2 });
 let devOpen = false;
 const pauseMenu = document.getElementById('pauseMenu'), devEl = document.getElementById('dev'), devBody = document.getElementById('devBody');
 
 function applyDev(s) {
   for (const k in s.KINDS) if (KINDS[k]) {
     const { scale, ...settings } = s.KINDS[k];
+    if(k==='player'&&!(s.balanceVersion>=2))delete settings.hp;
+    if(k==='artillery'&&!(s.artilleryVersion>=2)){settings.bulletSpeed=(Number(settings.bulletSpeed)||140)*1.3;settings.dmg=2;}
     Object.assign(KINDS[k], settings);
   }
   Object.assign(CFG, s.CFG);
 }
-function saveDev() { try { localStorage.setItem('ecotank-dev-v2', JSON.stringify({ KINDS, CFG })); } catch (e) {} }
+function saveDev() { try { localStorage.setItem('ecotank-dev-v2', JSON.stringify({ KINDS, CFG, balanceVersion:2,artilleryVersion:2 })); } catch (e) {} }
 try { const s = JSON.parse(localStorage.getItem('ecotank-dev-v2')); if (s) applyDev(s); } catch (e) {}
 
 function numInput(obj, key, min, max, step, value) {
@@ -1791,22 +1856,22 @@ devBody.addEventListener('input', e => {
     if (isNaN(v)) return;
     obj[el.dataset.key] = clamp(v, +el.min, +el.max);
   }
-  if (player && k === 'player' && el.dataset.key === 'hp') { player.maxHp = KINDS.player.hp; player.hp = Math.min(player.hp, KINDS.player.hp); }
+  if(player&&k==='player'&&el.dataset.key==='hp')setPlayerUpgrade(player,player.upgrade||0,false);
   saveDev();
 });
 devEl.querySelector('.devActions').addEventListener('click', e => {
   const act = e.target.dataset.act;
   if (!act) return;
   const alive = player && !player.dead;
-  if (act === 'heal' && alive) player.hp = KINDS.player.hp;
+  if (act === 'heal' && alive) player.hp = player.maxHp;
   else if (act === 'rail' && alive) player.rail = Math.min(CFG.railMax, player.rail + 1);
-  else if (act === 'powerups' && alive) {for (const k in player.pw) player.pw[k] = CFG.powerupTime;player.armor=true;}
+  else if (act === 'powerups' && alive) {for (const k in player.pw) player.pw[k] = CFG.powerupTime;setPlayerUpgrade(player,2);}
   else if (act === 'kill') { for (const e of enemies) if (e.spawnT <= 0) hitEnemy(e, { x: e.x, y: e.y, dmg: 999 }); enemies = enemies.filter(e => !e.dead); }
   else if (act === 'skip' && alive) { nextWave(); state = 'pause'; }
   else if (act === 'reset') {
     applyDev(JSON.parse(DEV_DEFAULTS));
     try { localStorage.removeItem('ecotank-dev-v2'); } catch (e) {}
-    if (player) player.hp = Math.min(player.hp, KINDS.player.hp);
+    if(player)setPlayerUpgrade(player,player.upgrade||0,false);
     buildDev();
   }
 });
@@ -1829,7 +1894,7 @@ function setFolded(id, folded) {
   try { localStorage.setItem(FOLD_KEY, JSON.stringify([...foldedPacks])); } catch (e) {}
 }
 const editorEl = document.getElementById('editor'), editorPanel = document.getElementById('editorPanel');
-const BRUSHES = [['B', 'Кирпич'], ['F', 'Забор'], ['S', 'Сталь'], ['W', 'Вода'], ['T', 'Дерево'], ['P', 'Песок'], ['b', 'Кирпич 60%'], ['t', 'Дерево 60%'], ['.', 'Расчистить'], [' ', 'Не трогать']];
+const BRUSHES = [['B', 'Кирпич'], ['F', 'Забор'], ['S', 'Бронеплита'], ['W', 'Вода'], ['T', 'Лесопосадка'], ['P', 'Песок'], ['b', 'Кирпич · 60%'], ['t', 'Лесопосадка · 60%'], ['.', 'Расчистить'], [' ', 'Не трогать']];
 const cellClass = ch => 'pe-cell t-' + (ch === ' ' ? 'none' : ch === '.' ? 'clear' : ch);
 const escapeHtml = s => s.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 function miniGrid(rows) {
@@ -1874,23 +1939,23 @@ function saveEdit() {
 }
 function renderEditor() {
   const packs = loadPacks();
-  let h = '<div class="devHead"><b>Редактор пресетов</b>' + (edit ? '' : '<button data-act="close" class="ghost">Закрыть</button>') + '</div>';
+  let h = '<div class="devHead"><b>Бюро типовых проектов</b>' + (edit ? '' : '<button data-act="close" class="ghost">Закончить совещание</button>') + '</div>';
   if (!edit) {
-    h += '<div class="pe-actions" style="margin-top:0"><button data-act="newPack">Новый пак</button><button data-act="foldAll" class="ghost">Свернуть все</button><button data-act="unfoldAll" class="ghost">Развернуть все</button></div>';
+    h += '<div class="pe-actions" style="margin-top:0"><button data-act="newPack">Открыть проектное дело</button><button data-act="foldAll" class="ghost">Свернуть сборники</button><button data-act="unfoldAll" class="ghost">Развернуть сборники</button></div>';
     if (!packs.some(p => p.enabled && p.presets.length)) h += '<p class="pe-warn">Ни один пак с пресетами не включён — в режиме «Пресет тест 0.1» карта будет пустой.</p>';
     for (const pack of packs) {
       const id = escapeHtml(pack.id), claude = pack.id === CLAUDE_PACK, folded = foldedPacks.has(pack.id);
       h += `<div class="pe-pack${folded ? ' folded' : ''}"><div class="pe-packhead">`
-        + `<button data-act="fold" data-pack="${id}" class="ghost pe-fold" aria-expanded="${!folded}" aria-label="${folded ? 'Развернуть' : 'Свернуть'} пак">▾</button>`
+        + `<button data-act="fold" data-pack="${id}" class="ghost pe-fold" aria-expanded="${!folded}" aria-label="${folded ? 'Открыть' : 'Закрыть'} дело">▾</button>`
         + (claude ? `<b>${CLAUDE_PACK_NAME}</b>` : `<input class="pe-packname" data-pack="${id}" maxlength="40" value="${escapeHtml(pack.name)}" aria-label="Имя пака">`)
         + `<span class="pe-size">${pack.presets.length} шт.</span>`
         + `<label><input type="checkbox" data-act="toggle" data-pack="${id}"${pack.enabled ? ' checked' : ''}>В игре</label>`
-        + `<button data-act="new" data-pack="${id}">Новый пресет</button>`
-        + (claude ? `<button data-act="resetPack" data-pack="${id}" class="ghost">Сбросить к исходным</button>` : `<button data-act="deletePack" data-pack="${id}" class="ghost">Удалить пак</button>`)
+        + `<button data-act="new" data-pack="${id}">Новый типовой проект</button>`
+        + (claude ? `<button data-act="resetPack" data-pack="${id}" class="ghost">Вернуться к нормативу</button>` : `<button data-act="deletePack" data-pack="${id}" class="ghost">Списать проектное дело</button>`)
         + '</div>';
       if (folded) { h += '</div>'; continue; }
       h += pack.presets.length ? pack.presets.map((p, i) => `<div class="pe-row">${miniGrid(p.rows)}<span class="pe-name">${escapeHtml(p.name)}</span><span class="pe-size">${p.rows[0].length}×${p.rows.length}</span>`
-        + `<button data-act="edit" data-pack="${id}" data-i="${i}" class="ghost">Изменить</button><button data-act="copy" data-pack="${id}" data-i="${i}" class="ghost">Копировать</button><button data-act="delete" data-pack="${id}" data-i="${i}" class="ghost">Удалить</button></div>`).join('')
+        + `<button data-act="edit" data-pack="${id}" data-i="${i}" class="ghost">Внести поправки</button><button data-act="copy" data-pack="${id}" data-i="${i}" class="ghost">Снять копию</button><button data-act="delete" data-pack="${id}" data-i="${i}" class="ghost">Списать</button></div>`).join('')
         : '<p class="note" style="margin:4px 0 8px">Пак пуст.</p>';
       h += '</div>';
     }
@@ -1901,11 +1966,11 @@ function renderEditor() {
       + `<label>Пак <select id="pePack">${packs.map(p => `<option value="${escapeHtml(p.id)}"${p.id === edit.target ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}</select></label>`
       + `<label>Ширина <input type="number" id="peW" min="1" max="${PRESET_MAX}" value="${w}"></label>`
       + `<label>Высота <input type="number" id="peH" min="1" max="${PRESET_MAX}" value="${hh}"></label>`
-      + '<button data-act="clear" class="ghost">Очистить</button></div>';
+      + '<button data-act="clear" class="ghost">Расчистить участок</button></div>';
     h += '<div class="pe-palette">' + BRUSHES.map(([ch, label]) => `<button data-act="brush" data-ch="${ch}" class="ghost${ch === brush ? ' on' : ''}"><span class="${cellClass(ch)}"></span>${label}</button>`).join('') + '</div>';
     h += `<div class="pe-grid" style="grid-template-columns:repeat(${w},30px)">` + edit.cells.map((r, y) => r.map((ch, x) => `<div class="${cellClass(ch)}" data-x="${x}" data-y="${y}"></div>`).join('')).join('') + '</div>';
     h += '<p class="note">ЛКМ — рисовать выбранной кистью, ПКМ — стереть («не трогать»). «Расчистить» освобождает клетку на карте. Пустые края обрезаются при сохранении, группа на карте случайно поворачивается и отражается, частота зависит от размера.</p>';
-    h += `<div class="pe-msg">${escapeHtml(editorMsg)}</div><div class="pe-actions"><button data-act="save">Сохранить</button><button data-act="cancel" class="ghost">Отмена</button></div>`;
+    h += `<div class="pe-msg">${escapeHtml(editorMsg)}</div><div class="pe-actions"><button data-act="save">Утвердить проект</button><button data-act="cancel" class="ghost">Отставить!</button></div>`;
   }
   editorPanel.innerHTML = h;
 }
@@ -2069,16 +2134,16 @@ function exportMap(m) {
 function mapRow(m, i, mine) {
   const k = `data-src="${mine ? 'mine' : 'claude'}" data-i="${i}"`;
   return `<div class="pe-row"><canvas class="me-thumb" width="120" height="80" ${k}></canvas><span class="pe-name">${escapeHtml(m.name)}</span><span class="pe-size">${m.cols}×${m.rows.length}</span>`
-    + `<button data-act="play" ${k}>Играть</button>` + (mine ? `<button data-act="edit" ${k} class="ghost">Изменить</button>` : '')
-    + `<button data-act="copy" ${k} class="ghost">Копировать</button><button data-act="export" ${k} class="ghost">Экспорт</button>`
-    + (mine ? `<button data-act="delete" ${k} class="ghost">Удалить</button>` : '') + '</div>';
+    + `<button data-act="play" ${k}>Начать операцию</button>` + (mine ? `<button data-act="edit" ${k} class="ghost">Внести поправки</button>` : '')
+    + `<button data-act="copy" ${k} class="ghost">Снять копию</button><button data-act="export" ${k} class="ghost">Передать документацию</button>`
+    + (mine ? `<button data-act="delete" ${k} class="ghost">Списать</button>` : '') + '</div>';
 }
 function renderMapEditor() {
-  let h = '<div class="devHead"><b>Редактор карт</b>' + (mapEd ? '' : '<button data-act="close" class="ghost">Закрыть</button>') + '</div>';
+  let h = '<div class="devHead"><b>Военно-топографический отдел</b>' + (mapEd ? '' : '<button data-act="close" class="ghost">Закончить совещание</button>') + '</div>';
   if (!mapEd) {
     const claude = claudeMaps(), mine = loadUserMaps();
-    h += '<div class="pe-tools"><button data-act="new">Новая карта</button><select id="meNewSize" aria-label="Размер новой карты">' + MAP_SIZES.map(s => `<option value="${s}">${s}×${s * 2 / 3}</option>`).join('') + '</select>'
-      + '<button data-act="import" class="ghost">Импорт из файла</button></div>';
+    h += '<div class="pe-tools"><button data-act="new">Начертить план операции</button><select id="meNewSize" aria-label="Размер новой карты">' + MAP_SIZES.map(s => `<option value="${s}">${s}×${s * 2 / 3}</option>`).join('') + '</select>'
+      + '<button data-act="import" class="ghost">Получить из архива</button></div>';
     if (mapEdMsg) h += `<div class="pe-msg">${escapeHtml(mapEdMsg)}</div>`;
     h += '<h3>Карты Клода</h3>' + (claude.length ? claude.map((m, i) => mapRow(m, i, false)).join('') : '<p class="note">Файл maps.js не найден или пуст.</p>');
     h += '<h3>Мои карты</h3>' + (mine.length ? mine.map((m, i) => mapRow(m, i, true)).join('') : '<p class="note">Своих карт пока нет. Создайте новую или скопируйте карту Клода.</p>');
@@ -2086,18 +2151,18 @@ function renderMapEditor() {
   } else {
     h += `<div class="pe-tools"><label>Имя <input id="meName" maxlength="40" value="${escapeHtml(mapEd.name)}"></label>`
       + '<label>Размер <select id="meSize">' + MAP_SIZES.map(s => `<option value="${s}"${s === mapEd.cols ? ' selected' : ''}>${s}×${s * 2 / 3}</option>`).join('') + '</select></label>'
-      + `<label><input type="checkbox" id="meMirror"${mapMirror ? ' checked' : ''}> Зеркально</label><button data-act="clear" class="ghost">Очистить</button></div>`;
+      + `<label><input type="checkbox" id="meMirror"${mapMirror ? ' checked' : ''}> Зеркально</label><button data-act="clear" class="ghost">Расчистить участок</button></div>`;
     h += '<div class="pe-palette">' + MAP_BRUSHES.map(([ch, label]) => `<button data-act="brush" data-ch="${ch}" class="ghost${!mapStamp && ch === mapBrush ? ' on' : ''}"><span class="${cellClass(ch)}"></span>${label}</button>`).join('') + '</div>';
     const packs = loadPacks(), stamp = stampRows(), sel = mapStamp ? `${mapStamp.pack}:${mapStamp.i}` : '';
     h += '<div class="pe-tools"><label>Пресет <select id="meStamp"><option value="">— кисть —</option>'
       + packs.filter(p => p.presets.length).map(p => `<optgroup label="${escapeHtml(p.name)}">` + p.presets.map((pr, i) => { const v = escapeHtml(`${p.id}:${i}`); return `<option value="${v}"${v === escapeHtml(sel) ? ' selected' : ''}>${escapeHtml(pr.name)} · ${pr.rows[0].length}×${pr.rows.length}</option>`; }).join('') + '</optgroup>').join('')
       + '</select></label>'
-      + (stamp ? `${miniGrid(stamp)}<button data-act="turn" class="ghost">↻ Повернуть (R)</button><button data-act="flip" class="ghost">⇋ Отразить (F)</button><button data-act="unstamp" class="ghost">Вернуться к кисти</button>` : '')
+      + (stamp ? `${miniGrid(stamp)}<button data-act="turn" class="ghost">↻ Повернуть (R)</button><button data-act="flip" class="ghost">⇋ Отразить (F)</button><button data-act="unstamp" class="ghost">Ручная разметка</button>` : '')
       + '</div>';
     h += `<canvas id="meCanvas" class="me-canvas" width="${mapEd.cols * mapCellSize(mapEd.cols)}" height="${mapEd.cells.length * mapCellSize(mapEd.cols)}"></canvas>`;
     h += '<div class="me-legend"><span><i style="background:#e5484d"></i>Точки появления врагов</span><span><i style="background:#ffd05a"></i>База и подъезд к ней</span><span><i style="background:#7be38a;border-radius:50%"></i>Старт игрока</span><span>Подсвеченные зоны игра всегда расчищает, рисовать там нельзя.</span></div>';
     h += '<p class="note">ЛКМ — рисовать, ПКМ — стереть. Выбранный пресет ставится кликом по центру под курсором; R поворачивает, F отражает, клетки «не трогать» карту не меняют. «Зеркально» повторяет мазок и пресет на другой половине карты. Кирпич и забор враги простреливают, а через сталь и воду должен оставаться путь к базе.</p>';
-    h += `<div class="pe-msg">${escapeHtml(mapEdMsg)}</div><div class="pe-actions"><button data-act="save">Сохранить</button><button data-act="cancel" class="ghost">Отмена</button></div>`;
+    h += `<div class="pe-msg">${escapeHtml(mapEdMsg)}</div><div class="pe-actions"><button data-act="save">Утвердить проект</button><button data-act="cancel" class="ghost">Отставить!</button></div>`;
   }
   mapEditorPanel.innerHTML = h;
   drawMapEditor();
@@ -2216,7 +2281,7 @@ document.getElementById('mapPick').addEventListener('change', e => {
 
 // стартовый экран: фон-превью собирается из выбранных размера и режима карты
 function toMenu() {
-  state = 'menu'; player = null; base = null; enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
+  resetArtillery();itemSpawnTimer=10;state = 'menu'; player = null; base = null; enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
   applyMapChoice(); genMap(1);
 }
 document.getElementById('btnDev').addEventListener('click', e => { e.currentTarget.blur(); devOpen = true; buildDev(); });
@@ -2241,14 +2306,115 @@ function syncUI() {
   if(fixed&&mapPick.value!==CFG.mapPick)mapPick.value=CFG.mapPick;
   if(campaignPick.hidden===camp)campaignPick.hidden=!camp;
   if(camp){renderCampaignPick();if(campaignPick.value!==String(CFG.campaignStart))campaignPick.value=String(CFG.campaignStart);}
-  document.getElementById('mapControl').hidden=editorOpen||mapEdOpen||!(state==='menu'||state==='over');
+  document.getElementById('mapControl').hidden=editorOpen||mapEdOpen||state!=='menu';
+  document.getElementById('mainMenu').hidden=state!=='menu'||editorOpen||mapEdOpen;
+  document.getElementById('menuHome').hidden=state==='menu'||editorOpen||mapEdOpen;
+  for(const mode of ['original','preset01','map','campaign'])document.getElementById('mode-'+mode).classList.toggle('selected',CFG.mapMode===mode);
   if (editorEl.hidden === editorOpen) editorEl.hidden = !editorOpen;
   if (mapEditorEl.hidden === mapEdOpen) mapEditorEl.hidden = !mapEdOpen;
   syncMusic();
-  const pm = state === 'pause' && !devOpen, dv = state === 'pause' && devOpen;
+  const pm = state === 'pause' && !devOpen, dv = (state === 'pause'||state==='menu') && devOpen;
   if (pauseMenu.hidden === pm) pauseMenu.hidden = !pm;
   if (devEl.hidden === dv) devEl.hidden = !dv;
 }
+
+// Artillery uses a committed target position and an airborne flight, independent of bullet collisions.
+function launchArtillery(sx,sy,tx,ty,friendly=false){
+  const speed=friendly?3000:KINDS.artillery.bulletSpeed;
+  const shell={sx,sy,tx:clamp(tx,0,W),ty:clamp(ty,0,H),age:0,delay:friendly?2:0,speed,friendly,radius:45,damage:2};
+  prepareArtilleryTrajectory(shell);artilleryShells.push(shell);
+  if(!friendly)sfx('heavyShoot');
+}
+function prepareArtilleryTrajectory(shell){
+  shell.dx=shell.tx-shell.sx;shell.dy=shell.ty-shell.sy;shell.angle=Math.atan2(shell.dy,shell.dx);
+  shell.duration=Math.max(.01,Math.hypot(shell.dx,shell.dy)/shell.speed);shell.pending=false;
+}
+function callBarrage(){
+  for(const e of enemies)if(!e.dead&&!e.entering&&e.spawnT<=0)barrageMarkers.push({tx:e.x,ty:e.y});
+  barrageSoundShots+=5;
+}
+function processBarrageFrame(){
+  barrageFrame++;
+  if(barrageSoundShots&&barrageFrame%2===1){sfx('heavyShoot');barrageSoundShots--;}
+  if(barrageMarkers.length){
+    const target=barrageMarkers.shift(),shell={...target,sx:clamp(target.tx+rnd(-40,40),16,W-16),sy:H+24,age:0,delay:2,speed:3000,friendly:true,radius:45,damage:2,pending:true,duration:Infinity};
+    artilleryShells.push(shell);barrageTrajectories.push(shell);
+  }
+  if(barrageFrame%5===0&&barrageTrajectories.length)prepareArtilleryTrajectory(barrageTrajectories.shift());
+}
+function updateArtilleryShells(dt){
+  processBarrageFrame();
+  for(const shell of artilleryShells){shell.age=shell.pending?Math.min(shell.delay,shell.age+dt):shell.age+dt;if(!shell.pending&&shell.age>=shell.delay+shell.duration){shell.done=true;explosion(shell.tx,shell.ty,false,'#d6b56c');
+    blastDamage(shell.tx,shell.ty,30,{safePlayer:shell.friendly,damage:shell.damage});
+    if(!shell.friendly&&base&&!base.dead&&Math.hypot(base.x-shell.tx,base.y-shell.ty)<=shell.radius)hitBase(shell.damage);
+  }}artilleryShells=artilleryShells.filter(s=>!s.done);
+}
+function updateArtillery(e,dt){
+  const alive=player&&!player.dead,range=20*T,playerInRange=alive&&Math.hypot(player.x-e.x,player.y-e.y)<=range;
+  const baseInRange=base&&!base.dead&&Math.hypot(base.x-e.x,base.y-e.y)<=range;
+  if(!e.deployed&&(playerInRange||(e.leader&&e.leader.engaged)||(base&&Math.hypot(base.x-e.x,base.y-e.y)<4*T)||(!e.leader&&baseInRange)))e.deployed=true;
+  const goal=alive?player:base&&!base.dead?base:PLAYER_START;
+  if(!e.deployed||(!playerInRange&&!baseInRange)){
+    if(e.leader&&!e.leader.dead){e.tx=e.leader.x-Math.cos(e.leader.angle)*48*e.columnSlot;e.ty=e.leader.y-Math.sin(e.leader.angle)*48*e.columnSlot;}
+    else {buildFlow(Math.floor(goal.x/T),Math.floor(goal.y/T));if(Math.hypot(e.tx-e.x,e.ty-e.y)<5||e.stuck>.6){decide(e,false);e.stuck=0;}}
+    const dx=e.tx-e.x,dy=e.ty-e.y,d=Math.hypot(dx,dy),step=Math.min(d,KINDS.artillery.speed*dt);
+    if(d>1){e.angle=turnTo(e.angle,Math.atan2(dy,dx),dt*2);const moved=moveTank(e,dx/d*step,dy/d*step,dt);if(moved<step*.3)e.stuck+=dt;}
+  }else {e.vx=e.vy=0;const target=playerInRange?player:base;
+    const aim=Math.atan2(target.y-e.y,target.x-e.x);e.turret=turnTo(e.turret,aim,dt*KINDS.artillery.turretSpeed);
+    if(e.cd<=0&&Math.abs(angDiff(e.turret,aim))<.15){launchArtillery(e.x,e.y,target.x,target.y);e.cd=enemyInterval('artillery');e.recoilMax=e.recoil=8;}
+  }
+}
+function updateRandomItems(dt){
+  if(state!=='play'||!player||player.dead||base&&base.dead)return;
+  itemSpawnTimer-=dt;if(itemSpawnTimer>0)return;itemSpawnTimer+=10;
+  const candidates=[];for(let r=2;r<ROWS-2;r++)for(let c=1;c<COLS-1;c++)if(!blocksTank(tileAt(c,r))) {
+    const x=c*T+16,y=r*T+16;if((!base||Math.hypot(x-base.x,y-base.y)>50)&&!items.some(it=>Math.hypot(x-it.x,y-it.y)<30))candidates.push({x,y});
+  }
+  if(candidates.length){const spot=candidates[ri(0,candidates.length-1)],types=availableItemTypes();items.push({...spot,type:types[ri(0,types.length-1)],life:24});}
+}
+function drawArtilleryShells(){
+  for(const shell of artilleryShells){
+    const pulse=.5+.5*Math.sin(time*7),p=clamp((shell.age-shell.delay)/shell.duration,0,1);
+    ctx.save();ctx.fillStyle=`rgba(255,208,45,${.07+pulse*.1})`;ctx.strokeStyle=`rgba(255,218,65,${.5+pulse*.5})`;ctx.lineWidth=2;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.arc(shell.tx,shell.ty,shell.radius,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(shell.tx-8,shell.ty);ctx.lineTo(shell.tx+8,shell.ty);ctx.moveTo(shell.tx,shell.ty-8);ctx.lineTo(shell.tx,shell.ty+8);ctx.stroke();
+    if(shell.pending||shell.age<shell.delay){ctx.restore();continue;}
+    const x=shell.sx+shell.dx*p,y=shell.sy+shell.dy*p-Math.sin(p*Math.PI)*65;
+    ctx.fillStyle='rgba(235,45,35,0.2)';ctx.beginPath();ctx.arc(x,y,10+pulse*5,0,Math.PI*2);ctx.fill();
+    ctx.translate(x,y);ctx.rotate(shell.angle);ctx.fillStyle='#d8b5a1';
+    ctx.beginPath();ctx.moveTo(6,0);ctx.quadraticCurveTo(2,-3,-5.5,-3);ctx.lineTo(-5.5,3);ctx.quadraticCurveTo(2,3,6,0);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#645543';ctx.fillRect(-5.5,-3,2,6);ctx.strokeStyle='#fff3c3';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-3,-1.2);ctx.lineTo(2.5,-.75);ctx.stroke();ctx.restore();
+  }
+}
+function drawArtilleryModel(t){
+  ctx.save();ctx.translate(t.x,t.y);ctx.scale(tankScale(t),tankScale(t));ctx.rotate(t.angle+Math.PI/2);
+  ctx.fillStyle='#171c1c';ctx.fillRect(-16,-19,32,40);ctx.fillStyle='#62676a';for(let y=-18;y<20;y+=5){ctx.fillRect(-16,y,5,2);ctx.fillRect(11,y,5,2);}
+  ctx.fillStyle=t.flash>0?'#fff':'#d5be7d';ctx.fillRect(-11,-18,22,35);
+  if(!(t.flash>0)){ctx.fillStyle='#566048';ctx.beginPath();ctx.moveTo(-11,-15);ctx.lineTo(-3,-18);ctx.lineTo(4,-9);ctx.lineTo(1,2);ctx.lineTo(-11,5);ctx.closePath();ctx.fill();ctx.fillStyle='#944b36';ctx.beginPath();ctx.moveTo(4,-18);ctx.lineTo(11,-18);ctx.lineTo(11,-3);ctx.lineTo(6,2);ctx.lineTo(2,-7);ctx.closePath();ctx.fill();ctx.fillStyle='#944b36';ctx.fillRect(-10,11,8,7);}
+  ctx.fillStyle='#e7d49e';ctx.fillRect(-12,-18,24,3);
+  // Open rear fighting compartment and exposed breech distinguish the Hummel-inspired silhouette.
+  ctx.fillStyle='#3f3b30';ctx.fillRect(-9,-4,18,22);ctx.strokeStyle='#d0bc88';ctx.lineWidth=3;ctx.strokeRect(-10,-5,20,24);
+  ctx.strokeStyle='#566048';ctx.beginPath();ctx.moveTo(-10,-3);ctx.lineTo(-10,7);ctx.moveTo(10,11);ctx.lineTo(10,18);ctx.stroke();ctx.strokeStyle='#944b36';ctx.beginPath();ctx.moveTo(-6,19);ctx.lineTo(3,19);ctx.moveTo(10,-3);ctx.lineTo(10,5);ctx.stroke();
+  ctx.fillStyle='#77715a';ctx.fillRect(-4,-3,8,16);ctx.fillStyle='#dad3ac';ctx.fillRect(-8,10,3,6);ctx.fillRect(6,8,3,7);ctx.restore();
+  ctx.save();ctx.translate(t.x,t.y);ctx.rotate(t.turret+Math.PI/2);const recoil=recoilOffset(t);ctx.fillStyle='#302f2b';ctx.fillRect(-4,-35+recoil,8,35);ctx.fillStyle='#d5be7d';ctx.fillRect(-2,-34+recoil,4,31);ctx.fillStyle='#566048';ctx.fillRect(-2,-29+recoil,4,7);ctx.fillStyle='#944b36';ctx.fillRect(-2,-18+recoil,4,5);ctx.fillStyle='#877a53';ctx.fillRect(-6,-5,12,10);ctx.restore();
+}
+
+// Layered heavy-gun echo and a diffuse reverberant tail, separate from the ordinary cannon sound.
+function heavyGunSound(){
+  cannonShot(1.5);
+  const t=actx.currentTime,source=actx.createBufferSource(),filter=actx.createBiquadFilter(),dry=actx.createGain(),delay=actx.createDelay(2),feedback=actx.createGain(),wet=actx.createGain(),reverb=actx.createConvolver();
+  if(!noiseBuf)noise(.01,.001,100);
+  source.buffer=noiseBuf;filter.type='lowpass';filter.frequency.value=800;dry.gain.setValueAtTime(.5,t);dry.gain.exponentialRampToValueAtTime(.0001,t+.6);
+  source.connect(filter).connect(dry).connect(soundBus());dry.connect(delay);delay.delayTime.value=.34;feedback.gain.value=.57;delay.connect(feedback).connect(delay);wet.gain.value=.65;delay.connect(wet).connect(soundBus());
+  if(!heavyImpulse){heavyImpulse=actx.createBuffer(2,Math.floor(actx.sampleRate*1.8),actx.sampleRate);for(let channel=0;channel<2;channel++){const data=heavyImpulse.getChannelData(channel);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,3);}}
+  reverb.buffer=heavyImpulse;dry.connect(reverb);const revGain=actx.createGain();revGain.gain.value=.35;reverb.connect(revGain).connect(soundBus());source.start(t);source.stop(t+.65);
+  setTimeout(()=>{delay.disconnect();feedback.disconnect();reverb.disconnect();wet.disconnect();revGain.disconnect();dry.disconnect();filter.disconnect();},5200);
+}
+
+document.getElementById('menuStart').addEventListener('click',()=>startGame());
+document.getElementById('menuSettings').addEventListener('click',()=>{devOpen=true;buildDev();});
+document.getElementById('menuHome').addEventListener('click',()=>{devOpen=false;toMenu();syncMusic();});
+for(const mode of ['original','preset01','map','campaign'])document.getElementById('mode-'+mode).addEventListener('click',()=>{CFG.mapMode=mode;saveDev();toMenu();});
 
 // ---------- запуск ----------
 renderMapPick();

@@ -1,10 +1,13 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
 const code=fs.readFileSync(__dirname+'/index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 const context=new Proxy({}, {get:(o,k)=>k in o?o[k]:(()=>context)});
-const element={style:{},addEventListener(){},getContext:()=>context,querySelector:()=>element,querySelectorAll:()=>[],blur(){}};
+context.globalAlpha=1;
+context.arc=(x,y,r)=>{if(!Number.isFinite(r)||r<0)throw Error('Invalid Canvas arc radius '+r);};
+context.ellipse=(x,y,rx,ry)=>{if(!Number.isFinite(rx)||!Number.isFinite(ry)||rx<0||ry<0)throw Error('Invalid Canvas ellipse radius');};
+const element={style:{},classList:{toggle(){}},addEventListener(){},getContext:()=>context,querySelector:()=>element,querySelectorAll:()=>[],blur(){}};
 const store=new Map([['ecotank-dev',JSON.stringify({KINDS:{player:{speed:999}},CFG:{brickHp:2}})]]);
 const box={console,document:{getElementById:()=>({...element}),createElement:()=>({...element}),activeElement:element},window:{},innerWidth:960,innerHeight:640,addEventListener(){},requestAnimationFrame(){},performance:{now:()=>0},setTimeout(){},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)}};
-box.Audio=class {play(){this.paused=false;return Promise.resolve();} pause(){this.paused=true;}};
+box.Audio=class {constructor(){this.handlers={};} addEventListener(name,fn){this.handlers[name]=fn;} play(){this.paused=false;return Promise.resolve();} pause(){this.paused=true;}};
 vm.createContext(box);vm.runInContext(fs.readFileSync(__dirname+'/maps.js','utf8'),box);vm.runInContext(code,box);
 vm.runInContext(`
 muted=true;
@@ -49,15 +52,15 @@ if(wrecks[0].angle!==a1.angle||wrecks[0].turret!==a1.turret||wrecks[0].tread!==a
 updateWrecks(3.1);if(!a2.dead||!a3.dead||safeTank.hp!==KINDS.heavy.hp||wrecks.length!==3)throw Error('Chain blast');
 if(score!==oldScore+300)throw Error('Chain kill score');hitEnemy(a1,{x:0,y:0,dmg:1});if(wrecks.length!==3)throw Error('Duplicate kill');
 state='play';musicOff=false;muted=false;syncMusic();if(!musicWanted||music.paused)throw Error('Music start');
-state='pause';syncMusic();if(!musicWanted||music.paused||Math.abs(music.volume-.066)>1e-6)throw Error('Music duck');state='play';musicOff=true;syncMusic();if(musicWanted)throw Error('Music disabled');
+state='pause';syncMusic();if(!musicWanted||music.paused||Math.abs(music.volume-.066*gameVolume)>1e-6)throw Error('Music duck');state='play';musicOff=true;syncMusic();if(musicWanted)throw Error('Music disabled');
 drawPlayerModel(player);drawTank(player);drawTrees();
-muted=true;grid.fill(EMPTY);player=makeTank(400,400,'player');enemies=[];items=[{x:400,y:400,type:'armor',life:5}];updateItems(.01);
+muted=true;grid.fill(EMPTY);player=makeTank(400,400,'player');enemies=[];items=[{x:400,y:400,type:'upgrade',life:5}];updateItems(.01);
 if(!player.armor)throw Error('AP pickup');bullets=[];fire(player);const apShot=bullets[0];
 if(Math.abs(Math.hypot(apShot.vx,apShot.vy)-KINDS.player.bulletSpeed*1.5)>1e-6||apShot.dmg!==KINDS.player.dmg*2||!apShot.armor)throw Error('AP stats');
 updateBullets(.01);if(!apShot.trail.length)throw Error('AP tracer');nextWave();if(!player.armor)throw Error('AP wave persistence');
-items=[{x:player.x,y:player.y,type:'armor',life:5}];updateItems(.01);bullets=[];fire(player);if(bullets[0].dmg!==2)throw Error('AP non stacking');
-grid.fill(EMPTY);enemies=[];player.hp=1;player.inv=0;player.pw.shield=0;hitPlayer({x:player.x,y:player.y,dmg:1});if(!player.dead||player.armor)throw Error('AP death reset');
-musicOff=false;muted=false;state='play';syncMusic();if(music.paused||Math.abs(music.volume-.066)>1e-6)throw Error('Death music');
+items=[{x:player.x,y:player.y,type:'upgrade',life:5}];updateItems(.01);bullets=[];fire(player);if(bullets[0].dmg!==2||bullets.length!==2)throw Error('AP upgrade damage');
+grid.fill(EMPTY);enemies=[];updatePlayer(3.01);player.hp=1;player.inv=0;player.pw.shield=0;hitPlayer({x:player.x,y:player.y,dmg:1});if(!player.dead||player.armor)throw Error('AP death reset');
+musicOff=false;muted=false;state='play';syncMusic();if(music.paused||Math.abs(music.volume-.066*gameVolume)>1e-6)throw Error('Death music');
 state='over';syncMusic();if(music.paused)throw Error('Game over music');muted=true;
 grid[100]=BRICK;brickHp[100]=4;brickMask[100]=1023;hitBrick(10,3,1);if(brickShake[100]<=0)throw Error('Brick shake');updateParts(.3);if(brickShake[100]!==0)throw Error('Brick shake decay');
 startGame();if(player.armor)throw Error('New game reset');draw();
@@ -265,6 +268,80 @@ for(let t=0;t<200&&state!=='over';t++){hitstop=0;update(.05);}if(state!=='over'|
 window.ECOTANK_CAMPAIGN=undefined;if(campaignMaps().length!==claudeMaps().length)throw Error('Campaign fallback order');
 window.ECOTANK_CAMPAIGN=realCampaign;localStorage.removeItem(CAMPAIGN_KEY);CFG.mapMode='original';CFG.campaignStart=0;
 startGame();
+if(KINDS.player.hp!==3||ITEMS.armor||ITEMS.triple||!ITEMS.upgrade||!ITEMS.barrage)throw Error('New defaults and pickup catalog');
+applyDev({KINDS:{player:{hp:5}},CFG:{}});if(KINDS.player.hp!==3)throw Error('Legacy HP migration');
+CFG.mapMode='original';startGame();grid.fill(EMPTY);base=null;enemies=[];
+if(player.hp!==3||player.maxHp!==3)throw Error('Initial player health');
+items=[{x:player.x,y:player.y,type:'upgrade',life:10}];updateItems(.01);if(player.upgrade!==1||player.hp!==5||player.maxHp!==5||!player.armor)throw Error('IS-2 upgrade');
+nextWave();if(player.upgrade!==1||player.hp!==5)throw Error('IS-2 persists');
+items=[{x:player.x,y:player.y,type:'upgrade',life:10}];updateItems(.01);if(player.upgrade!==2||player.hp!==7||Math.abs(tankScale(player)-1.15)>1e-8||Math.abs(player.r-14.95)>1e-8)throw Error('IS-2-II upgrade');
+bullets=[];fire(player);if(bullets.length!==2||bullets.some(b=>!b.armor||b.dmg!==2)||Math.hypot(bullets[0].x-bullets[1].x,bullets[0].y-bullets[1].y)<7)throw Error('Double AP fire');
+nextWave();if(player.upgrade!==2||player.maxHp!==7)throw Error('IS-2-II persists');
+for(const tier of [0,1,2]){startGame();grid.fill(EMPTY);base=null;enemies=[];setPlayerUpgrade(player,tier);player.hp=1;player.inv=0;player.pw.shield=0;parts=[];hitPlayer({x:player.x,y:player.y,dmg:1});const w=wrecks[0];updateWrecks(w.detonateAt+4);if(w.blastCount!==3+tier*2||parts.filter(p=>p.kind==='flash').length!==3+tier*2)throw Error('Tier death explosions');}
+startGame();grid.fill(EMPTY);base=null;enemies=[];parts=[];
+grid[5*COLS+8]=TREE;foliageMask[5*COLS+8]=31;grid[6*COLS+8]=BRICK;brickHp[6*COLS+8]=4;brickMask[6*COLS+8]=1023;
+blastDamage(176,176,30);if(foliageMask[5*COLS+8]===31||brickHp[6*COLS+8]!==4)throw Error('Double foliage-only blast radius');
+const list=waveList(5);if(list.filter(k=>k==='artillery').length!==Math.floor(list.filter(k=>k!=='artillery').length/5))throw Error('Artillery one per five tanks');
+const lead=makeTank(400,150,'heavy'),follower=makeTank(400,185,'soldier'),gun=makeTank(400,220,'artillery');enemies=[lead,follower,gun];formColumns();if(gun.leader!==lead||gun.columnSlot<=follower.columnSlot)throw Error('Artillery last in column');
+grid.fill(EMPTY);artilleryShells=[];base={x:450,y:220,hp:5,r:16,dead:false};player=makeTank(700,220,'player');gun.cd=0;gun.turret=0;grid[6*COLS+16]=STEEL;updateEnemy(gun,.01);
+if(artilleryShells.length!==1||artilleryShells[0].tx!==player.x||artilleryShells[0].ty!==player.y||Math.abs(artilleryShells[0].duration-Math.hypot(player.x-gun.x,player.y-gun.y)/KINDS.artillery.bulletSpeed)>1e-6)throw Error('Artillery sees player through walls and prioritizes player');
+const committed=artilleryShells[0].tx;player.x-=50;if(artilleryShells[0].tx!==committed)throw Error('Artillery target snapshot');drawArtilleryShells();
+artilleryShells=[];base=null;enemies=[makeTank(400,300,'scout'),makeTank(700,350,'heavy')];callBarrage();for(let i=0;i<10;i++)updateArtilleryShells(0);if(artilleryShells.length!==2||artilleryShells.some(s=>!s.friendly||s.sy<=H))throw Error('Barrage volley from bottom');
+const positions=artilleryShells.map(s=>s.tx);enemies[0].x+=30;if(artilleryShells[0].tx!==positions[0])throw Error('Barrage fixed positions');
+artilleryShells=[];grid.fill(EMPTY);enemies=[];player=makeTank(300,300,'player');launchArtillery(300,100,300,300);const duration=artilleryShells[0].duration;bullets=[{x:300,y:300,vx:0,vy:100,owner:'p',dmg:1,r:3,life:1}];updateBullets(.01);if(artilleryShells.length!==1)throw Error('Artillery immune to bullet collisions');updateArtilleryShells(duration+.01);if(artilleryShells.length||player.hp!==1)throw Error('Hostile artillery impact');
+player.inv=0;const hpSafe=player.hp;launchArtillery(300,H+24,300,300,true);updateArtilleryShells(10);if(player.hp!==hpSafe)throw Error('Friendly support direct safety');
+items=[];itemSpawnTimer=10;state='play';updateRandomItems(9.99);if(items.length)throw Error('Early random pickup');updateRandomItems(.02);if(items.length!==1||!ITEMS[items[0].type])throw Error('Ten-second pickup');state='pause';updateRandomItems(20);if(items.length!==1)throw Error('Pause freezes pickup timer');
+musicOff=false;muted=false;toMenu();syncMusic();if(musicTrack!==MENU_TRACK||music.paused)throw Error('Menu music');startGame();syncMusic();if(!LEVEL_TRACKS.includes(musicTrack))throw Error('Level playlist');const trackBefore=musicTrack;music.handlers.ended();if(musicTrack===trackBefore||!LEVEL_TRACKS.includes(musicTrack))throw Error('Random next music');state='pause';syncMusic();if(Math.abs(music.volume-gameVolume*musicLevel*.3)>1e-8||music.paused)throw Error('Music duck continues');muted=true;
+drawArtilleryModel(makeTank(400,400,'artillery'));setPlayerUpgrade(player,2);drawTank(player);syncUI();
+// Regression: long death sequences must render every frame, including the late post-blast flames.
+muted=true;
+for(const tier of [0,1,2]){
+  startGame();grid.fill(EMPTY);base=null;enemies=[];toSpawn=['soldier'];setPlayerUpgrade(player,tier);player.hp=1;hitPlayer({x:player.x,y:player.y,dmg:1});
+  for(let i=0;i<400&&state!=='over';i++){hitstop=0;update(.025);draw();}
+  if(state!=='over')throw Error('Death sequence did not finish at tier '+tier);
+}
+startGame();grid.fill(EMPTY);base=null;enemies=[];parts=[];const doomedHeavy=makeTank(400,300,'heavy');enemies=[doomedHeavy];hitEnemy(doomedHeavy,{x:400,y:300,dmg:99});
+const heavyWreck=wrecks[0];updateWrecks(heavyWreck.detonateAt+1.01);if(heavyWreck.blastCount!==3||!heavyWreck.exploded||parts.filter(p=>p.kind==='flash').length!==3)throw Error('Heavy triple explosion');drawWrecks();
+startGame();grid.fill(EMPTY);base=null;enemies=[];toSpawn=['soldier'];
+if(Math.abs(tankScale(player)-.9)>1e-8)throw Error('Base tank scale');
+const frozenX=player.x,frozenY=player.y;beginPlayerUpgrade(player);keys.KeyW=true;keys.Space=true;bullets=[];const upgradingHp=player.hp;
+enemies=[makeTank(player.x+5,player.y,'soldier')];separate();if(player.x!==frozenX||player.y!==frozenY)throw Error('Transforming tank cannot be pushed');enemies=[];
+for(let i=0;i<14;i++){updatePlayer(.1);hitPlayer({x:player.x,y:player.y,dmg:99});drawTank(player);}
+if(player.x!==frozenX||player.y!==frozenY||player.hp!==upgradingHp||player.dead||bullets.length||player.upgradeT<=0)throw Error('1.5-second upgrade freeze and invulnerability');
+updatePlayer(.11);if(player.upgradeT!==0)throw Error('Transformation completion');player.cd=0;updatePlayer(.01);if(!bullets.length)throw Error('Controls restored after transformation');keys.KeyW=keys.Space=false;
+items=[{x:100,y:100,type:'upgrade',life:20}];beginPlayerUpgrade(player);if(player.upgrade!==2||items.some(it=>it.type==='upgrade')||availableItemTypes().includes('upgrade'))throw Error('Max tier excludes stars');
+for(let i=0;i<30;i++){itemSpawnTimer=0;updateRandomItems(.01);}if(items.some(it=>it.type==='upgrade'))throw Error('No random stars at max tier');
+const savedRandom=Math.random;Math.random=()=>0;const dropVictim=makeTank(400,300,'soldier');hitEnemy(dropVictim,{x:400,y:300,dmg:99});Math.random=savedRandom;if(items.some(it=>it.type==='upgrade'))throw Error('No dropped stars at max tier');
+artilleryShells=[];enemies=[makeTank(400,200,'heavy')];resetArtillery();callBarrage();for(let i=0;i<5;i++)updateArtilleryShells(0);const support=artilleryShells[0];if(support.delay!==2||support.speed!==3000||support.damage!==2)throw Error('Barrage timing and damage');
+updateArtilleryShells(1.99);if(support.done||support.age>=support.delay)throw Error('Premature support launch');drawArtilleryShells();updateArtilleryShells(.02);if(support.done)throw Error('Premature support impact');
+updateArtilleryShells(support.duration);if(enemies[0].hp!==1)throw Error('Support damage 2');
+applyDev({KINDS:{artillery:{bulletSpeed:140,dmg:1}},CFG:{},balanceVersion:2});if(KINDS.artillery.bulletSpeed!==182||KINDS.artillery.dmg!==2)throw Error('Saved artillery defaults migration');
+applyDev(JSON.parse(DEV_DEFAULTS));if(KINDS.artillery.bulletSpeed!==182||KINDS.artillery.dmg!==2)throw Error('Reset artillery defaults');saveDev();applyDev(JSON.parse(localStorage.getItem('ecotank-dev-v2')));if(KINDS.artillery.bulletSpeed!==182)throw Error('Artillery migration is not repeated');
+musicOff=false;muted=false;state='menu';gameVolume=0;syncMusic();if(music.volume!==0)throw Error('Master volume mutes music');gameVolume=.5;musicLevel=.4;syncMusic();if(Math.abs(music.volume-.2)>1e-8)throw Error('Master volume scales music');muted=true;
+// The support volley does bounded work each simulation frame, independent of target count.
+const realSfx=sfx;
+for(const count of [0,1,12]){
+  resetArtillery();enemies=Array.from({length:count},(_,i)=>makeTank(100+i*30,200,'heavy'));
+  const shots=[];sfx=name=>{if(name==='heavyShoot')shots.push(barrageFrame);};callBarrage();
+  if(artilleryShells.length)throw Error('Barrage creates no shells in pickup frame');
+  if(enemies.length)enemies[0].x+=80;
+  for(let f=1;f<=Math.max(10,count*5);f++){
+    updateArtilleryShells(0);
+    if(artilleryShells.length!==Math.min(count,f))throw Error('One marker per frame');
+    if(artilleryShells.filter(s=>!s.pending).length!==Math.min(count,Math.floor(f/5)))throw Error('One trajectory per five frames');
+    drawArtilleryShells();
+  }
+  if(shots.join()!=='1,3,5,7,9')throw Error('Five fixed artillery reports spaced two frames apart');
+  if(count&&artilleryShells[0].tx!==100)throw Error('Queued barrage preserves pickup-time positions');
+}
+sfx=realSfx;resetArtillery();state='play';enemies=[makeTank(300,200,'heavy')];callBarrage();state='pause';update(.1);if(artilleryShells.length||barrageMarkers.length!==1)throw Error('Pause freezes queued support');toMenu();if(hasPendingBarrage()||artilleryShells.length)throw Error('Menu clears deferred support');
+if(Math.abs(playerGunLength({upgrade:2})/playerGunLength({upgrade:1})-.8)>1e-8)throw Error('Maximum upgrade gun length reduced 20 percent');
+// Gun noise and reverb data are generated once, then reused for subsequent reports.
+let createdAudioBuffers=0;
+const audioNode=()=>({gain:{value:0,setValueAtTime(){},exponentialRampToValueAtTime(){}},frequency:{value:0,setValueAtTime(){},exponentialRampToValueAtTime(){}},threshold:{value:0},ratio:{value:0},delayTime:{value:0},connect(other){return other;},disconnect(){},start(){},stop(){}});
+actx={sampleRate:2000,currentTime:0,destination:audioNode(),createGain:audioNode,createOscillator:audioNode,createDynamicsCompressor:audioNode,createBiquadFilter:audioNode,createBufferSource:audioNode,createDelay:audioNode,createConvolver:audioNode,createBuffer(channels,length){createdAudioBuffers++;const data=Array.from({length:channels},()=>new Float32Array(length));return {getChannelData:c=>data[c]};}};
+cannonNoiseLayers=heavyImpulse=noiseBuf=masterGain=null;heavyGunSound();const initialAudioBuffers=createdAudioBuffers;for(let i=0;i<4;i++)heavyGunSound();if(createdAudioBuffers!==initialAudioBuffers||!heavyImpulse||cannonNoiseLayers.length!==4)throw Error('Artillery reports reuse audio buffers');
+actx=noiseBuf=masterGain=cannonNoiseLayers=heavyImpulse=null;
 `,box);
 assert(!code.includes("tone(420, 110"));
 console.log('PASS: screenshot defaults, storage migration, turret rate/wrap, four-hit brick damage, density, 20 dense connected maps, asymmetry, render calls, settings persistence');
