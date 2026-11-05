@@ -1,0 +1,17 @@
+#victoryScreen {position:fixed;inset:0;z-index:55;background:transparent;color:#f9e4b4;font-family:"Segoe UI",sans-serif;}
+#victoryScreen [hidden],#victoryScreen[hidden] {display:none!important;}
+#victoryCanvas {position:absolute;inset:0;width:100%;height:100%;}
+#victoryContent {position:absolute;inset:0;display:flex;align-items:center;flex-direction:column;padding:18px 14px;box-sizing:border-box;}
+#victoryContent h1 {margin:0;font:900 clamp(36px,7vw,80px)/1.15 Georgia,serif;letter-spacing:.12em;color:#ffd477;text-shadow:0 3px 5px #35010a,0 0 25px #8d1324;}
+#victoryCreditsWindow {position:absolute;top:21%;width:min(660px,94%);height:min(58vh,480px);overflow:hidden;background:linear-gradient(transparent,rgba(28,3,9,.87) 15%,rgba(28,3,9,.87) 85%,transparent);mask-image:linear-gradient(transparent,#000 10%,#000 90%,transparent);}
+#victoryCredits {will-change:transform;}
+.victoryRow {height:100px;box-sizing:border-box;display:flex;align-items:center;gap:18px;padding:10px 30px;border-bottom:1px solid #d7a85633;font-size:19px;}
+.victoryRow span {flex:1;}.victoryRow strong {font-size:30px;color:#ffd477;}.victoryRow canvas {width:66px;height:80px;flex-shrink:0;}
+#victoryAward {margin:auto;width:min(650px,100%);max-height:calc(100% - 140px);overflow:auto;box-sizing:border-box;padding:24px 38px;background:linear-gradient(125deg,#f3dfb9,#cfb47e);color:#381219;text-align:center;border:3px double #9a2730;box-shadow:0 12px 60px #0009;font-family:Georgia,serif;}
+.awardStar {font-size:42px;line-height:1;color:#a5252a;text-shadow:0 1px #ffe5a0;}
+#victoryAward h2 {font-size:20px;letter-spacing:.05em;}#victoryAward h3 {font-size:19px;font-weight:normal;}
+#victoryAward p {font-size:18px;line-height:1.5;text-align:left;}#victoryAward strong {color:#8e1524;}
+#victoryActions {position:absolute;bottom:22px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+#victoryActions button {background:#681d29;border:1px solid #dbb868;color:#ffe4a3;padding:12px 25px;}
+#victoryActions button:focus-visible {outline:3px solid #ffe8a6;outline-offset:4px;}
+@media(max-width:599px){.victoryRow {height:94px;padding:8px 14px;gap:10px;font-size:16px;}.victoryRow strong {font-size:24px;}#victoryAward {padding:16px 20px;}#victoryAward h2 {font-size:17px;}#victoryAward p {font-size:16px;}#victoryActions {bottom:16px;}}

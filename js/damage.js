@@ -18,7 +18,7 @@ function hitEnemy(e, b) {
   e.hp -= b.dmg; e.flash = .13;shake=Math.max(shake,2);
   burst(b.x,b.y,18,['#fff4bd','#ffb650','#d7e6ed'],260,.35,4,'spark');
   if (e.hp > 0) { burst(b.x, b.y, 10, ['#fff', '#ffd76a'], 180, .3, 4); sfx('hit'); return; }
-  e.dead = true;
+  e.dead = true; recordStatistic('enemies', e.kind);
   const K = KINDS[e.kind];
   score += K.score;
   floatText(e.x, e.y - 10, '+' + K.score, '#ffe08a');
@@ -38,7 +38,7 @@ function hitPlayer(b) {
   p.hp -= b.dmg; p.inv = CFG.invulnTime; p.flash = .15;
   shake = Math.max(shake, 10);
   sfx('hurt');
-  if (p.hp <= 0) { rememberDefeatTier(); p.hp = 0; p.dead = true; p.armor=false; const delay=rnd(.5,1.5)*(b.blast?.5:1); wrecks.push({x:p.x,y:p.y,kind:'player',angle:p.angle,turret:p.turret,tread:p.tread,recoil:p.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:delay,exploded:false,blastTotal:3+2*(p.upgrade||0),upgrade:p.upgrade||0}); deadT = delay+2+(p.upgrade||0); }
+  if (p.hp <= 0) { rememberDefeatTier(); recordStatistic('deaths'); p.hp = 0; p.dead = true; p.armor=false; const delay=rnd(.5,1.5)*(b.blast?.5:1); wrecks.push({x:p.x,y:p.y,kind:'player',angle:p.angle,turret:p.turret,tread:p.tread,recoil:p.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:delay,exploded:false,blastTotal:3+2*(p.upgrade||0),upgrade:p.upgrade||0}); deadT = delay+2+(p.upgrade||0); }
 }
 
 function hitBase(dmg) {

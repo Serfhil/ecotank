@@ -10,8 +10,9 @@ function recoilOffset(t){if(!Number.isFinite(t.cd))return t.recoil||0;return (t.
 
 function reloadProgress(p) { return clamp(1-Math.max(0,p.cd)/(p.reloadDuration||KINDS.player.fireRate),0,1); }
 
-function drawPlayerModel(t) {
-  if(t.kind==='artillery'){drawArtilleryModel(t);return;}
+function drawPlayerModel(t, context = ctx) {
+  const ctx = context;
+  if(t.kind==='artillery'){drawArtilleryModel(t, ctx);return;}
   const isP=t.kind==='player',ally=t.kind==='ally',heavy=t.kind==='heavy',panther=t.kind==='soldier';
   const base=isP?(t.upgrade>0?'#859053':'#7f8e3e'):ally?'#6f8a43':heavy?'#858c94':panther?'#7c8796':'#89939e';
   const dark=isP||ally?'#3f4c25':'#3e4651',light=isP||ally?'#bac47b':'#b3bac2',flash=t.flash>0;
@@ -112,7 +113,8 @@ function drawWrecks() {
   }
 }
 
-function drawArtilleryModel(t){
+function drawArtilleryModel(t, context = ctx){
+  const ctx = context;
   ctx.save();ctx.translate(t.x,t.y);ctx.scale(tankScale(t),tankScale(t));ctx.rotate(t.angle+Math.PI/2);
   ctx.fillStyle='#171c1c';ctx.fillRect(-16,-19,32,40);ctx.fillStyle='#62676a';for(let y=-18;y<20;y+=5){ctx.fillRect(-16,y,5,2);ctx.fillRect(11,y,5,2);}
   ctx.fillStyle=t.flash>0?'#fff':'#d5be7d';ctx.fillRect(-11,-18,22,35);

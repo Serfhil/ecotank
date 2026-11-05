@@ -91,6 +91,7 @@
 <!-- «Карты Клода»: готовые карты в текстовом виде, формат описан в самом файле -->
 <script src="js/ui-text.js"></script>
 <script src="js/config.js"></script>
+<script src="js/statistics.js"></script>
 <script src="js/audio.js"></script>
 <script src="maps.js"></script>
 <script src="js/world.js"></script>
@@ -107,6 +108,7 @@
 <script src="js/effects.js"></script>
 <script src="js/layout.js"></script>
 <script src="js/defeat.js"></script>
+<script src="js/victory.js"></script>
 <script src="js/render-ui.js"></script>
 <script src="js/renderer.js"></script>
 <script src="js/editor-common.js"></script>
@@ -114,6 +116,7 @@
 <script src="js/map-editor.js"></script>
 <link rel="stylesheet" href="assets/menu.css">
 <link rel="stylesheet" href="assets/theme.css">
+<link rel="stylesheet" href="assets/victory.css">
 </head>
 <body>
 <div id="musicControls" style="position:fixed;top:8px;right:10px;z-index:2;display:flex;align-items:center;gap:8px;background:#14181cdd;padding:5px;border-radius:6px;color:#bbc9b5;font-size:12px">
@@ -135,6 +138,26 @@
 <section id="defeatScreen" hidden tabindex="-1" role="region" aria-label="" data-ui-aria-label="defeatScreen">
   <canvas id="defeatCanvas" aria-hidden="true"></canvas>
   <button id="defeatRestart" hidden data-ui-text="newGame"></button>
+</section>
+<section id="victoryScreen" hidden tabindex="-1" role="region" data-ui-aria-label="victoryScreen">
+  <canvas id="victoryCanvas" aria-hidden="true"></canvas>
+  <div id="victoryContent" hidden>
+    <h1 data-ui-text="victoryTitle"></h1>
+    <div id="victoryCreditsWindow"><div id="victoryCredits"></div></div>
+    <article id="victoryAward" hidden>
+      <div class="awardStar" aria-hidden="true">★</div>
+      <h2 data-ui-text="victoryDecreeTitle"></h2>
+      <h3 data-ui-text="victoryDecreeSubject"></h3>
+      <p data-ui-text="victoryDecreeThanks"></p>
+      <p data-ui-text="victoryDecreeAward"></p>
+      <strong data-ui-text="victoryDecreeGlory"></strong>
+    </article>
+    <nav id="victoryActions">
+      <button id="victorySkip" data-ui-text="victoryAwardButton"></button>
+      <button id="victoryNew" hidden data-ui-text="newGame"></button>
+      <button id="victoryHome" hidden data-ui-text="menuHome"></button>
+    </nav>
+  </div>
 </section>
 <div id="pauseMenu" hidden>
   <button id="btnResume" data-ui-text="resume"></button>
@@ -185,7 +208,9 @@ let shake = 0, time = 0, banner = { text: '', sub: '', t: 0 };
 let best = 0;
 try { best = +localStorage.getItem('ecotank-best') || 0; } catch (e) {}
 
-function startGame() {
+function startGame(retry = false) {
+  if (!retry) resetStatistics();
+  resetVictory();
   resetDefeat();
   applyMapChoice();score = 0; scrap = 0; wave = campaign ? CFG.campaignStart : 0; player = null; victory = false;
   base = { ...BASE_POS, hp: 5, maxHp: 5, dead: false };
@@ -193,7 +218,8 @@ function startGame() {
 }
 
 function winCampaign() {
-  victory = true; state = 'over'; overT = 0; banner.t = 0; CFG.campaignStart = 0; saveDev();
+  if (!campaign) return;
+  enterVictory(); CFG.campaignStart = 0; saveDev();
   if (score > best) { best = score; try { localStorage.setItem('ecotank-best', best); } catch (e) {} }
   sfx('wave');
 }
@@ -250,7 +276,7 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   if (e.code === 'Enter' && state === 'over' && !victory) requestDefeatRestart(e.repeat || held);
-  else if (e.code === 'Enter' && (state === 'menu' || (state === 'over' && victory && overT > .6))) startGame();
+  else if (e.code === 'Enter' && state === 'menu') startGame();
   else if ((e.code === 'KeyP' || e.code === 'Escape') && (state === 'play' || state === 'pause')) { state = state === 'play' ? 'pause' : 'play'; devOpen = false; }
   else if (e.code === 'KeyM') { muted = !muted; syncMusic(); }
   else if (e.code === 'KeyE' && (state === 'play' || state === 'between')) fireRail(player);
@@ -267,7 +293,7 @@ cv.addEventListener('mousedown', e => {
   const held = mouse.down;
   mouse.down = true;
   if (state === 'over' && !victory) { requestDefeatRestart(held); return; }
-  if (state === 'menu' || (state === 'over' && victory && overT > .6)) startGame();
+  if (state === 'menu') startGame();
   else if (state === 'pause' && !devOpen) state = 'play';
 });
 addEventListener('mouseup', () => { mouse.down = false; });
@@ -283,6 +309,7 @@ addEventListener('resize', fit); fit();
 function update(dt) {
   time += dt;
   if (state === 'menu' || state === 'pause') return;
+  if (state === 'over' && victory) { updateVictory(dt); return; }
   if (state === 'over' && !victory) { updateDefeat(dt); return; }
   updateBaseCollapse(dt);
   if (hitstop > 0) { hitstop -= dt; return; }
@@ -428,6 +455,7 @@ document.getElementById('mapPick').addEventListener('change', e => {
 
 // стартовый экран: фон-превью собирается из выбранных размера и режима карты
 function toMenu() {
+  resetVictory();
   resetDefeat();
   resetArtillery();itemSpawnTimer=10;state = 'menu'; player = null; base = null; enemies = []; allies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
   applyMapChoice(); genMap(1);
@@ -447,6 +475,7 @@ document.getElementById('mapMode').addEventListener('change', e=>{
 function syncUI() {
   fit();
   syncDefeatUI();
+  syncVictoryUI();
   const mapPick=document.getElementById('mapPick'),campaignPick=document.getElementById('campaignPick');
   const fixed=CFG.mapMode==='map',camp=CFG.mapMode==='campaign';
   document.getElementById('mapSize').value=String(CFG.mapSize||30);
@@ -475,6 +504,7 @@ for(const mode of ['original','preset01','map','campaign'])document.getElementBy
 
 // ---------- запуск ----------
 initDefeat();
+initVictory();
 renderMapPick();
 toMenu();
 let last = performance.now();

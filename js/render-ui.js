@@ -14,7 +14,7 @@ function text(str, x, y, size, color, align = 'left', weight = '600') {
 // HUD uses its own canvas; none of these labels cover battlefield cells.
 function drawHud(force = false) {
   if (!player || !hudCanvas || !gameLayout || !gameLayout.hud || !gameHasHud()) return;
-  if (!force && state === 'over' && !victory) return;
+  if (!force && state === 'over') return;
   const h = gameLayout.hud, width = h.width, height = h.height;
   const ratio = typeof devicePixelRatio === 'number' ? Math.min(2, devicePixelRatio) : 1;
   const pw = Math.round(width * ratio), ph = Math.round(height * ratio);
@@ -93,7 +93,7 @@ function drawMenu() {
 
 function drawUI() {
   if(state==='menu')return;
-  if (state === 'over' && !victory) return;
+  if (state === 'over') return;
   if (banner.t > 0) {
     const a = clamp(banner.t, 0, 1);
     ctx.globalAlpha = a;
@@ -105,16 +105,7 @@ function drawUI() {
     overlay(.55);
     text(UI_TEXT.pause, UI_W / 2, UI_H / 2 - 50, 52, '#f0cc77', 'center', '800');
   }
-  if (state === 'over') {
-    overlay(clamp(overT * 1.5, 0, .7));
-    if (overT > .3) {
-      text(victory ? UI_TEXT.kampaniya_proydena : base && base.dead ? UI_TEXT.baza_unichtozhena : UI_TEXT.tank_unichtozhen, UI_W / 2, UI_H / 2 - 70, 52, victory ? '#f0cc77' : '#ef6452', 'center', '800');
-      text(`${UI_TEXT.ochki_2}${score}   ·   ${campaign ? UI_TEXT.uroven_2 : UI_TEXT.volna_2}: ${campaign ? `${wave}${UI_TEXT.iz}${campaign.length}` : wave}${UI_TEXT.metallolom_4}${scrap}`, UI_W / 2, UI_H / 2 - 10, 22, '#fff', 'center');
-      text(score >= best && score > 0 ? UI_TEXT.novyy_rekord : `${UI_TEXT.rekord}${best}`, UI_W / 2, UI_H / 2 + 25, 18, '#ffe08a', 'center');
-      const again = !campaign ? UI_TEXT.enter_ili_klik_eshchyo_raz : victory ? UI_TEXT.enter_ili_klik_proyti_kampaniyu_zanovo : `${UI_TEXT.enter_ili_klik_povtorit_uroven}${wave}`;
-      if (overT > .6 && Math.floor(time * 2) % 2 === 0) text(again, UI_W / 2, UI_H / 2 + 80, 18, '#f2d3b1', 'center', '400');
-    }
-  }
+
 }
 
 // Compose opaque artwork separately, then fade the whole layer once.
@@ -168,4 +159,45 @@ function paintDefeatArtwork(c, width, height, ratio) {
   c.shadowColor = '#630f20'; c.shadowBlur = 18; c.shadowOffsetY = 4;
   c.fillStyle = '#f1cc72'; c.fillText(UI_TEXT.defeat, width / 2, Math.max(44, height * .1));
   c.shadowBlur = 0; c.shadowOffsetY = 0;
+}
+
+// Victory presentation. UI text remains DOM-readable; the background is a viewport canvas.
+function buildVictoryCredits() {
+  const s = victoryStats;
+  const rows = [[UI_TEXT.victoryEnemies, Object.values(s.enemies).reduce((a,b)=>a+b,0)],
+    ...STAT_ENEMY_TYPES.map(k => [KIND_NAMES[k], s.enemies[k], k]),
+    [UI_TEXT.victoryBricks,s.bricks],[UI_TEXT.victoryFoliage,s.foliage],
+    [UI_TEXT.victoryFlocks,s.flocks],[UI_TEXT.victoryDeaths,s.deaths],[UI_TEXT.victoryAllies,s.allies]];
+  document.getElementById('victoryCredits').innerHTML = rows.map(([label,value,kind]) =>
+    '<div class="victoryRow">'+(kind?'<canvas id="victoryModel-'+kind+'" width="132" height="160" aria-hidden="true"></canvas>':'')+
+    '<span>'+label+'</span><strong>'+value+'</strong></div>').join('');
+  for (const kind of STAT_ENEMY_TYPES) {
+    const c = document.getElementById('victoryModel-'+kind).getContext('2d');
+    c.save(); c.clearRect(0,0,132,160); c.translate(66,92); c.scale(1.8,1.8);
+    drawPlayerModel({kind,x:0,y:0,angle:-Math.PI/2,turret:-Math.PI/2,tread:0,recoil:0,flash:0,dead:true},c);
+    c.restore();
+  }
+}
+function renderVictoryContent() {
+  const g = victoryCreditsGeometry();
+  document.getElementById('victoryCreditsWindow').style.height = g.height+'px';
+  document.getElementById('victoryCredits').style.transform = 'translateY('+
+    (g.height-Math.max(0,victoryTime-victoryRevealEnd())*VICTORY_CONFIG.creditsSpeed)+'px)';
+  document.getElementById('victoryAward').style.opacity = victoryAwardTime === null ? 0 : clamp((victoryTime-victoryAwardTime)/VICTORY_CONFIG.awardFade,0,1);
+}
+function drawVictoryScreen() {
+  if (!victoryCanvas) return;
+  const w=Math.max(1,innerWidth),h=Math.max(1,innerHeight),ratio=typeof devicePixelRatio==='number'?Math.min(2,devicePixelRatio):1;
+  if(victoryCanvas.width!==Math.round(w*ratio)||victoryCanvas.height!==Math.round(h*ratio)){
+    victoryCanvas.width=Math.round(w*ratio);victoryCanvas.height=Math.round(h*ratio);
+  }
+  const c=victoryCanvas.getContext('2d');c.setTransform(ratio,0,0,ratio,0,0);c.globalAlpha=1;
+  c.fillStyle='#20070d';c.fillRect(0,0,w,h);
+  if(victoryTime<VICTORY_CONFIG.darken){
+    if(victoryFrame){const s=Math.min(w/victoryFrame.width,h/victoryFrame.height);c.drawImage(victoryFrame,(w-victoryFrame.width*s)/2,(h-victoryFrame.height*s)/2,victoryFrame.width*s,victoryFrame.height*s);}
+    c.fillStyle='rgba(0,0,0,'+clamp(victoryTime/VICTORY_CONFIG.darken,0,1)+')';c.fillRect(0,0,w,h);
+  }else{
+    if(victoryImageLoaded){const s=Math.min(w/victoryImage.naturalWidth,h/victoryImage.naturalHeight);c.drawImage(victoryImage,(w-victoryImage.naturalWidth*s)/2,(h-victoryImage.naturalHeight*s)/2,victoryImage.naturalWidth*s,victoryImage.naturalHeight*s);}
+    c.fillStyle='rgba(0,0,0,'+(1-clamp((victoryTime-VICTORY_CONFIG.darken)/VICTORY_CONFIG.reveal,0,1))+')';c.fillRect(0,0,w,h);
+  }
 }

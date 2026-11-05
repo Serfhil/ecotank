@@ -71,7 +71,7 @@ function requestDefeatRestart(repeated) {
   if (repeated || !defeatReady()) return false;
   for (const key in keys) keys[key] = false;
   mouse.down = false;
-  startGame();
+  startGame(!!campaign);
   return true;
 }
 

@@ -3,6 +3,7 @@ require('./check-modules.cjs')(__dirname);
 require('./check-audio.cjs')(__dirname);
 require('./check-editors.cjs')(__dirname);
 require('./check-defeat.cjs')(__dirname);
+require('./check-victory.cjs')(__dirname);
 require('./check-allies.cjs')(__dirname);
 const html=fs.readFileSync(__dirname+'/index.html','utf8');
 const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].map(([,attrs,inline])=>({src:attrs.match(/\bsrc="([^"]+)"/)?.[1],inline}));

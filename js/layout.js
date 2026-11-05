@@ -37,7 +37,7 @@ function applyGameLayout() {
     gameHud = document.getElementById('gameHud');
   }
   const withHud = gameHasHud(), key = [innerWidth, innerHeight, W, H, withHud].join(':');
-  if (gameHud) gameHud.hidden = !withHud || (state === 'over' && !victory);
+  if (gameHud) gameHud.hidden = !withHud || (state === 'over');
   if (key === layoutKey) return;
   layoutKey = key;
   gameLayout = calculateGameLayout(innerWidth, innerHeight, W, H, withHud);

@@ -79,7 +79,7 @@ function hitBrick(c, r, dmg, hx = c*T+16, hy = r*T+16) {
   });
   burst(hx, hy, 10, ['#b3633a', '#8c4a2b', '#d08a5c'], 120, .4, 4);
   if (brickHp[i] <= 0) {
-    grid[i] = EMPTY; flowTimer = 0;
+    grid[i] = EMPTY; recordStatistic('bricks'); flowTimer = 0;
     burst(c*T+16, r*T+16, 14, ['#b3633a', '#8c4a2b'], 160, .6, 5);
   }
   sfx('brick');
@@ -108,9 +108,9 @@ function hitFoliage(c,r,x,y,projectile) {
   choices.sort((a,b)=>Math.hypot(c*T+16+a.b[0]-x,r*T+16+a.b[1]-y)-Math.hypot(c*T+16+b.b[0]-x,r*T+16+b.b[1]-y));
   if(choices.length)foliageMask[i]&=~(1<<choices[0].q);
   foliageShake[i]=.45;
-  if(Math.random()<.09){const count=ri(3,5),white=ri(1,2);for(let k=0;k<count;k++)parts.push({x,y,vx:rnd(-100,100),vy:rnd(-150,-80),life:1.4,max:1.4,kind:'bird',color:k<white?'#f0f0e5':'#1c2927',phase:rnd(0,6)});}
+  if(Math.random()<.09){recordStatistic('flocks');const count=ri(3,5),white=ri(1,2);for(let k=0;k<count;k++)parts.push({x,y,vx:rnd(-100,100),vy:rnd(-150,-80),life:1.4,max:1.4,kind:'bird',color:k<white?'#f0f0e5':'#1c2927',phase:rnd(0,6)});}
   burst(x,y,12,['#6fa447','#9cba52','#355d2e'],110,.65,3,'leaf');sfx('leaves');
-  if(!foliageMask[i])grid[i]=EMPTY;
+  if(!foliageMask[i]){grid[i]=EMPTY;recordStatistic('foliage');}
 }
 
 // Варианты кладки; повреждение удаляет целые кирпичи по швам.

@@ -136,7 +136,7 @@ function hitAlly(a,b) {
   a.hp-=b.dmg;a.flash=.13;
   burst(b.x,b.y,14,['#fff4bd','#ffb650','#d7e6ed'],220,.3,3,'spark');
   if(a.hp>0){sfx('hit');return;}
-  a.dead=true;shake=Math.max(shake,4);
+  a.dead=true;recordStatistic('allies');shake=Math.max(shake,4);
   floatText(a.x,a.y-10,UI_TEXT.soyuznik_podbit,'#ff9a7a');
   wrecks.push({x:a.x,y:a.y,kind:'ally',angle:a.angle,turret:a.turret,tread:a.tread,recoil:a.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:rnd(.5,1.5)*(b.blast?.5:1),exploded:false});
 }

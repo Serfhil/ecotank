@@ -50,6 +50,11 @@ function drawBullets() {
 
 function draw() {
   fit();
+  if (state === 'over' && victory) {
+    if (!victoryFrame) { drawBattleFrame(); captureVictoryFrame(); }
+    drawVictoryScreen();
+    return;
+  }
   if (state === 'over' && !victory) {
     if (!defeatFrame) { drawBattleFrame(); drawHud(true); captureDefeatFrame(); }
     drawDefeatScreen();
