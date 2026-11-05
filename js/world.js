@@ -295,10 +295,4 @@ function buildGround() {
   drawSandGround();
 }
 
-function drawSandGround() {
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(sand[r*COLS+c]) {
-    const x=c*T,y=r*T;gctx.fillStyle='#b59e64';gctx.fillRect(x,y,T,T);
-    for(let k=0;k<18;k++){gctx.fillStyle=k%2?'#d4bd8077':'#816e4355';gctx.fillRect(x+((k*17+c*7)%31),y+((k*11+r*3)%31),2,1);}
-    gctx.strokeStyle='#d8c28866';for(let dy=7;dy<T;dy+=9){gctx.beginPath();gctx.moveTo(x,y+dy);gctx.lineTo(x+T,y+dy-2);gctx.stroke();}
-  }
-}
+function drawSandGround() { detailGround(gctx); }

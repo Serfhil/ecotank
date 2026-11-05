@@ -27,6 +27,7 @@ function drawPlayerModel(t, context = ctx) {
   if(heavy){ctx.fillStyle='#20262d';for(let x=-7;x<8;x+=3)ctx.fillRect(x,6,1,8);ctx.strokeStyle=light;ctx.strokeRect(-3,9,6,5);}
   if(isP&&t.upgrade>0){ctx.fillStyle='#c3c994';ctx.fillRect(-7,-13,14,3);ctx.fillStyle='#354321';ctx.fillRect(-9,6,18,8);}
   if(isP){ctx.fillStyle='#24331c';ctx.fillRect(-12,10,6,9);ctx.fillRect(6,10,6,9);ctx.fillStyle='#879655';ctx.fillRect(-11,10,4,8);ctx.fillRect(7,10,4,8);ctx.fillStyle='#bfca85';ctx.fillRect(-11,10,4,2);ctx.fillRect(7,10,4,2);}
+  detailHull(ctx,t);
   ctx.restore();ctx.save();ctx.translate(t.x+(isP?Math.cos(t.angle)*5:0),t.y+(isP?Math.sin(t.angle)*5:0));ctx.scale(tankScale(t),tankScale(t));ctx.rotate(t.turret+Math.PI/2);
   const gunScale=isP&&t.upgrade>=2?.8:1,barrel=-(isP?playerGunLength(t):30)+(!t.dead?recoilOffset(t):t.recoil),offsets=isP&&t.upgrade>=2?[-4,4]:[0];
   for(const off of offsets){ctx.fillStyle='#171d20';ctx.fillRect(off-3,barrel,6,29*gunScale);ctx.fillRect(off-4,barrel-2,8,5);ctx.fillStyle=light;ctx.fillRect(off-1,barrel,3,27*gunScale);}
@@ -35,6 +36,7 @@ function drawPlayerModel(t, context = ctx) {
   ctx.fillStyle=flash?'#fff':base;ctx.strokeStyle='#161c20';ctx.lineWidth=2;ctx.beginPath();if(isP)roundedPolygon(ctx,t.upgrade>0?[[-8,-12],[8,-12],[12,-3],[10,10],[-10,10],[-12,-3]]:poly,.22);else{poly.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();}ctx.fill();ctx.stroke();
   ctx.fillStyle=dark;ctx.fillRect(-6,-3,6,6);ctx.fillRect(3,1,5,5);ctx.fillStyle=light;ctx.fillRect(-5,-4,4,2);ctx.fillRect(4,2,3,2);
   if(isP||ally){ctx.fillStyle='#d55d43';ctx.fillRect(5,5,3,3);}else{ctx.fillStyle='#e0e3df';ctx.fillRect(-2,-7,5,1);ctx.fillRect(0,-9,1,5);}
+  detailTurret(ctx,t);
   ctx.restore();
 }
 
@@ -50,7 +52,7 @@ function drawTank(t) {
     ctx.strokeStyle='#ffe49b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(t.x,t.y,t.r+8+Math.sin(time*9)*3,0,Math.PI*2);ctx.stroke();
     ctx.strokeStyle='#8fdbff88';ctx.beginPath();ctx.arc(t.x,t.y,t.r+15,0,Math.PI*2*progress);ctx.stroke();
   }else drawPlayerModel(t);ctx.restore();
-  if((t===player||t.kind==='soldier'||t.kind==='heavy') && t.hp<t.maxHp && t.spawnT<=0) {
+  if((t===player||t.ally||t.kind==='soldier'||t.kind==='heavy') && t.hp<t.maxHp && t.spawnT<=0) {
     ctx.fillStyle='#282323aa';ctx.beginPath();ctx.ellipse(t.x-6,t.y-12,6,11,0,0,Math.PI*2);ctx.fill();
     drawFlames(t.x-6,t.y+2,t.hp/t.maxHp<=.5?1:.65);
   }
@@ -123,6 +125,6 @@ function drawArtilleryModel(t, context = ctx){
   // Open rear fighting compartment and exposed breech distinguish the Hummel-inspired silhouette.
   ctx.fillStyle='#3f3b30';ctx.fillRect(-9,-4,18,22);ctx.strokeStyle='#d0bc88';ctx.lineWidth=3;ctx.strokeRect(-10,-5,20,24);
   ctx.strokeStyle='#566048';ctx.beginPath();ctx.moveTo(-10,-3);ctx.lineTo(-10,7);ctx.moveTo(10,11);ctx.lineTo(10,18);ctx.stroke();ctx.strokeStyle='#944b36';ctx.beginPath();ctx.moveTo(-6,19);ctx.lineTo(3,19);ctx.moveTo(10,-3);ctx.lineTo(10,5);ctx.stroke();
-  ctx.fillStyle='#77715a';ctx.fillRect(-4,-3,8,16);ctx.fillStyle='#dad3ac';ctx.fillRect(-8,10,3,6);ctx.fillRect(6,8,3,7);ctx.restore();
+  ctx.fillStyle='#77715a';ctx.fillRect(-4,-3,8,16);ctx.fillStyle='#dad3ac';ctx.fillRect(-8,10,3,6);ctx.fillRect(6,8,3,7);detailHull(ctx,t);ctx.restore();
   ctx.save();ctx.translate(t.x,t.y);ctx.rotate(t.turret+Math.PI/2);const recoil=recoilOffset(t);ctx.fillStyle='#302f2b';ctx.fillRect(-4,-35+recoil,8,35);ctx.fillStyle='#d5be7d';ctx.fillRect(-2,-34+recoil,4,31);ctx.fillStyle='#566048';ctx.fillRect(-2,-29+recoil,4,7);ctx.fillStyle='#944b36';ctx.fillRect(-2,-18+recoil,4,5);ctx.fillStyle='#877a53';ctx.fillRect(-6,-5,12,10);ctx.restore();
 }

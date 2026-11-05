@@ -55,6 +55,10 @@ module.exports=function checkGameplay(root){
  ar("grid.fill(EMPTY);a.x=100;a.y=200;a.tx=a.x;a.ty=a.y;a.pw.shield=0;for(let r=0;r<ROWS;r++)grid[r*COLS+5]=WATER;items=[{type:'shield',x:200,y:200,life:10},{type:'shield',x:130,y:200,life:10}];a.itemScanT=0;updateAlly(a,.1)");assert.equal(ar('a.itemGoal===items[1]'),true,'Choose reachable pickup instead of closer blocked route');
  ar('items=[];updateAlly(a,.1)');assert.equal(ar('a.itemGoal'),null,'Forget removed item');
  ar("grid.fill(EMPTY);items=[{type:'shield',x:a.x+5*T+1,y:a.y,life:10}];a.itemScanT=0;updateAlly(a,.1)");assert.equal(ar('a.itemGoal'),null,'Respect five-cell radius');
+ const visuals=boot(),vr=visuals.run;
+ vr("muted=true;startGame();const geometryBefore=JSON.stringify([Array.from(grid),Array.from(sand),player.r,player.hp]);const detailTanks=['player','scout','soldier','heavy','ally','artillery'].map(kind=>makeTank(100,100,kind));const randomBefore=Math.random;Math.random=()=>{throw Error('Cosmetic details consumed simulation RNG');};detailGround(gctx);for(const t of detailTanks){t.cd=0;t.ally=t.kind==='ally';drawPlayerModel(t);}Math.random=randomBefore;");
+ assert.equal(vr('JSON.stringify([Array.from(grid),Array.from(sand),player.r,player.hp])'),vr('geometryBefore'),'Cosmetics preserve world and collision');
+ vr('for(let i=0;i<100;i++){time=i/8;detailWater(ctx,0,0,0);detailWater(ctx,32,0,1);}');assert(vr('detailSprites.size<120'),'Detail atlas remains bounded');
  // More gameplay checks below.
  console.log('PASS: corner HUD, steel channels, shared pickup effects, allied upgrades/AI and reachability');
 };
