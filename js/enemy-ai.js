@@ -121,7 +121,21 @@ function updateEnemy(e, dt) {
   const K = KINDS[e.kind];
   e.flash -= dt; e.recoil = (e.recoilMax||5)*clamp(e.cd/enemyInterval(e.kind),0,1);
   if (e.spawnT > 0) { e.spawnT -= dt; return; }
-  if(e.entering) {e.y+=K.speed*dt;e.ty=e.y;e.tx=e.x;if(e.y>=48){e.y=48;e.entering=false;e.cd=enemyInterval(e.kind);}return;}
+  if(e.entering) {
+    e.y+=K.speed*dt;e.ty=e.y;e.tx=e.x;
+    if(e.kind==='heavy'){
+      e.cd-=dt;
+      const sightY=Math.max(0,e.y),foes=[player,...(typeof allies!=='undefined'?allies:[])].filter(t=>t&&!t.dead);
+      let target=null,nearest=Infinity;
+      for(const t of foes){const d=Math.hypot(t.x-e.x,t.y-e.y),hidden=tileAt(Math.floor(t.x/T),Math.floor(t.y/T))===TREE&&d>CFG.treeStealth;
+        if(d<nearest&&d<CFG.enemySight&&!hidden&&los(e.x,sightY,t.x,t.y)){nearest=d;const lead=d/3000*.6;target={x:t.x+(t.vx||0)*lead,y:t.y+(t.vy||0)*lead};}}
+      if(!target&&base&&!base.dead&&los(e.x,sightY,base.x,base.y))target=base;
+      const muzzle=20*tankScale(e),mx=e.x+Math.cos(e.turret)*muzzle,my=e.y+Math.sin(e.turret)*muzzle;
+      aimAndFireEnemy(e,target,dt,mx>=4&&mx<W-4&&my>=4&&my<H-4);
+    }
+    if(e.y>=48){e.y=48;e.entering=false;if(e.kind!=='heavy')e.cd=enemyInterval(e.kind);}
+    return;
+  }
   e.cd -= dt; e.decideT -= dt;reconsiderRoute(e,dt);
   if(e.kind==='artillery'){updateArtillery(e,dt);return;}
   const goal=enemyGoal(e);
@@ -168,12 +182,13 @@ function updateEnemy(e, dt) {
     target = { x: foe.x + foe.vx * lead, y: foe.y + foe.vy * lead };
   } else if(base && !base.dead && los(e.x,e.y,base.x,base.y)) target=base;
   else if (e.brick) target = e.brick;
-  const aim = target ? Math.atan2(target.y - e.y, target.x - e.x) : e.angle;
-  e.turret = turnTo(e.turret, aim, dt * K.turretSpeed);
-  if (target && !e.retreat && e.cd <= 0 && Math.abs(angDiff(e.turret, aim)) < .12) {
-    fire(e);
-    e.cd = enemyInterval(e.kind);
-    if(e.cover) e.retreat=true;
+  aimAndFireEnemy(e,target,dt);
+}
+function aimAndFireEnemy(e,target,dt,canShoot=true) {
+  const aim=target?Math.atan2(target.y-e.y,target.x-e.x):e.angle;
+  e.turret=turnTo(e.turret,aim,dt*KINDS[e.kind].turretSpeed);
+  if(target&&canShoot&&!e.retreat&&e.cd<=0&&Math.abs(angDiff(e.turret,aim))<.12){
+    fire(e);e.cd=enemyInterval(e.kind);if(e.cover)e.retreat=true;
   }
 }
 
