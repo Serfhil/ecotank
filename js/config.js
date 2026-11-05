@@ -12,6 +12,8 @@ const KINDS = {
 };
 
 KINDS.artillery={hp:2,speed:35,fireRate:6,turretSpeed:1,color:'#d5be7d',dark:'#566048',bulletSpeed:182,dmg:2,scale:1.1,score:400,scrap:3,wander:0,hold:640};
+// Союзник выдерживает ровно одно попадание врага: hp 1 при любом уроне снаряда.
+KINDS.ally={hp:1,speed:55,fireRate:1.6,turretSpeed:1.4,color:'#8fb45a',dark:'#3c5225',bulletSpeed:520,dmg:1,scale:1,hold:220};
 
 const ITEMS = {
   upgrade:{color:'#ffd45c',glyph:'★',name:UI_TEXT.uluchshenie_tanka},
@@ -26,6 +28,7 @@ const CFG = {
   dropChance: .22, heavyDropBonus: .3, powerupTime: 10, repairAmount: 2, railMax: 3,
   waveBase: 6, wavePerLevel: 2, maxAliveBase: 3, maxAliveCap: 7, enemySpeedPerWave: .02, waveBonus: 300, waveHeal: 1,
   mapSize:30, mapMode:'original', mapPick:'', campaignStart:0, mapElements: 42, brickHp: 4, invulnTime: .7, enemySight: 460, treeStealth: 90, shake: 1, hitstop: .06, godMode: false,
+  allies: false, allyCount: 2,
 };
 
 const MENU_TRACK='assets/red-steel-menu.mp3',LEVEL_TRACKS=['assets/mehvod.mp3','assets/red-steel-1.mp3','assets/red-steel-2.mp3'];
@@ -78,6 +81,10 @@ const CFG_FIELDS = [
     ['shake', UI_TEXT.tryaska_ekrana, 0, 3, .1],
     ['hitstop', UI_TEXT.stop_kadr_pri_vzryve_s, 0, .3, .01],
     ['godMode', UI_TEXT.rezhim_boga, 'bool'],
+  ]],
+  [UI_TEXT.soyuzniki, [
+    ['allies', UI_TEXT.soyuznye_tanki, 'bool'],
+    ['allyCount', UI_TEXT.soyuznikov_na_karte, 1, 6, 1],
   ]],
 ];
 

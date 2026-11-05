@@ -50,10 +50,10 @@ function decide(e, random) {
   }
 }
 
-const enemyInterval=kind=>({scout:1/.33,soldier:2,heavy:5,artillery:6}[kind]);
+const enemyInterval=kind=>({scout:1/.33,soldier:2,heavy:5,artillery:6}[kind]??KINDS[kind].fireRate);
 
 function enemyGoal(e) {
-  const choices=[player,base].filter(t=>t&&!t.dead);
+  const choices=[player,base,...allies].filter(t=>t&&!t.dead);
   return choices.sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0]||PLAYER_START;
 }
 
@@ -127,10 +127,15 @@ function updateEnemy(e, dt) {
   const goal=enemyGoal(e);
   if(!e.leader)buildFlow(Math.floor(goal.x/T),Math.floor(goal.y/T));
 
-  const p = player, alive = p && !p.dead;
-  const dp = alive ? Math.hypot(p.x - e.x, p.y - e.y) : 1e9;
-  const hidden = alive && tileAt(Math.floor(p.x / T), Math.floor(p.y / T)) === TREE && dp > CFG.treeStealth;
-  const sees = alive && !hidden && dp < CFG.enemySight && los(e.x, e.y, p.x, p.y);
+  // видимая цель: ближайший из игрока и союзников, не скрытый кронами
+  let foe = null, dp = 1e9;
+  for (const t of [player, ...allies]) {
+    if (!t || t.dead) continue;
+    const d = Math.hypot(t.x - e.x, t.y - e.y);
+    const hidden = tileAt(Math.floor(t.x / T), Math.floor(t.y / T)) === TREE && d > CFG.treeStealth;
+    if (d < dp && !hidden && d < CFG.enemySight && los(e.x, e.y, t.x, t.y)) { foe = t; dp = d; }
+  }
+  const sees = !!foe;
   e.engaged=sees;
 
   // движение от клетки к клетке по полю расстояний
@@ -158,9 +163,9 @@ function updateEnemy(e, dt) {
   // башня и стрельба
   let target = null;
   if(e.brick)target=e.brick;
-  else if (sees && goal===p) {
+  else if (sees && goal!==base) {
     const lead = dp / (e.kind==='heavy'?3000:K.bulletSpeed) * .6;
-    target = { x: p.x + p.vx * lead, y: p.y + p.vy * lead };
+    target = { x: foe.x + foe.vx * lead, y: foe.y + foe.vy * lead };
   } else if(base && !base.dead && los(e.x,e.y,base.x,base.y)) target=base;
   else if (e.brick) target = e.brick;
   const aim = target ? Math.atan2(target.y - e.y, target.x - e.x) : e.angle;

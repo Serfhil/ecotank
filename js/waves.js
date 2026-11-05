@@ -22,7 +22,7 @@ function updateSpawns(dt) {
   if (!toSpawn.length || spawnTimer > 0 || enemies.length >= maxAlive()) return;
   const free = SPAWNS.filter(s => {
     const x = s.c * T + 16, y = s.r * T + 16;
-    return !enemies.concat(player && !player.dead ? [player] : []).some(t => Math.hypot(t.x - x, t.y - y) < 40);
+    return !enemies.concat(allies, player && !player.dead ? [player] : []).some(t => Math.hypot(t.x - x, t.y - y) < 40);
   });
   if (!free.length) return;
   const s = free[ri(0, free.length - 1)];

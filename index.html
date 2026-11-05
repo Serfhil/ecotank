@@ -100,6 +100,7 @@
 <script src="js/damage.js"></script>
 <script src="js/pickups.js"></script>
 <script src="js/enemy-ai.js"></script>
+<script src="js/allies.js"></script>
 <script src="js/waves.js"></script>
 <script src="js/render-world.js"></script>
 <script src="js/render-tanks.js"></script>
@@ -175,7 +176,7 @@ const turnTo = (a, b, s) => { const d = angDiff(a, b); return Math.abs(d) <= s ?
 initAudio();
 
 // ---------- состояние игры ----------
-let state = 'menu', player = null, enemies = [], bullets = [], parts = [], items = [], wrecks = [], rails = [];
+let state = 'menu', player = null, enemies = [], allies = [], bullets = [], parts = [], items = [], wrecks = [], rails = [];
 let base = null;
 let artilleryShells=[],itemSpawnTimer=10,barrageMarkers=[],barrageTrajectories=[],barrageSoundShots=0,barrageFrame=0;
 
@@ -222,6 +223,7 @@ function nextWave() {
   setPlayerUpgrade(player,tier,false);player.hp = hp; player.rail = rail; player.armor=tier>0; Object.assign(player,boostState); player.cd = .3;
   enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; resetArtillery();itemSpawnTimer=10;
   toSpawn = waveList(wave); spawnTimer = 1.2; flowTimer = 0;
+  spawnAllies();
   banner = campaign
     ? { text: `${UI_TEXT.uroven}${wave}${UI_TEXT.iz}${campaign.length}`, sub: `${activeMap.name}${UI_TEXT.vragov}${toSpawn.length}`, t: 2.4 }
     : { text: `${UI_TEXT.volna}${wave}`, sub: `${UI_TEXT.vragov_2}${toSpawn.length}`, t: 2.2 };
@@ -304,9 +306,10 @@ function update(dt) {
   formColumns();
   for (const e of enemies) updateEnemy(e, dt);
   enemies = enemies.filter(e => !e.dead);
+  for (const a of allies) updateAlly(a, dt);
   separate();
   updateBullets(dt);
-  enemies = enemies.filter(e => !e.dead);
+  enemies = enemies.filter(e => !e.dead); allies = allies.filter(a => !a.dead);
   updateItems(dt);
   updateWrecks(dt);
 
@@ -426,7 +429,7 @@ document.getElementById('mapPick').addEventListener('change', e => {
 // стартовый экран: фон-превью собирается из выбранных размера и режима карты
 function toMenu() {
   resetDefeat();
-  resetArtillery();itemSpawnTimer=10;state = 'menu'; player = null; base = null; enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
+  resetArtillery();itemSpawnTimer=10;state = 'menu'; player = null; base = null; enemies = []; allies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
   applyMapChoice(); genMap(1);
 }
 document.getElementById('btnDev').addEventListener('click', e => { e.currentTarget.blur(); devOpen = true; buildDev(); });

@@ -172,6 +172,11 @@ const UI_TEXT = Object.freeze({
   "tryaska_ekrana": "Тряска экрана (×)",
   "stop_kadr_pri_vzryve_s": "Стоп-кадр при взрыве, с",
   "rezhim_boga": "Режим бога",
+  "soyuzniki": "Союзники",
+  "soyuznye_tanki": "Союзные танки (с новой карты)",
+  "soyuznikov_na_karte": "Союзников на карте",
+  "soyuznik": "Союзник",
+  "soyuznik_podbit": "Союзник подбит",
   "tanki": "Танки",
   "kirpich": "Кирпич",
   "zabor": "Забор",
@@ -254,7 +259,7 @@ const UI_TEXT = Object.freeze({
   "net_kart_kampanii": "Нет карт кампании"
 });
 
-const KIND_NAMES = { player: UI_TEXT.igrok, scout: UI_TEXT.razvedchik, soldier: UI_TEXT.soldat, heavy: UI_TEXT.tyazhyolyy, artillery:UI_TEXT.artilleriya };
+const KIND_NAMES = { player: UI_TEXT.igrok, scout: UI_TEXT.razvedchik, soldier: UI_TEXT.soldat, heavy: UI_TEXT.tyazhyolyy, artillery:UI_TEXT.artilleriya, ally:UI_TEXT.soyuznik };
 
 const BRUSHES = [['B', UI_TEXT.kirpich], ['F', UI_TEXT.zabor], ['S', UI_TEXT.broneplita], ['W', UI_TEXT.voda], ['T', UI_TEXT.lesoposadka], ['P', UI_TEXT.pesok], ['b', UI_TEXT.kirpich_60], ['t', UI_TEXT.lesoposadka_60], ['.', UI_TEXT.raschistit], [' ', UI_TEXT.ne_trogat]];
 

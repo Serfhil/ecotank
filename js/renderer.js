@@ -70,6 +70,7 @@ function drawBattleFrame() {
     drawWrecks();
     drawItems();
     for (const e of enemies) drawTank(e);
+    for (const a of allies) if (!a.dead) drawTank(a);
     if (player && !player.dead) drawTank(player);
     drawBullets();drawArtilleryShells();
     drawRails();

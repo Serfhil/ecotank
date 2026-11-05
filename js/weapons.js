@@ -17,7 +17,7 @@ function fire(t) {
   for (const offset of barrels) {
     const a = t.turret;
     bullets.push({ x: mx-Math.sin(a)*offset, y: my+Math.cos(a)*offset, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-      owner: isP ? 'p' : 'e', armor: ap, trail: [], dmg: t.kind==='heavy'?2:K.dmg*(ap?2:1), r: t.kind === 'heavy' ? 4 : 3, life: 2.5 });
+      owner: isP || t.ally ? 'p' : 'e', armor: ap, trail: [], dmg: t.kind==='heavy'?2:K.dmg*(ap?2:1), r: t.kind === 'heavy' ? 4 : 3, life: 2.5 });
   }
   t.recoilMax = t.recoil = 5;
   for (let i = 0; i < 6; i++) {
@@ -87,6 +87,7 @@ function updateBullets(dt) {
       if(base&&!base.dead&&Math.hypot(b.x-base.x,b.y-base.y)<base.r+b.r){hitBase(b.dmg);b.dead=true;continue;}
       if(b.owner==='p'){for(const e of enemies){if(!e.dead&&e.spawnT<=0&&Math.hypot(e.x-b.x,e.y-b.y)<e.r+b.r){hitEnemy(e,b);b.dead=true;break;}}}
       else if(player&&!player.dead&&Math.hypot(player.x-b.x,player.y-b.y)<player.r+b.r){hitPlayer(b);b.dead=true;}
+      else for(const a of allies){if(!a.dead&&Math.hypot(a.x-b.x,a.y-b.y)<a.r+b.r){hitAlly(a,b);b.dead=true;break;}}
     }
     collideShells();
   }

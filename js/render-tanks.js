@@ -12,9 +12,9 @@ function reloadProgress(p) { return clamp(1-Math.max(0,p.cd)/(p.reloadDuration||
 
 function drawPlayerModel(t) {
   if(t.kind==='artillery'){drawArtilleryModel(t);return;}
-  const isP=t.kind==='player',heavy=t.kind==='heavy',panther=t.kind==='soldier';
-  const base=isP?(t.upgrade>0?'#859053':'#7f8e3e'):heavy?'#858c94':panther?'#7c8796':'#89939e';
-  const dark=isP?'#3f4c25':'#3e4651',light=isP?'#bac47b':'#b3bac2',flash=t.flash>0;
+  const isP=t.kind==='player',ally=t.kind==='ally',heavy=t.kind==='heavy',panther=t.kind==='soldier';
+  const base=isP?(t.upgrade>0?'#859053':'#7f8e3e'):ally?'#6f8a43':heavy?'#858c94':panther?'#7c8796':'#89939e';
+  const dark=isP||ally?'#3f4c25':'#3e4651',light=isP||ally?'#bac47b':'#b3bac2',flash=t.flash>0;
   ctx.save();ctx.translate(t.x,t.y);ctx.scale(tankScale(t),tankScale(t));ctx.rotate(t.angle+Math.PI/2);if(isP&&t.upgrade>=2)ctx.scale(1.15,1);
   ctx.fillStyle='#161b1c';ctx.fillRect(-16,-17,32,35);
   for(const x of [-16,10]){ctx.fillStyle='#343a3d';ctx.fillRect(x,-16,6,33);for(let y=-16;y<17;y+=5){ctx.fillStyle='#81858b';ctx.fillRect(x,y+(t.tread%5),6,2);}}
@@ -33,7 +33,7 @@ function drawPlayerModel(t) {
   const poly=heavy?[[-10,-10],[9,-10],[12,-5],[12,8],[7,12],[-9,12],[-13,6],[-13,-5]]:panther?[[-6,-12],[6,-12],[13,5],[9,12],[-9,12],[-13,5]]:isP?[[-5,-12],[5,-12],[11,4],[7,12],[-7,12],[-11,4]]:[[-7,-10],[7,-10],[11,8],[6,12],[-8,12],[-11,5]];
   ctx.fillStyle=flash?'#fff':base;ctx.strokeStyle='#161c20';ctx.lineWidth=2;ctx.beginPath();if(isP)roundedPolygon(ctx,t.upgrade>0?[[-8,-12],[8,-12],[12,-3],[10,10],[-10,10],[-12,-3]]:poly,.22);else{poly.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();}ctx.fill();ctx.stroke();
   ctx.fillStyle=dark;ctx.fillRect(-6,-3,6,6);ctx.fillRect(3,1,5,5);ctx.fillStyle=light;ctx.fillRect(-5,-4,4,2);ctx.fillRect(4,2,3,2);
-  if(isP){ctx.fillStyle='#d55d43';ctx.fillRect(5,5,3,3);}else{ctx.fillStyle='#e0e3df';ctx.fillRect(-2,-7,5,1);ctx.fillRect(0,-9,1,5);}
+  if(isP||ally){ctx.fillStyle='#d55d43';ctx.fillRect(5,5,3,3);}else{ctx.fillStyle='#e0e3df';ctx.fillRect(-2,-7,5,1);ctx.fillRect(0,-9,1,5);}
   ctx.restore();
 }
 
@@ -62,6 +62,10 @@ function drawTank(t) {
     const a = t.pw.shield < 2 && Math.floor(time * 8) % 2 ? .15 : .5;
     ctx.strokeStyle = `rgba(140,240,160,${a})`; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(t.x, t.y, t.r + 7 + Math.sin(time * 6), 0, Math.PI * 2); ctx.stroke();
+  }
+  if (t.ally) {
+    ctx.fillStyle = '#9be36f'; ctx.beginPath();
+    ctx.moveTo(t.x - 5, t.y - t.r - 11); ctx.lineTo(t.x + 5, t.y - t.r - 11); ctx.lineTo(t.x, t.y - t.r - 5); ctx.closePath(); ctx.fill();
   }
   if (t !== player && t.spawnT <= 0 && t.hp < t.maxHp) {
     const w = 26 * s;

@@ -55,6 +55,7 @@ function trackMark(t) {
 function separate() {
   const all = enemies.filter(e => !e.dead);
   if (player && !player.dead) all.push(player);
+  for (const a of allies) if (!a.dead) all.push(a);
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
     const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
     if (d >= min || d === 0) continue;
