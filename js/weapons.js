@@ -32,10 +32,11 @@ function fireRail(p) {
   p.rail--;
   const dx = Math.cos(p.turret), dy = Math.sin(p.turret);
   const x0 = p.x + Math.cos(p.angle)*5 + dx*20, y0 = p.y + Math.sin(p.angle)*5 + dy*20, hit = new Set();
+  carveSteelRay(x0,y0,x0+dx*1400,y0+dy*1400);
   let len = 0; const foliageRay = {};
   for (; len < 1400; len += 4) {
     const x = x0 + dx * len, y = y0 + dy * len, c = Math.floor(x / T), r = Math.floor(y / T), t = tileAt(c, r);
-    if (t === STEEL) break;
+    if (x<0||y<0||x>=W||y>=H) break;
     if (t === TREE) hitFoliage(c,r,x,y,foliageRay);
     if (t === BRICK && bulletBlocked(x,y)) hitBrick(c, r, 99);
     if (t === FENCE && bulletBlocked(x,y)) hitFence(c, r, x, y);
@@ -76,7 +77,9 @@ function updateBullets(dt) {
       if(b.dead)continue;
       const nx=b.x+b.vx*dt/steps,ny=b.y+b.vy*dt/steps,c=Math.floor(nx/T),r=Math.floor(ny/T),t=tileAt(c,r);
       if(t===TREE)hitFoliage(c,r,nx,ny,b);
-      if(bulletBlocked(nx,ny,b.r)) {
+      const impact=bulletBlockingCell(nx,ny,b.r);
+      if(impact) {
+        const {c,r,type:t}=impact;
         // бронебойный пролетает забор насквозь, не тратя пробитие кирпича
         if(t===FENCE&&b.armor){hitFence(c,r,nx,ny);}
         else if(t===FENCE){hitFence(c,r,nx,ny);b.dead=true;continue;}

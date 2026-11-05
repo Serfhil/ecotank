@@ -24,7 +24,7 @@ function drawTiles() {
   ctx.fillStyle = 'rgba(0,0,0,.28)';
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const t = grid[r * COLS + c];
-    if (t === STEEL) ctx.fillRect(c * T + 4, r * T + 4, T, T);
+    if (t === STEEL) for(const b of steelRects(c,r))ctx.fillRect(b.x+4,b.y+4,b.w,b.h);
   }
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const t = grid[r * COLS + c], x = c * T, y = r * T;
@@ -70,11 +70,13 @@ function drawFence(c, r) {
 }
 
 function drawSteel(x, y) {
+  ctx.save();ctx.beginPath();for(const b of steelRects(Math.floor(x/T),Math.floor(y/T)))ctx.rect(b.x,b.y,b.w,b.h);ctx.clip();
   ctx.fillStyle = '#6f7b85'; ctx.fillRect(x, y, T, T);
   ctx.fillStyle = '#9aa6af'; ctx.fillRect(x + 3, y + 3, T - 6, T - 6);
   ctx.fillStyle = '#b9c3ca'; ctx.fillRect(x + 3, y + 3, T - 6, 3);
   ctx.fillStyle = '#5b666f';
   for (const [ox, oy] of [[7, 7], [25, 7], [7, 25], [25, 25]]) { ctx.beginPath(); ctx.arc(x + ox, y + oy, 2, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
 }
 
 function drawWater(x, y, c, r) {

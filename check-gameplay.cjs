@@ -25,6 +25,20 @@ module.exports=function checkGameplay(root){
   run(`player.x=W/2;player.y=H/2;{const p=gameLayout.hud.panels.right,f=gameLayout.field,t=makeTank((p.x+p.w*.3-f.x)/f.width*W,(p.y+p.h/2-f.y)/f.height*H,'${kind}');enemies=[];allies=[];${kind==='ally'?'allies':'enemies'}=[t];}updateHud(1)`);
   assert(Math.abs(run('hudOpacity.right')-.2)<1e-9,kind+' fades HUD');
  }
+ const steel=boot(),sr=steel.run;
+ sr("muted=true;startGame();grid.fill(EMPTY);for(let r=2;r<12;r++)for(let c=2;c<12;c++)grid[r*COLS+c]=STEEL;");
+ for(const [x0,y0,x1,y1,x,y]of [[64,176,384,176,160,176],[176,64,176,384,176,160],[64,64,384,384,176,176]]) {
+   sr(`steelDamage.clear();carveSteelRay(${x0},${y0},${x1},${y1});`);
+   assert.equal(sr(`bulletBlocked(${x},${y},3)`),false,'Shell fits through channel');
+   assert.equal(sr(`bulletBlocked(${x},${y},9)`),true,'Oversized shell hits remaining steel');
+   assert.equal(sr('blocksTank(STEEL)'),true);
+ }
+ sr('steelDamage.clear();carveSteelRay(64,176,384,176);carveSteelRay(176,64,176,384)');
+ assert.equal(sr('bulletBlocked(176,176,3)'),false);assert.equal(sr('bulletBlocked(150,150,3)'),true);
+ sr("player.x=40;player.y=176;player.angle=player.turret=0;player.rail=1;enemies=[];fireRail(player)");
+ assert.equal(sr('player.rail'),0);assert.equal(sr('bulletBlocked(320,176,3)'),false,'NII traverses multiple adjacent steel cells');
+ sr("bullets=[{x:70,y:176,vx:200,vy:0,r:3,dmg:1,owner:'p',life:3}];base=null;updateBullets(1)");assert.equal(sr('bullets.length'),1,'Ordinary shell traverses hole');
+ sr('genMap(1)');assert.equal(sr('steelDamage.size'),0,'New map resets steel damage');
  // More gameplay checks below.
  console.log('PASS: corner HUD cells, independent time-based fades and model overlap');
 };

@@ -23,12 +23,38 @@ const tileRects=(c,r,type)=>type===BRICK?brickRects(c,r):type===FENCE?fenceRects
 
 const breakable=t=>t===BRICK||t===FENCE;
 
-function bulletBlocked(x,y,radius=0) {
-  const c=Math.floor(x/T),r=Math.floor(y/T),type=tileAt(c,r);
-  if(type===STEEL)return true;
-  if(!breakable(type))return false;
-  return tileRects(c,r,type).some(b=>Math.hypot(x-clamp(x,b.x,b.x+b.w),y-clamp(y,b.y,b.y+b.h))<=radius);
+// Steel keeps full tank collision; projectile collision and drawing share pixel rectangles.
+function steelRects(c,r) {
+  return steelDamage.get(r*COLS+c)?.rects || [{x:c*T,y:r*T,w:T,h:T}];
 }
+function carveSteelRay(x0,y0,x1,y1,width=14) {
+  const dx=x1-x0,dy=y1-y0,l=dx*dx+dy*dy,rad=width/2;
+  if(!l)return;
+  for(let r=Math.max(0,Math.floor((Math.min(y0,y1)-rad)/T));r<=Math.min(ROWS-1,Math.floor((Math.max(y0,y1)+rad)/T));r++)
+    for(let c=Math.max(0,Math.floor((Math.min(x0,x1)-rad)/T));c<=Math.min(COLS-1,Math.floor((Math.max(x0,x1)+rad)/T));c++){
+      const i=r*COLS+c;if(grid[i]!==STEEL)continue;
+      let d=steelDamage.get(i),changed=false;
+      if(!d)d={mask:new Uint8Array(T*T),rects:[]};
+      for(let y=0;y<T;y++)for(let x=0;x<T;x++){
+        const px=c*T+x+.5,py=r*T+y+.5,k=clamp(((px-x0)*dx+(py-y0)*dy)/l,0,1);
+        if(!d.mask[y*T+x]&&Math.hypot(px-x0-dx*k,py-y0-dy*k)<=rad){d.mask[y*T+x]=1;changed=true;}
+      }
+      if(!changed)continue;
+      d.rects=[];
+      for(let y=0;y<T;y++)for(let x=0;x<T;){if(d.mask[y*T+x]){x++;continue;}const start=x;while(x<T&&!d.mask[y*T+x])x++;d.rects.push({x:c*T+start,y:r*T+y,w:x-start,h:1});}
+      steelDamage.set(i,d);
+    }
+}
+function bulletBlockingCell(x,y,radius=0) {
+  if(x-radius<0||y-radius<0||x+radius>W||y+radius>H)return {c:-1,r:-1,type:STEEL};
+  for(let r=Math.floor((y-radius)/T);r<=Math.floor((y+radius)/T);r++)for(let c=Math.floor((x-radius)/T);c<=Math.floor((x+radius)/T);c++){
+    const type=tileAt(c,r);if(type!==STEEL&&!breakable(type))continue;
+    const rects=type===STEEL?steelRects(c,r):tileRects(c,r,type);
+    if(rects.some(b=>Math.hypot(x-clamp(x,b.x,b.x+b.w),y-clamp(y,b.y,b.y+b.h))<=radius))return {c,r,type};
+  }
+  return null;
+}
+function bulletBlocked(x,y,radius=0) { return !!bulletBlockingCell(x,y,radius); }
 
 function fragmentBlocked(x,y,radius) {
   if(x-radius<0||y-radius<0||x+radius>W||y+radius>H)return true;

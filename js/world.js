@@ -27,6 +27,7 @@ const BASE_POS = { x: W / 2 + 16, y: H - 16, r: 16 };
 
 // ---------- карта ----------
 let grid, brickHp, brickMask, brickVariant, fenceArms, foliageMask, foliageShake, brickShake, sand, groundCanvas, gctx;
+let steelDamage = new Map();
 let flow = new Int32Array(COLS * ROWS);
 const tileAt = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS) ? STEEL : grid[r * COLS + c];
 
@@ -225,6 +226,7 @@ function shapeFences() {
   }
 }
 function genMap(w) {
+  steelDamage.clear();
   const center=Math.floor(COLS/2);
   let sandMark;
   for (let tries = 0; tries < 60; tries++) {
