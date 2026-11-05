@@ -1,4 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+require('./check-menu.cjs')(__dirname);
 require('./check-modules.cjs')(__dirname);
 require('./check-audio.cjs')(__dirname);
 require('./check-editors.cjs')(__dirname);

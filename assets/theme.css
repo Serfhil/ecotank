@@ -8,7 +8,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 input[type=range],input[type=checkbox]{accent-color:var(--red-bright)}
 #mainMenu{background:radial-gradient(ellipse at 50% 12%,#6a1e22 0%,#351014 48%,#1c0c0f 100%);color:var(--ivory)}
 .heroFade{background:linear-gradient(0deg,#271014 0%,transparent 35%)}
-.risingTitle{color:#f0cc77;text-shadow:0 4px 25px #260409,0 1px 4px #210307}
 .heroCaption,.menuHeading{color:#edc88d}.menuHeading small{color:#ba9382}
 .menuLower{background:#271014;border-top:1px solid #7a3633;box-shadow:0 -16px 45px #290c1233}
 .modeButtons button{background:#4c1b21;border-color:#8b3d3c;color:var(--ivory)}

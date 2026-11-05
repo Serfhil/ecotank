@@ -69,8 +69,10 @@ function victoryCreditRows() {
   return 1 + STAT_ENEMY_TYPES.length + 5;
 }
 function victoryCreditsGeometry() {
-  const height = Math.max(80, Math.min(innerHeight * .58, 480));
-  return { height, rowHeight: innerWidth < 600 ? 94 : 100 };
+  // Match CSS: credits start halfway down, leaving the action button and a 16px gap.
+  const compact = innerWidth < 600, top = innerHeight / 2;
+  const height = Math.max(1, innerHeight - top - (compact ? 16 : 22) - 48 - 16);
+  return { top, height, rowHeight: compact ? 94 : 100 };
 }
 function updateVictory(dt) {
   victoryTime += dt; overT = victoryTime;

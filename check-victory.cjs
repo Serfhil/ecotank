@@ -49,6 +49,19 @@ module.exports=function checkVictory(root){
  run('winCampaign();update(100);update(1);requestVictoryAction("home")');assert.equal(run('state'),'menu');
  run("CFG.mapMode='original';startGame();winCampaign()");assert.equal(run('victory'),false,'No campaign victory in infinite mode');
  for(const [w,h]of [[1280,720],[390,844]]) {run(`innerWidth=${w};innerHeight=${h};CFG.mapMode='campaign';startGame();winCampaign();update(2);draw();syncUI();`);assert.equal(run('victoryCanvas.width'),w);assert.equal(run('victoryCanvas.height'),h);}
+ const geometry=boot();
+ for(const [width,height]of [[320,568],[390,844],[844,390],[1280,360],[1280,720],[1920,1080]]) {
+   geometry.run(`innerWidth=${width};innerHeight=${height};CFG.mapMode='campaign';startGame();winCampaign();`);
+   const g=JSON.parse(geometry.run('JSON.stringify(victoryCreditsGeometry())'));
+   assert.equal(g.top,height/2,'Credits start halfway down the viewport');
+   assert(g.height>0&&g.top+g.height<=height-(width<600?16:22)-48-16,'Leave room for actions and gap');
+   const duration=geometry.run('(victoryCreditsGeometry().height+victoryCreditRows()*victoryCreditsGeometry().rowHeight)/VICTORY_CONFIG.creditsSpeed');
+   geometry.run(`update(victoryRevealEnd()+${duration}-.01);syncUI()`);
+   assert.equal(geometry.run('victoryAwardTime'),null,'Do not end before last row leaves actual window');
+   assert.equal(+geometry.elements.get('victoryCreditsWindow').style.height.slice(0,-2),g.height);
+   assert.equal(+geometry.elements.get('victoryCreditsWindow').style.top.slice(0,-2),g.top);
+   geometry.run('update(.02)');assert.notEqual(geometry.run('victoryAwardTime'),null,'End after last row leaves actual window');
+ }
  const natural=boot();natural.run("muted=true;CFG.mapMode='campaign';startGame();wave=campaign.length;enemies=[];toSpawn=[];artilleryShells=[];resetArtillery();wrecks=[{kind:'scout',x:100,y:100,age:0,detonateAt:.5,exploded:false,smokeT:1,taken:true}];update(.1)");
  assert.equal(natural.run('victory'),false,'Wait for wreck detonation');
  natural.run("wrecks=[];state='between';betweenT=.01;update(.02)");assert.equal(natural.run('victory'),true,'Last campaign level reaches victory through main loop');

@@ -180,6 +180,7 @@ function buildVictoryCredits() {
 }
 function renderVictoryContent() {
   const g = victoryCreditsGeometry();
+  document.getElementById('victoryCreditsWindow').style.top = g.top+'px';
   document.getElementById('victoryCreditsWindow').style.height = g.height+'px';
   document.getElementById('victoryCredits').style.transform = 'translateY('+
     (g.height-Math.max(0,victoryTime-victoryRevealEnd())*VICTORY_CONFIG.creditsSpeed)+'px)';
