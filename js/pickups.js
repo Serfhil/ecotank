@@ -6,21 +6,29 @@
 
 function availableItemTypes(){return Object.keys(ITEMS).filter(k=>k!=='upgrade'||!player||player.upgrade<2);}
 
+function itemUseful(t,it) {
+  if(!t||t.dead||t.upgradeT>0||it.life<=0)return false;
+  if(it.type==='repair')return t.hp<t.maxHp;
+  if(it.type==='upgrade')return t.upgrade<2;
+  if(it.type==='rail')return t.rail<CFG.railMax;
+  if(it.type==='barrage')return true;
+  return it.type in t.pw && t.pw[it.type]<CFG.powerupTime;
+}
+function applyItem(t,it) {
+  if(!itemUseful(t,it))return false;
+  if(it.type==='repair')t.hp=Math.min(t.maxHp,t.hp+CFG.repairAmount);
+  else if(it.type==='upgrade')beginPlayerUpgrade(t);
+  else if(it.type==='barrage')callBarrage();
+  else if(it.type==='rail')t.rail=Math.min(CFG.railMax,t.rail+1);
+  else t.pw[it.type]=CFG.powerupTime;
+  it.life=0;floatText(it.x,it.y-12,ITEMS[it.type].name,ITEMS[it.type].color);sfx('pick');return true;
+}
 function updateItems(dt) {
-  for (const it of items) {
-    it.life -= dt;
-    if (player && !player.dead && !(player.upgradeT>0) && Math.hypot(player.x - it.x, player.y - it.y) < 24) {
-      it.life = 0;
-      if (it.type === 'repair') player.hp = Math.min(player.maxHp, player.hp + CFG.repairAmount);
-      else if(it.type==='upgrade')beginPlayerUpgrade(player);
-      else if(it.type==='barrage')callBarrage();
-      else if (it.type === 'rail') player.rail = Math.min(CFG.railMax, player.rail + 1);
-      else player.pw[it.type] = CFG.powerupTime;
-      floatText(it.x, it.y - 12, ITEMS[it.type].name, ITEMS[it.type].color);
-      sfx('pick');
-    }
+  const recipients=[player,...allies];
+  for(const it of items){it.life-=dt;if(it.life<=0)continue;
+    for(const t of recipients)if(t&&Math.hypot(t.x-it.x,t.y-it.y)<24&&applyItem(t,it))break;
   }
-  items = items.filter(it => it.life > 0);
+  items=items.filter(it=>it.life>0);
 }
 
 function collectRemainingScrap() {

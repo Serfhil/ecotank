@@ -79,7 +79,27 @@ const allyFoes=()=>enemies.filter(e=>!e.dead&&!e.entering&&e.spawnT<=0);
 
 // Цель движения: ближайший противник, причём уже выбранные другими союзниками цели
 // считаются дальше — союзники расходятся по разным врагам. Без врагов союзник стоит на месте.
+// Flood only traversable cell centres; no destructive routes to a pickup.
+function findAllyItem(a) {
+  const reach=new Uint8Array(COLS*ROWS),start=Math.floor(a.y/T)*COLS+Math.floor(a.x/T),q=[start];reach[start]=1;
+  for(let n=0;n<q.length;n++){
+    const i=q[n],c=i%COLS,r=(i/COLS)|0;
+    for(const [dc,dr]of DIRS){const nc=c+dc,nr=r+dr,j=nr*COLS+nc;
+      if(nc<0||nr<0||nc>=COLS||nr>=ROWS||reach[j]||blocksTank(tileAt(nc,nr))||baseWall(nc,nr))continue;
+      const x=nc*T+16,y=nr*T+16;
+      if(!coverClear(x,y,a.r)||base&&!base.dead&&Math.hypot(x-base.x,y-base.y)<base.r+a.r)continue;
+      reach[j]=1;q.push(j);
+    }
+  }
+  return items.filter(it=>itemUseful(a,it)&&Math.hypot(it.x-a.x,it.y-a.y)<=5*T&&reach[Math.floor(it.y/T)*COLS+Math.floor(it.x/T)])
+    .sort((x,y)=>(Math.hypot(x.x-a.x,x.y-a.y)+(allies.some(o=>o!==a&&!o.dead&&o.itemGoal===x)?1000:0))-(Math.hypot(y.x-a.x,y.y-a.y)+(allies.some(o=>o!==a&&!o.dead&&o.itemGoal===y)?1000:0)))[0]||null;
+}
 function allyGoal(a,foes) {
+  if(a.itemScanT<=0||a.itemScanT===undefined||a.itemGoal&&(!items.includes(a.itemGoal)||!itemUseful(a,a.itemGoal))){
+    const old=a.itemGoal;a.itemGoal=findAllyItem(a);a.itemScanT=.5;
+    if(old!==a.itemGoal){a.repathT=0;a.tx=a.x;a.ty=a.y;}
+  }
+  if(a.itemGoal)return {...a.itemGoal,pickup:true};
   let best=null,bd=1e9;
   for(const e of foes){
     const taken=allies.some(o=>o!==a&&!o.dead&&o.goal===e),d=Math.hypot(e.x-a.x,e.y-a.y)+(taken?200:0);
@@ -98,6 +118,10 @@ function shotHitsBase(a) {
 }
 
 function updateAlly(a,dt) {
+  if(a.dead)return;
+  if(updateTankUpgrade(a,dt))return;
+  for(const k in a.pw)a.pw[k]=Math.max(0,a.pw[k]-dt);
+  a.itemScanT=(a.itemScanT||0)-dt;
   const K=KINDS.ally;
   a.flash-=dt;a.cd-=dt;a.inv-=dt;a.decideT-=dt;a.repathT-=dt;
   a.recoil=(a.recoilMax||5)*clamp(a.cd/K.fireRate,0,1);
@@ -108,12 +132,12 @@ function updateAlly(a,dt) {
     if(d<fd&&!hidden&&d<CFG.enemySight&&los(a.x,a.y,e.x,e.y)){foe=e;fd=d;}
   }
   const goal=allyGoal(a,foes);
-  if(a.repathT<=0&&!goal.idle){a.repathT=.5;buildAllyFlow(a,clamp(Math.floor(goal.x/T),0,COLS-1),clamp(Math.floor(goal.y/T),0,ROWS-1),true);}
+  if(a.repathT<=0&&!goal.idle){a.repathT=.5;buildAllyFlow(a,clamp(Math.floor(goal.x/T),0,COLS-1),clamp(Math.floor(goal.y/T),0,ROWS-1),!goal.pickup);}
 
   if(a.stuck>.7&&!goal.idle){a.stuck=0;allyStep(a,true);a.decideT=.5;}
   else if(!goal.idle&&Math.hypot(a.tx-a.x,a.ty-a.y)<1.5&&a.decideT<=0){allyStep(a,false);a.decideT=a.brick?.35:0;}
   if(goal.idle)a.brick=null;
-  const hold=goal.idle||(foe&&fd<K.hold);
+  const hold=goal.idle||(!goal.pickup&&foe&&fd<K.hold);
   const mx=a.tx-a.x,my=a.ty-a.y,md=Math.hypot(mx,my);
   a.vx=a.vy=0;
   if(!hold&&md>.5){
@@ -128,15 +152,16 @@ function updateAlly(a,dt) {
   else if(a.brick)target=a.brick;
   const aim=target?Math.atan2(target.y-a.y,target.x-a.x):a.angle;
   a.turret=turnTo(a.turret,aim,dt*K.turretSpeed);
-  if(target&&a.cd<=0&&Math.abs(angDiff(a.turret,aim))<.12&&!shotHitsBase(a)){fire(a);a.cd=K.fireRate;}
+  if(target&&a.cd<=0&&Math.abs(angDiff(a.turret,aim))<.12&&!shotHitsBase(a)){if(foe&&a.rail>0)fireRail(a);else {fire(a);a.cd=a.reloadDuration=K.fireRate*(a.pw.rapid>0?.45:1);}}
 }
 
 function hitAlly(a,b) {
-  if(a.dead||a.inv>0)return;
+  if(a.dead||a.inv>0||a.upgradeT>0)return;
+  if(a.pw.shield>0){sfx('deflect');return;}
   a.hp-=b.dmg;a.flash=.13;
   burst(b.x,b.y,14,['#fff4bd','#ffb650','#d7e6ed'],220,.3,3,'spark');
   if(a.hp>0){sfx('hit');return;}
   a.dead=true;recordStatistic('allies');shake=Math.max(shake,4);
   floatText(a.x,a.y-10,UI_TEXT.soyuznik_podbit,'#ff9a7a');
-  wrecks.push({x:a.x,y:a.y,kind:'ally',angle:a.angle,turret:a.turret,tread:a.tread,recoil:a.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:rnd(.5,1.5)*(b.blast?.5:1),exploded:false});
+  wrecks.push({x:a.x,y:a.y,kind:'ally',upgrade:a.upgrade,ally:true,angle:a.angle,turret:a.turret,tread:a.tread,recoil:a.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:rnd(.5,1.5)*(b.blast?.5:1),exploded:false});
 }

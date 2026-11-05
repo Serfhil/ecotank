@@ -60,7 +60,7 @@ function separate() {
     const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
     if (d >= min || d === 0) continue;
     const push = (min - d) / 2, nx = dx / d, ny = dy / d;
-    const fixedA=a===player&&a.upgradeT>0,fixedB=b===player&&b.upgradeT>0;
+    const fixedA=a.upgradeT>0,fixedB=b.upgradeT>0;
     if(!fixedA){a.x-=nx*push*(fixedB?2:1);a.y-=ny*push*(fixedB?2:1);collideTiles(a);}
     if(!fixedB){b.x+=nx*push*(fixedA?2:1);b.y+=ny*push*(fixedA?2:1);collideTiles(b);}
   }
@@ -68,9 +68,9 @@ function separate() {
 
 function playerMaxHp(tier){return tier>=2?7:tier===1?5:KINDS.player.hp;}
 
-function tankScale(t){return KINDS[t.kind].scale*(t.kind==='player'?(t.upgrade>=2?1.15:t.upgrade>0?1:.9):1);}
+function tankScale(t){return KINDS[t.kind].scale*(t.kind==='player'?(t.upgrade>=2?1.15:t.upgrade>0?1:.9):t.ally&&t.upgrade>=2?1.15:1);}
 
-function setPlayerUpgrade(p,tier,heal=true){p.upgrade=clamp(tier,0,2);p.armor=p.upgrade>0;p.maxHp=playerMaxHp(p.upgrade);p.r=13*tankScale(p);if(heal)p.hp=p.maxHp;else p.hp=Math.min(p.hp,p.maxHp);if(p.upgrade>=2)items=items.filter(it=>it.type!=='upgrade');}
+function setPlayerUpgrade(p,tier,heal=true){p.upgrade=clamp(tier,0,2);p.armor=p.upgrade>0;p.maxHp=p.ally&&p.upgrade===0?KINDS.ally.hp:playerMaxHp(p.upgrade);p.r=13*tankScale(p);if(heal)p.hp=p.maxHp;else p.hp=Math.min(p.hp,p.maxHp);if(p===player&&p.upgrade>=2)items=items.filter(it=>it.type!=='upgrade');}
 
 function beginPlayerUpgrade(p){
   if(p.upgrade>=2||p.upgradeT>0)return;
@@ -79,14 +79,16 @@ function beginPlayerUpgrade(p){
 
 function playerGunLength(t){return (t.upgrade>0?35:30)*(t.upgrade>=2?.8:1);}
 
+function updateTankUpgrade(p,dt) {
+  if(!(p.upgradeT>0))return false;
+  p.upgradeT=Math.max(0,p.upgradeT-dt);p.inv=Math.max(p.upgradeT,p.inv-dt);p.vx=p.vy=0;p.upgradeFx-=dt;
+  if(p.upgradeFx<=0){p.upgradeFx=.12;burst(p.x,p.y,5,['#fff4bf','#ffd65d','#b2e8ff'],60,.5,2,'spark');}
+  return true;
+}
 function updatePlayer(dt) {
   const p = player;
   if (p.dead) return;
-  if(p.upgradeT>0){
-    p.upgradeT=Math.max(0,p.upgradeT-dt);p.inv=Math.max(p.upgradeT,p.inv-dt);p.vx=p.vy=0;p.upgradeFx-=dt;
-    if(p.upgradeFx<=0){p.upgradeFx=.12;burst(p.x,p.y,5,['#fff4bf','#ffd65d','#b2e8ff'],60,.5,2,'spark');}
-    return;
-  }
+  if(updateTankUpgrade(p,dt))return;
   p.boostCooldown=Math.max(0,p.boostCooldown-dt);
   if(p.boostLeft>0){p.boostLeft=Math.max(0,p.boostLeft-dt);if(!p.boostLeft)p.boostCooldown=10;}
   const shift=!!(keys.ShiftLeft||keys.ShiftRight);

@@ -9,7 +9,7 @@ function resetArtillery(){artilleryShells=[];barrageMarkers=[];barrageTrajectori
 function hasPendingBarrage(){return barrageMarkers.length||barrageTrajectories.length||barrageSoundShots;}
 
 function fire(t) {
-  const K = KINDS[t.kind], isP = t === player;
+  const K = KINDS[t.kind], isP = t === player || t.ally&&t.upgrade>0;
   const ap = (isP && t.armor)||t.kind==='heavy', speed=t.kind==='heavy'?3000:K.bulletSpeed*(ap?1.5:1);
   const shotScale=tankScale(t),barrels=isP&&t.upgrade>=2?[-4*shotScale,4*shotScale]:[0];
   const muzzle=(isP?playerGunLength(t):20)*shotScale;

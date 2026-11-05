@@ -13,7 +13,7 @@ function reloadProgress(p) { return clamp(1-Math.max(0,p.cd)/(p.reloadDuration||
 function drawPlayerModel(t, context = ctx) {
   const ctx = context;
   if(t.kind==='artillery'){drawArtilleryModel(t, ctx);return;}
-  const isP=t.kind==='player',ally=t.kind==='ally',heavy=t.kind==='heavy',panther=t.kind==='soldier';
+  const isP=t.kind==='player'||(t.ally||t.kind==='ally')&&t.upgrade>0,ally=t.kind==='ally',heavy=t.kind==='heavy',panther=t.kind==='soldier';
   const base=isP?(t.upgrade>0?'#859053':'#7f8e3e'):ally?'#6f8a43':heavy?'#858c94':panther?'#7c8796':'#89939e';
   const dark=isP||ally?'#3f4c25':'#3e4651',light=isP||ally?'#bac47b':'#b3bac2',flash=t.flash>0;
   ctx.save();ctx.translate(t.x,t.y);ctx.scale(tankScale(t),tankScale(t));ctx.rotate(t.angle+Math.PI/2);if(isP&&t.upgrade>=2)ctx.scale(1.15,1);
@@ -42,8 +42,8 @@ function drawTank(t) {
   const K = KINDS[t.kind], s = tankScale(t);
   ctx.save();
   if(t.spawnT>0)ctx.globalAlpha=clamp(1-t.spawnT,0,1);
-  if(t===player && t.inv>0 && Math.floor(time*20)%2)ctx.globalAlpha=.45;
-  if(t===player&&t.upgradeT>0){
+  if((t===player||t.ally) && t.inv>0 && Math.floor(time*20)%2)ctx.globalAlpha=.45;
+  if((t===player||t.ally)&&t.upgradeT>0){
     const progress=clamp(1-t.upgradeT/UPGRADE_DURATION,0,1),a=ctx.globalAlpha;
     ctx.globalAlpha=a*(1-progress);drawPlayerModel({...t,upgrade:t.upgradeFrom});
     ctx.globalAlpha=a*progress;drawPlayerModel(t);ctx.globalAlpha=a;
@@ -59,7 +59,7 @@ function drawTank(t) {
     ctx.fillStyle='#0b151be0';ctx.fillRect(t.x-11,y,22,4);
     ctx.fillStyle=t.boostLeft>0?'#7cd6ed':progress>=1?'#a6e67a':'#f1c56b';ctx.fillRect(t.x-10,y+1,20*progress,2);
   }
-  if (t === player && t.pw.shield > 0) {
+  if ((t === player || t.ally) && t.pw.shield > 0) {
     const a = t.pw.shield < 2 && Math.floor(time * 8) % 2 ? .15 : .5;
     ctx.strokeStyle = `rgba(140,240,160,${a})`; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(t.x, t.y, t.r + 7 + Math.sin(time * 6), 0, Math.PI * 2); ctx.stroke();
