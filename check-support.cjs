@@ -18,6 +18,19 @@ module.exports=function checkSupport(root){
  for(let i=0;i<90&&!run('bullets.length');i++)run('updateEnemy(h,1/60)');
  assert(run('bullets.length>0&&h.entering'),'Heavy fires before entry ends');assert(run('bullets.every(b=>b.y>=0)'),'No outside projectile');
  run('const previousCd=h.cd;h.y=47;updateEnemy(h,.04)');assert.equal(run('h.entering'),false);assert(Math.abs(run('h.cd')-run('previousCd')+.04)<1e-9,'No entry reload reset');
+ for(const count of [0,1,4,5,9]){
+  run(`resetArtillery();enemies=Array.from({length:${count}},(_,i)=>{const e=makeTank(100+i*30,i===0?-20:100,'scout');e.entering=i===0;return e;});callBarrage();`);
+  assert.equal(run('barrageMarkers.length'),Math.max(5,count));
+  if(count)assert.equal(run('barrageMarkers[0].ty'),8,'Entering target is included and clamped inside map');
+  assert(run(`barrageMarkers.slice(${count}).every(p=>p.ty>=16&&p.ty<=H/2-16)`),'Extra targets stay in top half');
+ }
+ for(const fps of [30,60,144]){
+  run("resetArtillery();enemies=[];callBarrage();globalThis.impacts=[];globalThis.savedExplosion=explosion;explosion=()=>impacts.push(supportClock);blastDamage=()=>{};");
+  for(let i=0;i<fps*6;i++)run(`updateArtilleryShells(${1/fps})`);
+  assert.equal(run('impacts.length'),5);assert(run('impacts.every((t,i)=>!i||t-impacts[i-1]>=.06-1e-9)'),'Impact intervals at '+fps+' FPS');
+  assert.equal(run('hasPendingBarrage()'),0);assert.equal(run('artilleryShells.length'),0);run('explosion=savedExplosion');
+ }
+ run('resetArtillery()');assert.equal(run('supportClock'),0);
  // Support checks below.
  console.log('PASS: heavy aims/fires during entry, safe muzzle and continuous cooldown');
 };if(require.main===module)module.exports(__dirname);

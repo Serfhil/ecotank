@@ -4,7 +4,8 @@
 // геометрию окружения, модули tanks/damage и sfx/burst/floatText из звука и эффектов.
 // Порядок вызовов задаёт игровой цикл; ИИ артиллерии и отрисовка остаются в игре.
 
-function resetArtillery(){artilleryShells=[];barrageMarkers=[];barrageTrajectories=[];barrageSoundShots=0;barrageFrame=0;}
+let supportClock=0,supportLaunch=-Infinity,supportImpact=-Infinity,supportSoundAt=0;
+function resetArtillery(){supportClock=0;supportLaunch=supportImpact=-Infinity;supportSoundAt=0;artilleryShells=[];barrageMarkers=[];barrageTrajectories=[];barrageSoundShots=0;barrageFrame=0;}
 
 function hasPendingBarrage(){return barrageMarkers.length||barrageTrajectories.length||barrageSoundShots;}
 
@@ -110,23 +111,32 @@ function prepareArtilleryTrajectory(shell){
 }
 
 function callBarrage(){
-  for(const e of enemies)if(!e.dead&&!e.entering&&e.spawnT<=0)barrageMarkers.push({tx:e.x,ty:e.y});
-  barrageSoundShots+=5;
+  const targets=enemies.filter(e=>!e.dead&&e.spawnT<=0).map(e=>({tx:clamp(e.x,16,W-16),ty:clamp(e.y,8,H-8)}));
+  while(targets.length<5){
+    let target=null;
+    for(let attempt=0;attempt<20;attempt++){target={tx:rnd(16,W-16),ty:rnd(16,H/2-16)};if(!targets.some(p=>Math.hypot(p.tx-target.tx,p.ty-target.ty)<T*1.5))break;}
+    targets.push(target);
+  }
+  barrageMarkers.push(...targets);barrageSoundShots+=5;
 }
-
-function processBarrageFrame(){
-  barrageFrame++;
-  if(barrageSoundShots&&barrageFrame%2===1){sfx('heavyShoot');barrageSoundShots--;}
+function processBarrageFrame(dt=1/60){
+  supportClock+=dt;barrageFrame++;
+  if(barrageSoundShots&&supportClock>=supportSoundAt){sfx('heavyShoot');barrageSoundShots--;supportSoundAt=supportClock+SUPPORT_CONFIG.interval;}
   if(barrageMarkers.length){
-    const target=barrageMarkers.shift(),shell={...target,sx:clamp(target.tx+rnd(-40,40),16,W-16),sy:H+24,age:0,delay:2,speed:3000,friendly:true,radius:45,damage:2,pending:true,duration:Infinity};
+    const target=barrageMarkers.shift(),shell={...target,sx:clamp(target.tx+rnd(-40,40),16,W-16),sy:H+24,age:0,createdAt:supportClock,delay:SUPPORT_CONFIG.warning,speed:SUPPORT_CONFIG.speed,friendly:true,radius:45,damage:2,pending:true,duration:Infinity};
     artilleryShells.push(shell);barrageTrajectories.push(shell);
   }
-  if(barrageFrame%5===0&&barrageTrajectories.length)prepareArtilleryTrajectory(barrageTrajectories.shift());
+  if(barrageFrame%5===0&&barrageTrajectories.length){
+    const shell=barrageTrajectories.shift();prepareArtilleryTrajectory(shell);
+    const tick=dt>0?dt:1/60,gap=Math.ceil(SUPPORT_CONFIG.interval/tick-1e-9)*tick+1e-6;
+    const launch=Math.max(supportClock,shell.createdAt+SUPPORT_CONFIG.warning,supportLaunch+gap,supportImpact+gap-shell.duration);
+    shell.delay=launch-shell.createdAt;supportLaunch=launch;supportImpact=launch+shell.duration;
+  }
 }
 
 function updateArtilleryShells(dt){
-  processBarrageFrame();
-  for(const shell of artilleryShells){shell.age=shell.pending?Math.min(shell.delay,shell.age+dt):shell.age+dt;if(!shell.pending&&shell.age>=shell.delay+shell.duration){shell.done=true;explosion(shell.tx,shell.ty,false,'#d6b56c');
+  processBarrageFrame(dt);
+  for(const shell of artilleryShells){shell.age=shell.friendly&&shell.createdAt!==undefined?supportClock-shell.createdAt:shell.age+dt;if(!shell.pending&&shell.age>=shell.delay+shell.duration){shell.done=true;explosion(shell.tx,shell.ty,false,'#d6b56c',1,!shell.friendly);
     blastDamage(shell.tx,shell.ty,30,{safePlayer:shell.friendly,damage:shell.damage});
     if(!shell.friendly&&base&&!base.dead&&Math.hypot(base.x-shell.tx,base.y-shell.ty)<=shell.radius)hitBase(shell.damage);
   }}artilleryShells=artilleryShells.filter(s=>!s.done);

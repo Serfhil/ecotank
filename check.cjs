@@ -299,7 +299,7 @@ const lead=makeTank(400,150,'heavy'),follower=makeTank(400,185,'soldier'),gun=ma
 grid.fill(EMPTY);artilleryShells=[];base={x:450,y:220,hp:5,r:16,dead:false};player=makeTank(700,220,'player');gun.cd=0;gun.turret=0;grid[6*COLS+16]=STEEL;updateEnemy(gun,.01);
 if(artilleryShells.length!==1||artilleryShells[0].tx!==player.x||artilleryShells[0].ty!==player.y||Math.abs(artilleryShells[0].duration-Math.hypot(player.x-gun.x,player.y-gun.y)/KINDS.artillery.bulletSpeed)>1e-6)throw Error('Artillery sees player through walls and prioritizes player');
 const committed=artilleryShells[0].tx;player.x-=50;if(artilleryShells[0].tx!==committed)throw Error('Artillery target snapshot');drawArtilleryShells();
-artilleryShells=[];base=null;enemies=[makeTank(400,300,'scout'),makeTank(700,350,'heavy')];callBarrage();for(let i=0;i<10;i++)updateArtilleryShells(0);if(artilleryShells.length!==2||artilleryShells.some(s=>!s.friendly||s.sy<=H))throw Error('Barrage volley from bottom');
+artilleryShells=[];base=null;enemies=[makeTank(400,300,'scout'),makeTank(700,350,'heavy')];callBarrage();for(let i=0;i<10;i++)updateArtilleryShells(0);if(artilleryShells.length!==5||artilleryShells.some(s=>!s.friendly||s.sy<=H))throw Error('Barrage volley from bottom');
 const positions=artilleryShells.map(s=>s.tx);enemies[0].x+=30;if(artilleryShells[0].tx!==positions[0])throw Error('Barrage fixed positions');
 artilleryShells=[];grid.fill(EMPTY);enemies=[];player=makeTank(300,300,'player');launchArtillery(300,100,300,300);const duration=artilleryShells[0].duration;bullets=[{x:300,y:300,vx:0,vy:100,owner:'p',dmg:1,r:3,life:1}];updateBullets(.01);if(artilleryShells.length!==1)throw Error('Artillery immune to bullet collisions');updateArtilleryShells(duration+.01);if(artilleryShells.length||player.hp!==1)throw Error('Hostile artillery impact');
 player.inv=0;const hpSafe=player.hp;launchArtillery(300,H+24,300,300,true);updateArtilleryShells(10);if(player.hp!==hpSafe)throw Error('Friendly support direct safety');
@@ -325,7 +325,7 @@ updatePlayer(.11);if(player.upgradeT!==0)throw Error('Transformation completion'
 items=[{x:100,y:100,type:'upgrade',life:20}];beginPlayerUpgrade(player);if(player.upgrade!==2||items.some(it=>it.type==='upgrade')||availableItemTypes().includes('upgrade'))throw Error('Max tier excludes stars');
 for(let i=0;i<30;i++){itemSpawnTimer=0;updateRandomItems(.01);}if(items.some(it=>it.type==='upgrade'))throw Error('No random stars at max tier');
 const savedRandom=Math.random;Math.random=()=>0;const dropVictim=makeTank(400,300,'soldier');hitEnemy(dropVictim,{x:400,y:300,dmg:99});Math.random=savedRandom;if(items.some(it=>it.type==='upgrade'))throw Error('No dropped stars at max tier');
-artilleryShells=[];enemies=[makeTank(400,200,'heavy')];resetArtillery();callBarrage();for(let i=0;i<5;i++)updateArtilleryShells(0);const support=artilleryShells[0];if(support.delay!==2||support.speed!==3000||support.damage!==2)throw Error('Barrage timing and damage');
+artilleryShells=[];enemies=[makeTank(400,200,'heavy')];resetArtillery();callBarrage();for(let i=0;i<5;i++)updateArtilleryShells(0);const support=artilleryShells[0];if(support.delay<2||support.speed!==3000||support.damage!==2)throw Error('Barrage timing and damage');
 updateArtilleryShells(1.99);if(support.done||support.age>=support.delay)throw Error('Premature support launch');drawArtilleryShells();updateArtilleryShells(.02);if(support.done)throw Error('Premature support impact');
 updateArtilleryShells(support.duration);if(enemies[0].hp!==1)throw Error('Support damage 2');
 applyDev({KINDS:{artillery:{bulletSpeed:140,dmg:1}},CFG:{},balanceVersion:2});if(KINDS.artillery.bulletSpeed!==182||KINDS.artillery.dmg!==2)throw Error('Saved artillery defaults migration');
@@ -338,16 +338,16 @@ for(const count of [0,1,12]){
   const shots=[];sfx=name=>{if(name==='heavyShoot')shots.push(barrageFrame);};callBarrage();
   if(artilleryShells.length)throw Error('Barrage creates no shells in pickup frame');
   if(enemies.length)enemies[0].x+=80;
-  for(let f=1;f<=Math.max(10,count*5);f++){
-    updateArtilleryShells(0);
-    if(artilleryShells.length!==Math.min(count,f))throw Error('One marker per frame');
-    if(artilleryShells.filter(s=>!s.pending).length!==Math.min(count,Math.floor(f/5)))throw Error('One trajectory per five frames');
+  for(let f=1;f<=Math.max(25,count*5);f++){
+    updateArtilleryShells(1/60);
+    if(artilleryShells.length!==Math.min(Math.max(5,count),f))throw Error('One marker per frame');
+    if(artilleryShells.filter(s=>!s.pending).length!==Math.min(Math.max(5,count),Math.floor(f/5)))throw Error('One trajectory per five frames');
     drawArtilleryShells();
   }
-  if(shots.join()!=='1,3,5,7,9')throw Error('Five fixed artillery reports spaced two frames apart');
+  if(shots.join()!=='1,5,9,13,17')throw Error('Five reports spaced four frames apart');
   if(count&&artilleryShells[0].tx!==100)throw Error('Queued barrage preserves pickup-time positions');
 }
-sfx=realSfx;resetArtillery();state='play';enemies=[makeTank(300,200,'heavy')];callBarrage();state='pause';update(.1);if(artilleryShells.length||barrageMarkers.length!==1)throw Error('Pause freezes queued support');toMenu();if(hasPendingBarrage()||artilleryShells.length)throw Error('Menu clears deferred support');
+sfx=realSfx;resetArtillery();state='play';enemies=[makeTank(300,200,'heavy')];callBarrage();state='pause';update(.1);if(artilleryShells.length||barrageMarkers.length!==5)throw Error('Pause freezes queued support');toMenu();if(hasPendingBarrage()||artilleryShells.length)throw Error('Menu clears deferred support');
 if(Math.abs(playerGunLength({upgrade:2})/playerGunLength({upgrade:1})-.8)>1e-8)throw Error('Maximum upgrade gun length reduced 20 percent');
 // Gun noise and reverb data are generated once, then reused for subsequent reports.
 let createdAudioBuffers=0;

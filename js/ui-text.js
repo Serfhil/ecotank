@@ -76,7 +76,7 @@ const UI_TEXT = Object.freeze({
   "appTitle": "EcoTank",
   "logo": "ECOTANK",
   "uluchshenie_tanka": "Улучшение танка",
-  "artpodgotovka": "Артподготовка",
+  "artpodgotovka": "Артподдержка",
   "remont": "Ремонт",
   "skorostrel": "Скорострел",
   "shchit": "Щит",

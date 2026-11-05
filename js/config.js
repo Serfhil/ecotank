@@ -3,6 +3,7 @@
 // Загружается после ui-text.js; не запускает игру, DOM, сохранения или звук.
 
 const T=32;
+const SUPPORT_CONFIG=Object.freeze({interval:.06,warning:2,speed:3000});
 const VICTORY_CONFIG = Object.freeze({ image: 'assets/victory-marx-earth.png', darken: 1, reveal: 1, creditsSpeed: 42, awardFade: 1 });
 
 const KINDS = {

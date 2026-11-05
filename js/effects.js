@@ -14,7 +14,7 @@ function burst(x, y, n, colors, speed, life, size, kind) {
   }
 }
 
-function explosion(x, y, big, color, sizeMultiplier=1) {
+function explosion(x, y, big, color, sizeMultiplier=1,withHitstop=true) {
   const k = (big ? 1.4 : 1)*sizeMultiplier;
   parts.push({ x, y, vx: 0, vy: 0, life: .2, max: .2, size: 70 * k, kind: 'flash' });
   parts.push({ x, y, vx: 0, vy: 0, life: .45, max: .45, size: 80 * k, kind: 'ring' });
@@ -23,7 +23,7 @@ function explosion(x, y, big, color, sizeMultiplier=1) {
   burst(x, y, 12 * k, [color || '#666', '#2a2a2a', '#4a4a4a'], 280, 1.1, 7, 'debris');
   burst(x, y, 22 * k, ['#2e2e2e', '#444', '#5a5a5a'], 90, 1.8, 13 * k, 'smoke');
   shake = Math.max(shake, big ? 20 : 13);
-  hitstop = Math.max(hitstop, CFG.hitstop);
+  if(withHitstop)hitstop = Math.max(hitstop, CFG.hitstop);
   gctx.fillStyle = 'rgba(20,15,10,.4)';
   gctx.beginPath(); gctx.arc(x, y, 24 * k, 0, Math.PI * 2); gctx.fill();
   gctx.fillStyle = 'rgba(20,15,10,.2)';
