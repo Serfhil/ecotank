@@ -12,9 +12,8 @@ function hasPendingBarrage(){return barrageMarkers.length||barrageTrajectories.l
 function fire(t) {
   const K = KINDS[t.kind], isP = t === player || t.ally&&t.upgrade>0;
   const ap = (isP && t.armor)||t.kind==='heavy', speed=t.kind==='heavy'?3000:K.bulletSpeed*(ap?1.5:1);
-  const shotScale=tankScale(t),barrels=isP&&t.upgrade>=2?[-4*shotScale,4*shotScale]:[0];
-  const muzzle=(isP?playerGunLength(t):20)*shotScale;
-  const mx = t.x + (isP?Math.cos(t.angle)*5*shotScale:0) + Math.cos(t.turret)*muzzle, my = t.y + (isP?Math.sin(t.angle)*5*shotScale:0) + Math.sin(t.turret)*muzzle;
+  const mount=vehicleMount(t),shotScale=mount.scale,barrels=mount.offsets;
+  const muzzle=vehicleMuzzle(t),mx=muzzle.x,my=muzzle.y;
   for (const offset of barrels) {
     const a = t.turret;
     bullets.push({ x: mx-Math.sin(a)*offset, y: my+Math.cos(a)*offset, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
@@ -32,7 +31,7 @@ function fireRail(p) {
   if (!p || p.dead || p.upgradeT>0 || p.rail <= 0) return;
   p.rail--;
   const dx = Math.cos(p.turret), dy = Math.sin(p.turret);
-  const x0 = p.x + Math.cos(p.angle)*5 + dx*20, y0 = p.y + Math.sin(p.angle)*5 + dy*20, hit = new Set();
+  const muzzle=vehicleMuzzle(p,vehicleMount(p).offsets[0]),x0=muzzle.x,y0=muzzle.y,hit=new Set();
   carveSteelRay(x0,y0,x0+dx*1400,y0+dy*1400);
   let len = 0; const foliageRay = {};
   for (; len < 1400; len += 4) {

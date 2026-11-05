@@ -14,7 +14,7 @@ module.exports=function checkDefeat(root){
   return {run,send,elements,draws,loaded,saved};
  }
  for(const tier of [0,1,2])for(const cause of ['player','base']){
-  const b=boot();assert.equal(b.loaded.length,5,'Preload all three images');b.run(`muted=true;CFG.mapMode='original';startGame();grid.fill(EMPTY);enemies=[];toSpawn=['soldier'];setPlayerUpgrade(player,${tier});score=5555;player.inv=0;player.pw.shield=0;keys.Enter=true;mouse.down=true;${cause==='player'?"hitPlayer({x:player.x,y:player.y,dmg:99});":"hitBase(99);"}`);
+  const b=boot();assert.equal(b.loaded.length,32,'Preload all three images');b.run(`muted=true;CFG.mapMode='original';startGame();grid.fill(EMPTY);enemies=[];toSpawn=['soldier'];setPlayerUpgrade(player,${tier});score=5555;player.inv=0;player.pw.shield=0;keys.Enter=true;mouse.down=true;${cause==='player'?"hitPlayer({x:player.x,y:player.y,dmg:99});":"hitBase(99);"}`);
   assert.equal(b.run('defeatTier'),tier);
   assert.notEqual(b.run('state'),'over','Let blasts finish before the illustration');
   for(let i=0;i<900&&b.run('state')!=='over';i++){
@@ -24,7 +24,7 @@ module.exports=function checkDefeat(root){
   assert.equal(b.run('state'),'over');assert.equal(b.run('defeatBlastsFinished()'),true);assert.equal(b.run('overT'),0);
   assert.equal(b.run('best'),5555);assert.equal(+b.saved.get('ecotank-best'),5555);
   b.run('player=null;syncUI()');b.draws.length=0;b.run('draw()');
-  const rendered=b.draws.find(d=>d[0]!=='hudCanvas'&&d[1]==='image'&&d[2].source);assert.equal(rendered[2].source,b.loaded[tier],'Captured tier survives cleared player');
+  const rendered=b.draws.find(d=>d[1]==='image'&&d[2].source&&d[2].source.startsWith('assets/defeat-'));assert.equal(rendered[2].source,b.loaded[tier],'Captured tier survives cleared player');
   assert.deepEqual(b.draws.filter(d=>d[1]==='text').map(d=>d[2]),['ПОРАЖЕНИЕ'],'No HUD, score, wave, scrap or best');
   assert.equal(b.elements.get('defeatScreen').hidden,false);assert.equal(b.elements.get('defeatRestart').hidden,true);
   b.send('global','keydown',{code:'Enter'});assert.equal(b.run('state'),'over');

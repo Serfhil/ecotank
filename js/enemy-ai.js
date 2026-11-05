@@ -130,7 +130,7 @@ function updateEnemy(e, dt) {
       for(const t of foes){const d=Math.hypot(t.x-e.x,t.y-e.y),hidden=tileAt(Math.floor(t.x/T),Math.floor(t.y/T))===TREE&&d>CFG.treeStealth;
         if(d<nearest&&d<CFG.enemySight&&!hidden&&los(e.x,sightY,t.x,t.y)){nearest=d;const lead=d/3000*.6;target={x:t.x+(t.vx||0)*lead,y:t.y+(t.vy||0)*lead};}}
       if(!target&&base&&!base.dead&&los(e.x,sightY,base.x,base.y))target=base;
-      const muzzle=20*tankScale(e),mx=e.x+Math.cos(e.turret)*muzzle,my=e.y+Math.sin(e.turret)*muzzle;
+      const muzzle=vehicleMuzzle(e),mx=muzzle.x,my=muzzle.y;
       aimAndFireEnemy(e,target,dt,mx>=4&&mx<W-4&&my>=4&&my<H-4);
     }
     if(e.y>=48){e.y=48;e.entering=false;if(e.kind!=='heavy')e.cd=enemyInterval(e.kind);}
@@ -204,6 +204,6 @@ function updateArtillery(e,dt){
     if(d>1){e.angle=turnTo(e.angle,Math.atan2(dy,dx),dt*2);const moved=moveTank(e,dx/d*step,dy/d*step,dt);if(moved<step*.3)e.stuck+=dt;}
   }else {e.vx=e.vy=0;const target=playerInRange?player:base;
     const aim=Math.atan2(target.y-e.y,target.x-e.x);e.turret=turnTo(e.turret,aim,dt*KINDS.artillery.turretSpeed);
-    if(e.cd<=0&&Math.abs(angDiff(e.turret,aim))<.15){launchArtillery(e.x,e.y,target.x,target.y);e.cd=enemyInterval('artillery');e.recoilMax=e.recoil=8;}
+    if(e.cd<=0&&Math.abs(angDiff(e.turret,aim))<.15){const muzzle=vehicleMuzzle(e);launchArtillery(muzzle.x,muzzle.y,target.x,target.y);e.cd=enemyInterval('artillery');e.recoilMax=e.recoil=8;}
   }
 }

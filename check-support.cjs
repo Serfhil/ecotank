@@ -31,6 +31,13 @@ module.exports=function checkSupport(root){
   assert.equal(run('hasPendingBarrage()'),0);assert.equal(run('artilleryShells.length'),0);run('explosion=savedExplosion');
  }
  run('resetArtillery()');assert.equal(run('supportClock'),0);
+ run("startGame();bullets=[];setPlayerUpgrade(player,2);player.x=300;player.y=300;player.angle=.7;player.turret=1.1;const mount=vehicleMount(player);const tip=vehicleMuzzle(player,mount.offsets[0]);fire(player);");
+ assert.equal(run('bullets.length'),2);assert(Math.abs(run('bullets[0].x-tip.x'))<1e-9&&Math.abs(run('bullets[0].y-tip.y'))<1e-9,'Sprite muzzle and actual shell agree');
+ b.draws.length=0;run('drawPlayerModel(player)');assert(b.draws.some(d=>d[1]==='image'&&d[2].source?.includes('is2-ii-player-hull')));
+ run("const bad=vehicleLayers.player2.hull;bad.loaded=false");b.draws.length=0;run('drawPlayerModel(player)');assert(!b.draws.some(d=>d[1]==='image'&&d[2].source?.includes('assets/vehicles/')),'Failed layer falls back to whole procedural model');run('bad.loaded=true');
+ b.draws.length=0;run('player.tread=0;drawPlayerModel(player)');const frame0=b.draws.find(d=>d[1]==='image'&&d[2].source?.endsWith('-tracks.png'))[4];
+ b.draws.length=0;run('player.tread=3;drawPlayerModel(player)');const frame1=b.draws.find(d=>d[1]==='image'&&d[2].source?.endsWith('-tracks.png'))[4];assert.notEqual(frame0,frame1,'Moving tread changes atlas phase');
+ b.draws.length=0;run('drawPlayerModel(player)');assert.equal(b.draws.find(d=>d[1]==='image'&&d[2].source?.endsWith('-tracks.png'))[4],frame1,'Stopped tread remains stationary');
  // Support checks below.
  console.log('PASS: heavy aims/fires during entry, safe muzzle and continuous cooldown');
 };if(require.main===module)module.exports(__dirname);

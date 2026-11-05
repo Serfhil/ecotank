@@ -6,7 +6,7 @@ module.exports=function checkModules(root){
   assert.deepEqual(sources,[
     'js/ui-text.js','js/config.js','js/statistics.js','js/audio.js','maps.js','js/world.js','js/destruction.js',
     'js/tanks.js','js/weapons.js','js/damage.js','js/pickups.js','js/enemy-ai.js','js/allies.js','js/waves.js',
-    'js/render-world.js','js/render-detail.js','js/render-tanks.js','js/effects.js','js/layout.js','js/defeat.js','js/victory.js','js/render-ui.js','js/renderer.js',
+    'js/render-world.js','js/render-detail.js','js/vehicle-sprites.js','js/render-tanks.js','js/effects.js','js/layout.js','js/defeat.js','js/victory.js','js/render-ui.js','js/renderer.js',
     'js/editor-common.js','js/preset-editor.js','js/map-editor.js',
   ]);
   assert(!/<script\b[^>]*type="module"/.test(html),'Direct file opening must not require ES-module loading');
@@ -18,7 +18,7 @@ module.exports=function checkModules(root){
   // Combat definitions must not need DOM, game state, audio or a running loop at load time.
   for(const src of ['js/statistics.js','js/tanks.js','js/weapons.js','js/damage.js','js/pickups.js','js/enemy-ai.js','js/allies.js','js/waves.js'])vm.runInContext(fs.readFileSync(root+'/'+src,'utf8'),context,{filename:src});
   // Rendering/effects definitions load without Canvas, DOM, audio or game state.
-  for(const src of ['js/render-world.js','js/render-detail.js','js/render-tanks.js','js/effects.js','js/layout.js','js/defeat.js','js/victory.js','js/render-ui.js','js/renderer.js'])vm.runInContext(fs.readFileSync(root+'/'+src,'utf8'),context,{filename:src});
+  for(const src of ['js/render-world.js','js/render-detail.js','js/vehicle-sprites.js','js/render-tanks.js','js/effects.js','js/layout.js','js/defeat.js','js/victory.js','js/render-ui.js','js/renderer.js'])vm.runInContext(fs.readFileSync(root+'/'+src,'utf8'),context,{filename:src});
   // Editor modules define state and functions without reading storage or touching the DOM.
   for(const src of ['js/editor-common.js','js/preset-editor.js','js/map-editor.js'])vm.runInContext(fs.readFileSync(root+'/'+src,'utf8'),context,{filename:src});
   const catalog=vm.runInContext('UI_TEXT',context);

@@ -56,8 +56,8 @@ function tankHudBounds(t) {
   const s=tankScale(t),points=[],friendly=t.kind==='player'||t.ally;
   const add=(x,y,angle,ox=t.x,oy=t.y)=>points.push({x:ox+(x*Math.cos(angle)-y*Math.sin(angle))*s,y:oy+(x*Math.sin(angle)+y*Math.cos(angle))*s});
   for(const x of [-20,20])for(const y of [-19,19])add(x,y,t.angle+Math.PI/2);
-  const ox=t.x+(friendly?Math.cos(t.angle)*5*s:0),oy=t.y+(friendly?Math.sin(t.angle)*5*s:0);
-  for(const x of [-8,8])for(const y of [-(friendly?playerGunLength(t):38),14])add(x,y,t.turret+Math.PI/2,ox,oy);
+  const mount=vehicleMount(t),ox=mount.x,oy=mount.y;
+  for(const x of [-8,8])for(const y of [-mount.length,14])add(x,y,t.turret+Math.PI/2,ox,oy);
   const f=gameLayout.field,xs=points.map(p=>f.x+p.x/W*f.width),ys=points.map(p=>f.y+p.y/H*f.height);
   return {x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)};
 }
