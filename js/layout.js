@@ -49,7 +49,7 @@ function initHud() {
 function calculateHudPanels(width,height) {
   const pad=12,rightWidth=Math.min(210,(width-pad*3)*.60),leftWidth=Math.min(180,width-pad*3-rightWidth);
   return {left:{x:pad,y:height-100,w:leftWidth,h:88},right:{x:width-pad-rightWidth,y:height-166,w:rightWidth,h:154},
-    score:{x:width-pad-Math.min(164,width-pad*2),y:58,w:Math.min(164,width-pad*2),h:44}};
+    score:{x:width-pad-Math.min(164,width-pad*2),y:width<600?88:58,w:Math.min(164,width-pad*2),h:44}};
 }
 // Bounds of hull and independently aimed turret, projected into viewport CSS pixels.
 function tankHudBounds(t) {
