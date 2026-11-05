@@ -11,55 +11,33 @@ function text(str, x, y, size, color, align = 'left', weight = '600') {
   ctx.fillStyle = color; ctx.fillText(str, x, y);
 }
 
-// HUD uses its own canvas; none of these labels cover battlefield cells.
+// Three independent, click-through panels on a transparent viewport canvas.
+function drawNiiIcon(c,x,y,size) {
+  if(niiIcon&&niiIcon.complete&&niiIcon.naturalWidth){c.drawImage(niiIcon,x,y,size,size);return;}
+  c.save();c.translate(x,y);c.scale(size/64,size/64);c.strokeStyle='#27eee5';c.lineWidth=3;
+  c.strokeRect(7,7,50,50);c.beginPath();c.arc(32,32,28,0,Math.PI*2);c.stroke();c.beginPath();c.arc(32,32,21,0,Math.PI*2);c.stroke();
+  c.beginPath();c.moveTo(17,44);c.bezierCurveTo(45,9,12,17,27,34);c.bezierCurveTo(46,57,53,16,30,28);c.stroke();c.restore();
+}
 function drawHud(force = false) {
-  if (!player || !hudCanvas || !gameLayout || !gameLayout.hud || !gameHasHud()) return;
-  if (!force && state === 'over') return;
-  const h = gameLayout.hud, width = h.width, height = h.height;
-  const ratio = typeof devicePixelRatio === 'number' ? Math.min(2, devicePixelRatio) : 1;
-  const pw = Math.round(width * ratio), ph = Math.round(height * ratio);
-  if (hudCanvas.width !== pw || hudCanvas.height !== ph) { hudCanvas.width = pw; hudCanvas.height = ph; }
-  const c = hudCanvas.getContext('2d'), p = player;
-  c.setTransform(ratio, 0, 0, ratio, 0, 0);
-  c.globalAlpha = 1; c.fillStyle = '#2b1018'; c.fillRect(0, 0, width, height);
-  c.strokeStyle = '#a34b45'; c.lineWidth = 1; c.strokeRect(.5, .5, width - 1, height - 1);
-  const tank = p.upgrade >= 2 ? UI_TEXT.is_2_ii : p.upgrade ? UI_TEXT.is_2 : UI_TEXT.hudBaseTank;
-  const header = h.compact ? 34 : 62;
-  c.fillStyle = '#4b1720'; c.fillRect(1, 1, width - 2, header - 1);
-  c.textAlign = 'left'; c.textBaseline = 'middle';
-  c.font = '700 12px "Segoe UI", sans-serif'; c.fillStyle = '#e9be69';
-  c.fillText(UI_TEXT.hudTitle, 12, h.compact ? 17 : 20);
-  c.font = '700 ' + (h.compact ? 12 : 20) + 'px "Segoe UI", sans-serif'; c.fillStyle = '#fff0ce';
-  if (h.compact) { c.textAlign = 'right'; c.fillText(tank, width - 12, 17); c.textAlign = 'left'; }
-  else c.fillText(tank, 12, 43);
-  const seconds = value => value > 0 ? Math.ceil(value) + UI_TEXT.s : '—';
-  const rows = [
-    [UI_TEXT.khp, p.hp + ' / ' + p.maxHp, '#ed7775', clamp(p.hp / p.maxHp, 0, 1)],
-    [UI_TEXT.ochki.trim(), String(score), '#ffe3a1'],
-    [campaign ? UI_TEXT.hudLevel : UI_TEXT.hudWave, campaign ? wave + ' / ' + campaign.length : String(wave), '#ffe3a1'],
-    [UI_TEXT.hudEnemies, String(toSpawn.length + enemies.length), '#ffe3a1'],
-    [UI_TEXT.metallolom_5, String(scrap), '#dec187'],
-    [ITEMS.rail.name, String(p.rail), ITEMS.rail.color],
-    [ITEMS.shield.name, seconds(p.pw.shield), ITEMS.shield.color, clamp(p.pw.shield / CFG.powerupTime, 0, 1)],
-    [ITEMS.rapid.name, seconds(p.pw.rapid), ITEMS.rapid.color, clamp(p.pw.rapid / CFG.powerupTime, 0, 1)],
-    [UI_TEXT.hudBoost, p.boostLeft > 0 ? seconds(p.boostLeft) : p.boostCooldown > 0 ? seconds(p.boostCooldown) : UI_TEXT.hudReady, '#e9c76f'],
-  ];
-  const columns = h.compact ? (width >= 600 ? 3 : 2) : 1;
-  const columnWidth = (width - 16) / columns, rowHeight = (height - header - 10) / Math.ceil(rows.length / columns);
-  rows.forEach(([label, value, color, progress], i) => {
-    const x = 12 + i % columns * columnWidth, y = header + Math.floor(i / columns) * rowHeight;
-    c.font = (h.compact ? '10' : '11') + 'px "Segoe UI", sans-serif'; c.fillStyle = '#c5a3a2';
-    c.fillText(label, x, y + rowHeight * .25, columnWidth - 16);
-    c.font = '700 ' + (h.compact ? '15' : '21') + 'px "Segoe UI", sans-serif'; c.fillStyle = color;
-    c.fillText(value, x, y + rowHeight * .64, columnWidth - 16);
-    if (progress !== undefined) {
-      c.fillStyle = '#501f29'; c.fillRect(x, y + rowHeight - 5, columnWidth - 18, 2);
-      c.fillStyle = color; c.fillRect(x, y + rowHeight - 5, (columnWidth - 18) * progress, 2);
-    }
+  if (!player || !hudCanvas || !gameLayout || !gameLayout.hud || !gameHasHud() || !force&&state==='over') return;
+  const h=gameLayout.hud,ratio=typeof devicePixelRatio==='number'?Math.min(2,devicePixelRatio):1;
+  if(hudCanvas.width!==Math.round(h.width*ratio)||hudCanvas.height!==Math.round(h.height*ratio)){hudCanvas.width=Math.round(h.width*ratio);hudCanvas.height=Math.round(h.height*ratio);}
+  const c=hudCanvas.getContext('2d');c.setTransform(ratio,0,0,ratio,0,0);c.globalAlpha=1;c.clearRect(0,0,h.width,h.height);
+  const panel=(key,paint)=>{const p=h.panels[key];c.save();c.globalAlpha=hudOpacity[key];c.translate(p.x,p.y);c.fillStyle='#2b1018e8';roundRect(c,0,0,p.w,p.h,7);c.fill();c.strokeStyle='#bb794b';c.lineWidth=1;c.stroke();paint(p);c.restore();};
+  c.textBaseline='middle';c.textAlign='left';
+  panel('left',p=>{
+    drawNiiIcon(c,10,8,30);c.fillStyle='#53f6e8';c.font='700 19px "Segoe UI",sans-serif';c.fillText(String(player.rail),46,24);
+    const gap=3,w=Math.min(19,(p.w-20-gap*(player.maxHp-1))/player.maxHp);
+    for(let i=0;i<player.maxHp;i++){c.fillStyle=i<player.hp?'#ed3d43':'#58212c';c.fillRect(10+i*(w+gap),p.h-31,w,18);c.strokeStyle='#ee868255';c.strokeRect(10+i*(w+gap),p.h-31,w,18);}
   });
-  if (muted && !h.compact) {
-    c.font = '9px "Segoe UI", sans-serif'; c.fillStyle = '#b69697'; c.fillText(UI_TEXT.zvuk_vykl_m, 12, height - 5);
-  }
+  panel('right',p=>{
+    c.fillStyle='#f6db9a';c.font='600 '+(p.w<170?11:13)+'px "Segoe UI",sans-serif';
+    c.fillText(UI_TEXT.hudLevelShort+' '+wave,10,19);c.fillText(UI_TEXT.hudEnemiesShort+' '+(toSpawn.length+enemies.filter(e=>!e.dead).length),10,44);
+    c.fillText(UI_TEXT.metallolom_5+': '+scrap,10,69);
+    c.fillText('★ '+(player.upgrade>=2?UI_TEXT.is_2_ii:player.upgrade?UI_TEXT.is_2:UI_TEXT.hudBaseTank),10,96);
+    let x=12;for(const k of ['shield','rapid'])if(player.pw[k]>0){c.fillStyle=ITEMS[k].color;c.font='700 23px "Segoe UI",sans-serif';c.fillText(ITEMS[k].glyph,x,128);x+=30;}
+  });
+  panel('score',()=>{c.fillStyle='#f6db9a';c.font='700 15px "Segoe UI",sans-serif';c.fillText(UI_TEXT.ochki.trim()+' '+score,10,23);});
 }
 
 function overlay(alpha) { ctx.fillStyle = `rgba(38,7,14,${alpha})`; ctx.fillRect(0, 0, UI_W, UI_H); }

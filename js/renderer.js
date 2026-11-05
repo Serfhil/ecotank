@@ -29,7 +29,7 @@ function drawItems() {
     ctx.strokeStyle = I.color; ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = I.color; ctx.font = 'bold 14px "Segoe UI", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(I.glyph, it.x, y + 1);
+    if(it.type==='rail')drawNiiIcon(ctx,it.x-10,y-10,20);else ctx.fillText(I.glyph, it.x, y + 1);
   }
 }
 

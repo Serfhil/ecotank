@@ -6,6 +6,7 @@ require('./check-editors.cjs')(__dirname);
 require('./check-defeat.cjs')(__dirname);
 require('./check-victory.cjs')(__dirname);
 require('./check-allies.cjs')(__dirname);
+require('./check-gameplay.cjs')(__dirname);
 const html=fs.readFileSync(__dirname+'/index.html','utf8');
 const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].map(([,attrs,inline])=>({src:attrs.match(/\bsrc="([^"]+)"/)?.[1],inline}));
 const code=scripts.map(s=>s.src?fs.readFileSync(__dirname+'/'+s.src,'utf8'):s.inline).join('\n');

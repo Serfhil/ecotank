@@ -14,7 +14,7 @@ module.exports=function checkDefeat(root){
   return {run,send,elements,draws,loaded,saved};
  }
  for(const tier of [0,1,2])for(const cause of ['player','base']){
-  const b=boot();assert.equal(b.loaded.length,4,'Preload all three images');b.run(`muted=true;CFG.mapMode='original';startGame();grid.fill(EMPTY);enemies=[];toSpawn=['soldier'];setPlayerUpgrade(player,${tier});score=5555;player.inv=0;player.pw.shield=0;keys.Enter=true;mouse.down=true;${cause==='player'?"hitPlayer({x:player.x,y:player.y,dmg:99});":"hitBase(99);"}`);
+  const b=boot();assert.equal(b.loaded.length,5,'Preload all three images');b.run(`muted=true;CFG.mapMode='original';startGame();grid.fill(EMPTY);enemies=[];toSpawn=['soldier'];setPlayerUpgrade(player,${tier});score=5555;player.inv=0;player.pw.shield=0;keys.Enter=true;mouse.down=true;${cause==='player'?"hitPlayer({x:player.x,y:player.y,dmg:99});":"hitBase(99);"}`);
   assert.equal(b.run('defeatTier'),tier);
   assert.notEqual(b.run('state'),'over','Let blasts finish before the illustration');
   for(let i=0;i<900&&b.run('state')!=='over';i++){
@@ -24,7 +24,7 @@ module.exports=function checkDefeat(root){
   assert.equal(b.run('state'),'over');assert.equal(b.run('defeatBlastsFinished()'),true);assert.equal(b.run('overT'),0);
   assert.equal(b.run('best'),5555);assert.equal(+b.saved.get('ecotank-best'),5555);
   b.run('player=null;syncUI()');b.draws.length=0;b.run('draw()');
-  const rendered=b.draws.find(d=>d[1]==='image'&&d[2].source);assert.equal(rendered[2].source,b.loaded[tier],'Captured tier survives cleared player');
+  const rendered=b.draws.find(d=>d[0]!=='hudCanvas'&&d[1]==='image'&&d[2].source);assert.equal(rendered[2].source,b.loaded[tier],'Captured tier survives cleared player');
   assert.deepEqual(b.draws.filter(d=>d[1]==='text').map(d=>d[2]),['ПОРАЖЕНИЕ'],'No HUD, score, wave, scrap or best');
   assert.equal(b.elements.get('defeatScreen').hidden,false);assert.equal(b.elements.get('defeatRestart').hidden,true);
   b.send('global','keydown',{code:'Enter'});assert.equal(b.run('state'),'over');
@@ -53,7 +53,7 @@ module.exports=function checkDefeat(root){
   const positions=JSON.parse(layout.run('JSON.stringify(gameLayout)')),f=positions.field,h=positions.hud;
   for(const r of [f,h])assert(r.x>=0&&r.y>=0&&r.width>0&&r.height>0&&r.x+r.width<=width+.001&&r.y+r.height<=height+.001,'Layout inside viewport');
   assert(Math.abs(f.width/f.height-1.5)<1e-9,'Keep map aspect');
-  if(h.compact)assert(h.y>=f.y+f.height+HUD_GAP,'Panel below map');else assert(h.x>=f.x+f.width+HUD_GAP,'Panel right of map');
+  assert(h.panels.left.x+h.panels.left.w<h.panels.right.x,'Overlay panels remain separate');
   for(const [u,v]of [[0,0],[.5,.5],[1,1]]){
    const point=JSON.parse(layout.run('JSON.stringify(pointerToWorld('+ (f.x+f.width*u) +','+ (f.y+f.height*v) +','+JSON.stringify({left:f.x,top:f.y,width:f.width,height:f.height})+'))'));
    assert(Math.abs(point.x-cols*32*u)<1e-6&&Math.abs(point.y-cols*2/3*32*v)<1e-6,'Pointer matches moved/scaled map');
@@ -64,7 +64,7 @@ module.exports=function checkDefeat(root){
  layout.run('editorOpen=false;mapEdOpen=true;fit()');assert.equal(layout.run('gameLayout.hud'),null);
  layout.run('mapEdOpen=false;innerWidth=1280;innerHeight=720;startGame();setPlayerUpgrade(player,2);player.rail=2;player.pw.shield=6;player.pw.rapid=4;score=123;scrap=45;');
  layout.draws.length=0;layout.run('draw()');
- for(const label of ['Боевая сводка','ИС-2-II','ХП','Очки','Металлолом','Рельсотрон','Щит','Скорострел','Ускорение','123','45']){
+ for(const label of ['★ ИС-2-II','Очки 123','Металлолом: 45']){
   assert(layout.draws.some(d=>d[0]==='hudCanvas'&&d[1]==='text'&&d[2]===label),'HUD value/label '+label);
   assert(!layout.draws.some(d=>d[0]==='c'&&d[1]==='text'&&d[2]===label),'HUD must not paint on battlefield');
  }

@@ -8,7 +8,7 @@
   html, body { margin: 0; height: 100%; background: #14181c; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; }
   #wrap { position:fixed; inset:0; }
   #c { position:absolute; }
-  #gameHud { position:absolute; overflow:hidden; border-radius:6px; box-shadow:0 6px 30px #0006; }
+  #gameHud { position:absolute; overflow:hidden; pointer-events:none; }
   #hudCanvas { width:100%; height:100%; box-shadow:none; border-radius:0; cursor:default; }
   canvas { display: block; cursor: crosshair; box-shadow: 0 0 0 2px #2a3238, 0 12px 40px #000a; border-radius: 4px; }
   [hidden] { display: none !important; }
@@ -210,6 +210,7 @@ try { best = +localStorage.getItem('ecotank-best') || 0; } catch (e) {}
 
 function startGame(retry = false) {
   if (!retry) resetStatistics();
+  hudOpacity = {left:1,right:1,score:1};
   resetVictory();
   resetDefeat();
   applyMapChoice();score = 0; scrap = 0; wave = campaign ? CFG.campaignStart : 0; player = null; victory = false;
@@ -308,6 +309,7 @@ addEventListener('resize', fit); fit();
 
 function update(dt) {
   time += dt;
+  updateHud(dt);
   if (state === 'menu' || state === 'pause') return;
   if (state === 'over' && victory) { updateVictory(dt); return; }
   if (state === 'over' && !victory) { updateDefeat(dt); return; }
@@ -505,6 +507,7 @@ for(const mode of ['original','preset01','map','campaign'])document.getElementBy
 // ---------- запуск ----------
 initDefeat();
 initVictory();
+initHud();
 renderMapPick();
 toMenu();
 let last = performance.now();
