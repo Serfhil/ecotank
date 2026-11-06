@@ -50,7 +50,7 @@ function decide(e, random) {
   }
 }
 
-const enemyInterval=kind=>({scout:1/.33,soldier:2,heavy:5,artillery:6}[kind]??KINDS[kind].fireRate);
+const enemyInterval=kind=>({scout:1/.33,soldier:2,heavy:5,artillery:6,moto:1}[kind]??KINDS[kind].fireRate);
 
 function enemyGoal(e) {
   const choices=[player,base,...allies].filter(t=>t&&!t.dead);
@@ -58,7 +58,7 @@ function enemyGoal(e) {
 }
 
 function formColumns() {
-  const rank={heavy:3,soldier:2,scout:1},eligible=enemies.filter(e=>!e.dead&&!e.entering&&!(e.detourTime>0));
+  const rank={heavy:3,soldier:2,scout:1},eligible=enemies.filter(e=>!e.dead&&!e.entering&&!(e.detourTime>0)&&e.kind!=='moto');
   const pool=eligible.filter(e=>e.kind!=='artillery').sort((a,b)=>rank[b.kind]-rank[a.kind]),guns=eligible.filter(e=>e.kind==='artillery'&&!e.deployed);
   for(const e of eligible){e.leader=null;e.columnSlot=0;}
   while(pool.length){const lead=pool.shift(),gun=guns.find(e=>Math.hypot(e.x-lead.x,e.y-lead.y)<260);
@@ -136,6 +136,7 @@ function updateEnemy(e, dt) {
     if(e.y>=48){e.y=48;e.entering=false;if(e.kind!=='heavy')e.cd=enemyInterval(e.kind);}
     return;
   }
+  if(e.kind==='moto'){updateMoto(e,dt);return;}
   e.cd -= dt; e.decideT -= dt;reconsiderRoute(e,dt);
   if(e.kind==='artillery'){updateArtillery(e,dt);return;}
   const goal=enemyGoal(e);

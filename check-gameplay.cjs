@@ -14,7 +14,7 @@ module.exports=function checkGameplay(root){
   return {run,send,elements,draws,loaded,saved};
  }
  const hud=boot(),run=hud.run;
- run("muted=true;innerWidth=960;innerHeight=720;startGame();enemies=[];allies=[];setPlayerUpgrade(player,2);player.hp=7;draw()");
+ run("muted=true;CFG.bomberChance=0;innerWidth=960;innerHeight=720;startGame();enemies=[];allies=[];setPlayerUpgrade(player,2);player.hp=7;draw()");
  assert.equal(hud.draws.filter(d=>d[0]==='hudCanvas'&&d[1]==='fill'&&d[2]==='#ed3d43').length,7,'Seven distinct filled health cells');
  run("{const p=gameLayout.hud.panels.left,f=gameLayout.field;player.x=(p.x+p.w*.7-f.x)/f.width*W;player.y=(p.y+p.h/2-f.y)/f.height*H;}hudOpacity={left:1,right:1,score:1};updateHud(.5)");
  assert(Math.abs(run('hudOpacity.left')-.6)<1e-9);assert.equal(run('hudOpacity.right'),1);
@@ -26,7 +26,7 @@ module.exports=function checkGameplay(root){
   assert(Math.abs(run('hudOpacity.right')-.2)<1e-9,kind+' fades HUD');
  }
  const steel=boot(),sr=steel.run;
- sr("muted=true;startGame();grid.fill(EMPTY);for(let r=2;r<12;r++)for(let c=2;c<12;c++)grid[r*COLS+c]=STEEL;");
+ sr("muted=true;CFG.bomberChance=0;startGame();grid.fill(EMPTY);for(let r=2;r<12;r++)for(let c=2;c<12;c++)grid[r*COLS+c]=STEEL;");
  for(const [x0,y0,x1,y1,x,y]of [[64,176,384,176,160,176],[176,64,176,384,176,160],[64,64,384,384,176,176]]) {
    sr(`steelDamage.clear();carveSteelRay(${x0},${y0},${x1},${y1});`);
    assert.equal(sr(`bulletBlocked(${x},${y},3)`),false,'Shell fits through channel');
@@ -40,7 +40,7 @@ module.exports=function checkGameplay(root){
  sr("bullets=[{x:70,y:176,vx:200,vy:0,r:3,dmg:1,owner:'p',life:3}];base=null;updateBullets(1)");assert.equal(sr('bullets.length'),1,'Ordinary shell traverses hole');
  sr('genMap(1)');assert.equal(sr('steelDamage.size'),0,'New map resets steel damage');
  const bonus=boot(),ar=bonus.run;
- ar("muted=true;CFG.allies=true;startGame();grid.fill(EMPTY);enemies=[];toSpawn=[];allies=[makeTank(100,200,'ally')];allies[0].ally=true;const a=allies[0];const originalHp=player.hp;items=[];");
+ ar("muted=true;CFG.bomberChance=0;CFG.allies=true;startGame();grid.fill(EMPTY);enemies=[];toSpawn=[];allies=[makeTank(100,200,'ally')];allies[0].ally=true;const a=allies[0];const originalHp=player.hp;items=[];");
  ar("const item=type=>({type,x:a.x,y:a.y,life:10});");
  assert.equal(ar("applyItem(a,item('repair'))"),false,'Full-health ally leaves repair');
  ar("applyItem(a,item('upgrade'))");assert.equal(ar('a.maxHp'),5);assert.equal(ar('a.upgradeT'),ar('UPGRADE_DURATION'));assert.equal(ar('player.upgrade'),0);
@@ -56,7 +56,7 @@ module.exports=function checkGameplay(root){
  ar('items=[];updateAlly(a,.1)');assert.equal(ar('a.itemGoal'),null,'Forget removed item');
  ar("grid.fill(EMPTY);items=[{type:'shield',x:a.x+5*T+1,y:a.y,life:10}];a.itemScanT=0;updateAlly(a,.1)");assert.equal(ar('a.itemGoal'),null,'Respect five-cell radius');
  const visuals=boot(),vr=visuals.run;
- vr("muted=true;startGame();const geometryBefore=JSON.stringify([Array.from(grid),Array.from(sand),player.r,player.hp]);const detailTanks=['player','scout','soldier','heavy','ally','artillery'].map(kind=>makeTank(100,100,kind));const randomBefore=Math.random;Math.random=()=>{throw Error('Cosmetic details consumed simulation RNG');};detailGround(gctx);for(const t of detailTanks){t.cd=0;t.ally=t.kind==='ally';drawPlayerModel(t);}Math.random=randomBefore;");
+ vr("muted=true;CFG.bomberChance=0;startGame();const geometryBefore=JSON.stringify([Array.from(grid),Array.from(sand),player.r,player.hp]);const detailTanks=['player','scout','soldier','heavy','ally','artillery'].map(kind=>makeTank(100,100,kind));const randomBefore=Math.random;Math.random=()=>{throw Error('Cosmetic details consumed simulation RNG');};detailGround(gctx);for(const t of detailTanks){t.cd=0;t.ally=t.kind==='ally';drawPlayerModel(t);}Math.random=randomBefore;");
  assert.equal(vr('JSON.stringify([Array.from(grid),Array.from(sand),player.r,player.hp])'),vr('geometryBefore'),'Cosmetics preserve world and collision');
  vr('for(let i=0;i<100;i++){time=i/8;detailWater(ctx,0,0,0);detailWater(ctx,32,0,1);}');assert(vr('detailSprites.size<120'),'Detail atlas remains bounded');
  // More gameplay checks below.

@@ -92,6 +92,9 @@ function sfx(n) {
       case 'rail': tone(2200, 180, .4, 'sawtooth', .07); noise(.35, .3, 5000); break;
       case 'scrap': tone(900, 600, .06, 'square', .05); setTimeout(() => tone(1200, 800, .06, 'square', .05), 70); break;
       case 'hurt': tone(220, 60, .25, 'sawtooth', .1); noise(.2, .2, 900); break;
+      case 'mg': noise(.05, .1, 3200); tone(190, 90, .04, 'square', .035); break;
+      case 'fuse': noise(.6, .05, 7000); noise(.12, .08, 2500); break;
+      case 'mineDrop': tone(420, 230, .07, 'square', .05); noise(.08, .08, 900); break;
       case 'pick': tone(520, 1100, .16, 'triangle', .1); break;
       case 'wave': tone(330, 660, .2, 'triangle', .08); setTimeout(() => tone(440, 880, .25, 'triangle', .08), 150); break;
     }

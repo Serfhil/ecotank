@@ -14,7 +14,7 @@ module.exports=function checkSupport(root){
   return {run,send,elements,draws,loaded,saved};
  }
  const b=boot(),run=b.run;
- run("muted=true;startGame();grid.fill(EMPTY);allies=[];player.x=300;player.y=200;base=null;const h=makeTank(300,-32,'heavy');h.entering=true;h.angle=h.turret=Math.PI/2;h.cd=.25;enemies=[h];bullets=[];");
+ run("muted=true;CFG.bomberChance=0;startGame();grid.fill(EMPTY);allies=[];player.x=300;player.y=200;base=null;const h=makeTank(300,-32,'heavy');h.entering=true;h.angle=h.turret=Math.PI/2;h.cd=.25;enemies=[h];bullets=[];");
  for(let i=0;i<90&&!run('bullets.length');i++)run('updateEnemy(h,1/60)');
  assert(run('bullets.length>0&&h.entering'),'Heavy fires before entry ends');assert(run('bullets.every(b=>b.y>=0)'),'No outside projectile');
  run('const previousCd=h.cd;h.y=47;updateEnemy(h,.04)');assert.equal(run('h.entering'),false);assert(Math.abs(run('h.cd')-run('previousCd')+.04)<1e-9,'No entry reload reset');

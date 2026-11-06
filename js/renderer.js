@@ -35,6 +35,7 @@ function drawItems() {
 
 function drawBullets() {
   for (const b of bullets) {
+    if(b.mg){const l=Math.hypot(b.vx,b.vy)||1;ctx.strokeStyle='#ffe08acc';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x-b.vx/l*7,b.y-b.vy/l*7);ctx.stroke();continue;}
     if(b.armor && b.trail && b.trail.length){ctx.strokeStyle='#ffe4a7aa';ctx.lineWidth=2;ctx.beginPath();b.trail.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.lineTo(b.x,b.y);ctx.stroke();}
     ctx.strokeStyle = b.owner === 'p' ? 'rgba(200,255,170,.35)' : 'rgba(255,170,140,.35)';
     ctx.lineWidth = b.r * 1.4;
@@ -74,12 +75,15 @@ function drawBattleFrame() {
   if (state !== 'menu') {
     drawWrecks();
     drawItems();
+    drawMines();
     for (const e of enemies) drawTank(e);
     for (const a of allies) if (!a.dead) drawTank(a);
     if (player && !player.dead) drawTank(player);
+    drawBombers();
     drawBullets();drawArtilleryShells();
     drawRails();
     drawParts();
+    drawMineFx();
   }
   drawTrees();
   ctx.restore();

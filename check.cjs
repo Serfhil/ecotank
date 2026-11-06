@@ -8,6 +8,7 @@ require('./check-victory.cjs')(__dirname);
 require('./check-allies.cjs')(__dirname);
 require('./check-gameplay.cjs')(__dirname);
 require('./check-support.cjs')(__dirname);
+require('./check-sappers.cjs')(__dirname);
 const html=fs.readFileSync(__dirname+'/index.html','utf8');
 const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].map(([,attrs,inline])=>({src:attrs.match(/\bsrc="([^"]+)"/)?.[1],inline}));
 const code=scripts.map(s=>s.src?fs.readFileSync(__dirname+'/'+s.src,'utf8'):s.inline).join('\n');
@@ -23,7 +24,7 @@ vm.createContext(box);
 // Use the same classic-script order as index.html, including file://-compatible modules.
 for(const script of scripts)vm.runInContext(script.src?fs.readFileSync(__dirname+'/'+script.src,'utf8'):script.inline,box,{filename:script.src||'index.html'});
 vm.runInContext(`
-muted=true;
+muted=true;CFG.bomberChance=0;
 if(KINDS.player.speed!==60||KINDS.player.bulletSpeed!==1200||KINDS.heavy.hp!==3)throw Error('Defaults or legacy settings');
 player=makeTank(480,592,'player');player.turret=0;mouse.x=480;mouse.y=100;updatePlayer(.1);
 if(Math.abs(player.turret+.1)>1e-8)throw Error('Turret rate');

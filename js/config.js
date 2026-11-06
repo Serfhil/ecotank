@@ -3,6 +3,8 @@
 // Загружается после ui-text.js; не запускает игру, DOM, сохранения или звук.
 
 const T=32;
+// Курсовой пулемёт игрока: урон 0,5 — мотоцикл (1 ХП) со второго попадания, смертник с первого; броню не берёт.
+const MG_CONFIG=Object.freeze({interval:.12,speed:900,life:.6,damage:.5,spread:.03});
 const SUPPORT_CONFIG=Object.freeze({interval:.06,warning:2,speed:3000});
 const VICTORY_CONFIG = Object.freeze({ image: 'assets/victory-marx-earth.png', darken: 1, reveal: 1, creditsSpeed: 42, awardFade: 1 });
 
@@ -14,6 +16,8 @@ const KINDS = {
 };
 
 KINDS.artillery={hp:2,speed:35,fireRate:6,turretSpeed:1,color:'#d5be7d',dark:'#566048',bulletSpeed:182,dmg:2,scale:1.1,score:400,scrap:3,wander:0,hold:640};
+// Мотоцикл-минёр не стреляет: минирует стены и базу или ставит мины на поле (js/sappers.js).
+KINDS.moto={hp:1,speed:90,color:'#c9a96a',dark:'#6b5a36',scale:.85,score:250,scrap:1,wander:0,hold:0};
 // Союзник выдерживает ровно одно попадание врага: hp 1 при любом уроне снаряда.
 KINDS.ally={hp:1,speed:55,fireRate:1.6,turretSpeed:1.4,color:'#8fb45a',dark:'#3c5225',bulletSpeed:520,dmg:1,scale:1,hold:220};
 
@@ -31,6 +35,7 @@ const CFG = {
   waveBase: 6, wavePerLevel: 2, maxAliveBase: 3, maxAliveCap: 7, enemySpeedPerWave: .02, waveBonus: 300, waveHeal: 1,
   mapSize:30, mapMode:'original', mapPick:'', campaignStart:0, mapElements: 42, brickHp: 4, invulnTime: .7, enemySight: 460, treeStealth: 90, shake: 1, hitstop: .06, godMode: false,
   allies: false, allyCount: 2,
+  bomberChance: .1, bomberFuse: 2.5, bomberSpeed: 75,
 };
 
 const MENU_TRACK='assets/red-steel-menu.mp3',LEVEL_TRACKS=['assets/mehvod.mp3','assets/red-steel-1.mp3','assets/red-steel-2.mp3'];
@@ -87,6 +92,11 @@ const CFG_FIELDS = [
   [UI_TEXT.soyuzniki, [
     ['allies', UI_TEXT.soyuznye_tanki, 'bool'],
     ['allyCount', UI_TEXT.soyuznikov_na_karte, 1, 6, 1],
+  ]],
+  [UI_TEXT.miny_i_smertniki, [
+    ['bomberChance', UI_TEXT.shans_smertnika_v_zeleni, 0, 1, .01],
+    ['bomberFuse', UI_TEXT.vzryv_smertnika_cherez_s, .5, 30, .5],
+    ['bomberSpeed', UI_TEXT.skorost_smertnika, 10, 300, 5],
   ]],
 ];
 

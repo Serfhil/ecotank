@@ -6,10 +6,10 @@
 // Подключение файла не создаёт врагов и не запускает таймеры.
 
 function waveList(w) {
-  const n = CFG.waveBase + (w - 1) * CFG.wavePerLevel, list = [], pH = Math.min(.07 * w, .35);
+  const n = CFG.waveBase + (w - 1) * CFG.wavePerLevel, list = [], pH = Math.min(.07 * w, .35), pM = w >= 2 ? .12 : 0;
   for (let i = 0; i < n; i++) {
     const r = Math.random();
-    list.push(r < pH ? 'heavy' : r < pH + .38 ? 'scout' : 'soldier');
+    list.push(r < pH ? 'heavy' : r < pH + .38 ? 'scout' : r < pH + .38 + pM ? 'moto' : 'soldier');
     if((i+1)%5===0)list.push('artillery');
   }
   return list;

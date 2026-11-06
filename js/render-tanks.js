@@ -12,6 +12,8 @@ function reloadProgress(p) { return clamp(1-Math.max(0,p.cd)/(p.reloadDuration||
 
 function drawPlayerModel(t, context = ctx) {
   const ctx = context;
+  if(t.kind==='moto'){drawMoto(t,ctx);return;}
+  if(t.kind==='bomber'){drawBomberModel(t,ctx);return;}
   if(drawVehicleSprite(t,ctx))return;
   if(t.kind==='artillery'){drawArtilleryModel(t, ctx);return;}
   const isP=t.kind==='player'||(t.ally||t.kind==='ally')&&t.upgrade>0,ally=t.kind==='ally',heavy=t.kind==='heavy',panther=t.kind==='soldier';
@@ -86,6 +88,8 @@ function drawWrecks() {
       continue;
     }
     const K = KINDS[w.kind], s = K.scale;
+    if(w.kind==='moto'){ctx.save();ctx.filter='brightness(30%)';ctx.globalAlpha=.85;drawMoto({...w,flash:0,dropT:0});ctx.restore();
+      if(w.age-(w.blastAge||0)<2)drawFlames(w.x,w.y,1-Math.max(0,w.age-(w.blastAge||0))/2);continue;}
     ctx.save();
     ctx.translate(w.x, w.y);
     const pulse = .25 + .2 * Math.sin(time * 4 + w.x);

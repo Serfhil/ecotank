@@ -124,7 +124,11 @@ const UI_TEXT = Object.freeze({
   "ur": "Ур. ",
   "vragi": "Враги ",
   "metallolom_3": "Металлолом ",
-  "pkm_e": "ПКМ / E",
+  "pkm": "ПКМ",
+  "kursovoy_pulemet": "курсовой пулемёт",
+  "klavisha_c": "C",
+  "zaryadit_snaryad_iz_nii": "зарядить снаряд из НИИ в основное орудие",
+  "zaryazhayu_eksperimentalnym": "Заряжаю экспериментальным",
   "zvuk_vykl_m": "звук выкл (M)",
   "zashchishchay_les_krushi_vrazheskuyu_tekhniku": "Защищай лес — круши вражескую технику",
   "vperyod_nazad": "вперёд / назад",
@@ -133,7 +137,6 @@ const UI_TEXT = Object.freeze({
   "pritsel_bashni": "прицел башни",
   "lkm_probel": "ЛКМ / Пробел",
   "ogon": "огонь",
-  "relsotron_esli_est_zaryad": "снаряд из НИИ (если есть заряд)",
   "pauza": "пауза",
   "zvuk": "звук",
   "zabor_lomaetsya_s_vystrela_kirpich_s_chetyryokh_stal_i_voda_net_v_kronakh_vragi_tebya": "Забор ломается с выстрела, кирпич — с четырёх, сталь и вода — нет. В кронах враги тебя не видят.",
@@ -157,6 +160,12 @@ const UI_TEXT = Object.freeze({
   "soldat": "Pz.Kpfw. V Panther (средний)",
   "tyazhyolyy": "Pz.Kpfw. VI Tiger (тяжёлый)",
   "artilleriya": "Ferdinand (САУ)",
+  "motocikl_miner": "Мотоцикл-минёр",
+  "smertnik": "Смертник",
+  "miny_i_smertniki": "Минёры и смертники",
+  "shans_smertnika_v_zeleni": "Шанс смертника в клетке зелени",
+  "vzryv_smertnika_cherez_s": "Взрыв смертника через, с",
+  "skorost_smertnika": "Скорость смертника",
   "khp": "ХП",
   "skorost_tanka": "Скорость танка",
   "skorost_snaryada": "Скорость снаряда",
@@ -276,7 +285,7 @@ const UI_TEXT = Object.freeze({
   "net_kart_kampanii": "Нет карт кампании"
 });
 
-const KIND_NAMES = { player: UI_TEXT.igrok, scout: UI_TEXT.razvedchik, soldier: UI_TEXT.soldat, heavy: UI_TEXT.tyazhyolyy, artillery:UI_TEXT.artilleriya, ally:UI_TEXT.soyuznik };
+const KIND_NAMES = { player: UI_TEXT.igrok, scout: UI_TEXT.razvedchik, soldier: UI_TEXT.soldat, heavy: UI_TEXT.tyazhyolyy, artillery:UI_TEXT.artilleriya, moto:UI_TEXT.motocikl_miner, bomber:UI_TEXT.smertnik, ally:UI_TEXT.soyuznik };
 
 const BRUSHES = [['B', UI_TEXT.kirpich], ['F', UI_TEXT.zabor], ['S', UI_TEXT.broneplita], ['W', UI_TEXT.voda], ['T', UI_TEXT.lesoposadka], ['P', UI_TEXT.pesok], ['b', UI_TEXT.kirpich_60], ['t', UI_TEXT.lesoposadka_60], ['.', UI_TEXT.raschistit], [' ', UI_TEXT.ne_trogat]];
 

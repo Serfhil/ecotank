@@ -12,7 +12,7 @@ function boot(html){
 
 const box=boot(fs.readFileSync('index.html','utf8'));
 const result=vm.runInContext(`
-muted=true;const summaries=[];
+muted=true;CFG.bomberChance=0;const summaries=[];
 const profiles=[['original',30],['original',45],['original',60],['preset01',30],['preset01',45],['preset01',60],['map',30],['campaign',30]];
 for(const [mode,size]of profiles){
  CFG.mapMode=mode;CFG.mapSize=size;CFG.mapPick=claudeMaps()[0].id;CFG.campaignStart=0;startGame();base.hp=99999;

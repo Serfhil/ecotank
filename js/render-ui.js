@@ -26,7 +26,7 @@ function drawHud(force = false) {
   const panel=(key,paint)=>{const p=h.panels[key];c.save();c.globalAlpha=hudOpacity[key];c.translate(p.x,p.y);c.fillStyle='#2b1018e8';roundRect(c,0,0,p.w,p.h,7);c.fill();c.strokeStyle='#bb794b';c.lineWidth=1;c.stroke();paint(p);c.restore();};
   c.textBaseline='middle';c.textAlign='left';
   panel('left',p=>{
-    drawNiiIcon(c,10,8,30);c.fillStyle='#53f6e8';c.font='700 19px "Segoe UI",sans-serif';c.fillText(String(player.rail),46,24);
+    drawNiiIcon(c,10,8,30);if(player.railArmed){c.strokeStyle='#c58cff';c.lineWidth=2;c.strokeRect(7,5,36,36);}c.fillStyle='#53f6e8';c.font='700 19px "Segoe UI",sans-serif';c.fillText(String(player.rail),46,24);
     const gap=3,w=Math.min(19,(p.w-20-gap*(player.maxHp-1))/player.maxHp);
     for(let i=0;i<player.maxHp;i++){c.fillStyle=i<player.hp?'#ed3d43':'#58212c';c.fillRect(10+i*(w+gap),p.h-31,w,18);c.strokeStyle='#ee868255';c.strokeRect(10+i*(w+gap),p.h-31,w,18);}
   });
@@ -50,11 +50,12 @@ function drawMenu() {
     ['W/S · ↑/↓', UI_TEXT.vperyod_nazad], ['A/D · ←/→', UI_TEXT.povorot_korpusa],
     [UI_TEXT.mysh, UI_TEXT.pritsel_bashni],
     [UI_TEXT.lkm_probel, UI_TEXT.ogon],
-    [UI_TEXT.pkm_e, UI_TEXT.relsotron_esli_est_zaryad],
+    [UI_TEXT.pkm, UI_TEXT.kursovoy_pulemet],
+    [UI_TEXT.klavisha_c, UI_TEXT.zaryadit_snaryad_iz_nii],
     ['P / Esc', UI_TEXT.pauza],
     ['M', UI_TEXT.zvuk],
   ];
-  lines.forEach(([k, v], i) => { text(k, UI_W / 2 - 20, 260 + i * 27, 16, '#ffe08a', 'right'); text(v, UI_W / 2, 260 + i * 27, 16, '#dde6d8', 'left', '400'); });
+  lines.forEach(([k, v], i) => { text(k, UI_W / 2 - 20, 250 + i * 23, 16, '#ffe08a', 'right'); text(v, UI_W / 2, 250 + i * 23, 16, '#dde6d8', 'left', '400'); });
   text(UI_TEXT.zabor_lomaetsya_s_vystrela_kirpich_s_chetyryokh_stal_i_voda_net_v_kronakh_vragi_tebya, UI_W / 2, 438, 14, '#9fb39a', 'center', '400');
   text(UI_TEXT.proezzhay_po_oblomkam_vragov_chtoby_sobrat_metallolom, UI_W / 2, 460, 14, '#d9c27a', 'center', '400');
   const types = Object.entries(ITEMS);

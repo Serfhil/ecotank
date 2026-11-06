@@ -14,7 +14,7 @@ module.exports=function checkDefeat(root){
   return {run,send,elements,draws,loaded,saved};
  }
  for(const tier of [0,1,2])for(const cause of ['player','base']){
-  const b=boot();assert.equal(b.loaded.length,32,'Preload all three images');b.run(`muted=true;CFG.mapMode='original';startGame();grid.fill(EMPTY);enemies=[];toSpawn=['soldier'];setPlayerUpgrade(player,${tier});score=5555;player.inv=0;player.pw.shield=0;keys.Enter=true;mouse.down=true;${cause==='player'?"hitPlayer({x:player.x,y:player.y,dmg:99});":"hitBase(99);"}`);
+  const b=boot();assert.equal(b.loaded.length,35,'Preload defeat, vehicle and sapper images');b.run(`muted=true;CFG.bomberChance=0;CFG.mapMode='original';startGame();grid.fill(EMPTY);enemies=[];toSpawn=['soldier'];setPlayerUpgrade(player,${tier});score=5555;player.inv=0;player.pw.shield=0;keys.Enter=true;mouse.down=true;${cause==='player'?"hitPlayer({x:player.x,y:player.y,dmg:99});":"hitBase(99);"}`);
   assert.equal(b.run('defeatTier'),tier);
   assert.notEqual(b.run('state'),'over','Let blasts finish before the illustration');
   for(let i=0;i<900&&b.run('state')!=='over';i++){
@@ -68,14 +68,14 @@ module.exports=function checkDefeat(root){
   assert(layout.draws.some(d=>d[0]==='hudCanvas'&&d[1]==='text'&&d[2]===label),'HUD value/label '+label);
   assert(!layout.draws.some(d=>d[0]==='c'&&d[1]==='text'&&d[2]===label),'HUD must not paint on battlefield');
  }
- const pointer=boot();pointer.run("muted=true;startGame();rememberDefeatTier();enterDefeat();overT=2.99;syncUI();");
+ const pointer=boot();pointer.run("muted=true;CFG.bomberChance=0;startGame();rememberDefeatTier();enterDefeat();overT=2.99;syncUI();");
  pointer.send('defeatScreen','mousedown',{button:0});assert.equal(pointer.run('state'),'over');pointer.run('update(.02)');pointer.send('defeatScreen','mousedown',{button:0});assert.equal(pointer.run('state'),'over','Held pointer cannot start after timeout');pointer.send('global','mouseup');
  pointer.send('defeatScreen','mousedown',{button:0,target:pointer.elements.get('defeatRestart')});pointer.send('global','mouseup');pointer.send('defeatRestart','click',{detail:1});assert.equal(pointer.run('state'),'play','Actual button restarts');
  pointer.run('rememberDefeatTier();enterDefeat();overT=3;mouse.down=false');pointer.send('defeatScreen','mousedown',{button:0});assert.equal(pointer.run('state'),'play','Fresh background click restarts');
- const camp=boot();camp.run("muted=true;CFG.mapMode='campaign';unlockCampaign(2);CFG.campaignStart=1;startGame();const failedId=activeMap.id;const failedWave=wave;hitBase(99);for(let i=0;i<900&&state!=='over';i++){hitstop=0;update(.025);}overT=3;requestDefeatRestart(false);");
+ const camp=boot();camp.run("muted=true;CFG.bomberChance=0;CFG.mapMode='campaign';unlockCampaign(2);CFG.campaignStart=1;startGame();const failedId=activeMap.id;const failedWave=wave;hitBase(99);for(let i=0;i<900&&state!=='over';i++){hitstop=0;update(.025);}overT=3;requestDefeatRestart(false);");
  assert.equal(camp.run("state==='play'&&wave===failedWave&&activeMap.id===failedId&&!victory"),true,'Retry the failed campaign level');
  camp.run('winCampaign();update(2);syncUI()');assert.equal(camp.elements.get('defeatScreen').hidden,true);assert.equal(camp.elements.get('victoryScreen').hidden,false,'Campaign victory uses new screen');
- const failed=boot(true);failed.run('muted=true;startGame();enterDefeat();overT=3;syncUI()');failed.draws.length=0;failed.run('draw()');assert(!failed.draws.some(d=>d[1]==='image'&&d[2].source),'Missing image uses fallback');assert(failed.draws.some(d=>d[2]==='ПОРАЖЕНИЕ'));assert.equal(failed.elements.get('defeatRestart').hidden,false);
+ const failed=boot(true);failed.run('muted=true;CFG.bomberChance=0;startGame();enterDefeat();overT=3;syncUI()');failed.draws.length=0;failed.run('draw()');assert(!failed.draws.some(d=>d[1]==='image'&&d[2].source),'Missing image uses fallback');assert(failed.draws.some(d=>d[2]==='ПОРАЖЕНИЕ'));assert.equal(failed.elements.get('defeatRestart').hidden,false);
  console.log('PASS: defeat art tiers, fatal snapshots, frozen frame, 1-second fade, 2-second post-fade gate, held inputs, button/canvas restart, campaign retry, victory, image fallback, HUD geometry/values/pointer');
 };
 if(require.main===module)module.exports(__dirname);

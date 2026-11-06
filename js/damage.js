@@ -7,6 +7,7 @@
 function blastDamage(x,y,diameter=30,options={}) {
   const radius=diameter*1.5,damage=options.damage||1;
   damageTerrainFromBlast(x,y,radius,damage);
+  sapperBlast(x,y,radius);
   // Marked-dead tanks are ignored, so chain explosions cannot award duplicate kills.
   for(const e of [...enemies]) if(!e.dead && e.spawnT<=0 && Math.hypot(e.x-x,e.y-y)<=radius)hitEnemy(e,{x,y,dmg:damage,blast:true});
   if(!options.safePlayer&&player&&!player.dead&&Math.hypot(player.x-x,player.y-y)<=radius)hitPlayer({x,y,dmg:damage,blast:true});

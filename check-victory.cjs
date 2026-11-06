@@ -14,7 +14,7 @@ module.exports=function checkVictory(root){
   return {run,send,elements,draws,loaded,saved};
  }
  const b=boot(),run=b.run;
- run("muted=true;CFG.mapMode='campaign';CFG.campaignStart=0;startGame();grid.fill(EMPTY);enemies=[];toSpawn=[];");
+ run("muted=true;CFG.bomberChance=0;CFG.mapMode='campaign';CFG.campaignStart=0;startGame();grid.fill(EMPTY);enemies=[];toSpawn=[];");
  for(const kind of ['scout','soldier','heavy','artillery']) {
    run(`{const e=makeTank(200,100,'${kind}');e.spawnT=0;enemies.push(e);hitEnemy(e,{x:e.x,y:e.y,dmg:999});hitEnemy(e,{x:e.x,y:e.y,dmg:999});}`);
    assert.equal(run(`operationStats.enemies.${kind}`),1);
@@ -62,12 +62,12 @@ module.exports=function checkVictory(root){
    assert.equal(+geometry.elements.get('victoryCreditsWindow').style.top.slice(0,-2),g.top);
    geometry.run('update(.02)');assert.notEqual(geometry.run('victoryAwardTime'),null,'End after last row leaves actual window');
  }
- const natural=boot();natural.run("muted=true;CFG.mapMode='campaign';startGame();wave=campaign.length;enemies=[];toSpawn=[];artilleryShells=[];resetArtillery();wrecks=[{kind:'scout',x:100,y:100,age:0,detonateAt:.5,exploded:false,smokeT:1,taken:true}];update(.1)");
+ const natural=boot();natural.run("muted=true;CFG.bomberChance=0;CFG.mapMode='campaign';startGame();wave=campaign.length;enemies=[];toSpawn=[];artilleryShells=[];resetArtillery();wrecks=[{kind:'scout',x:100,y:100,age:0,detonateAt:.5,exploded:false,smokeT:1,taken:true}];update(.1)");
  assert.equal(natural.run('victory'),false,'Wait for wreck detonation');
  natural.run("wrecks=[];state='between';betweenT=.01;update(.02)");assert.equal(natural.run('victory'),true,'Last campaign level reaches victory through main loop');
  natural.run('draw();update(.5)');natural.draws.length=0;natural.run('draw()');assert(!natural.draws.some(d=>d[0]==='c'||d[0]==='hudCanvas'),'Battle remains frozen during transition');
  const fallback=boot(true);fallback.run("CFG.mapMode='campaign';startGame();winCampaign();update(100);update(1);draw();syncUI()");assert.equal(fallback.run('victoryImageLoaded'),false);assert.equal(fallback.elements.get('victoryNew').hidden,false);
- assert.equal(run('STAT_ENEMY_TYPES.length'),4);
+ assert.equal(run('STAT_ENEMY_TYPES.length'),6);
  for(const kind of ['scout','soldier','heavy','artillery'])assert(b.elements.has('victoryModel-'+kind));
  console.log('PASS: victory transitions, event statistics, retries/reset, immutable totals, held input, keyboard, award, campaign restart, fallback and responsive canvas');
 };

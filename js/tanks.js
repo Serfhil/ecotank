@@ -97,14 +97,22 @@ function updatePlayer(dt) {
   p.shiftHeld=shift;
   const steer = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
   const throttle = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
-  p.angle += steer * 2.2 * dt;
+  // Башня сидит на корпусе: поворот шасси поворачивает и её, а наведение догоняет со своей скоростью.
+  const hullTurn = steer * 2.2 * dt;
+  p.angle += hullTurn; p.turret += hullTurn;
   p.vx = p.vy = 0;
   if (throttle) moveTank(p, Math.cos(p.angle)*throttle*KINDS.player.speed*(p.boostLeft>0?2:1)*dt, Math.sin(p.angle)*throttle*KINDS.player.speed*(p.boostLeft>0?2:1)*dt, dt);
   p.turret = turnTo(p.turret, Math.atan2(mouse.y - p.y, mouse.x - p.x), dt * KINDS.player.turretSpeed);
   p.cd -= dt; p.inv -= dt; p.recoil=(p.recoilMax||5)*(1-reloadProgress(p));
   for (const k in p.pw) p.pw[k] = Math.max(0, p.pw[k] - dt);
   if ((mouse.down || keys.Space) && p.cd <= 0) {
-    fire(p);
-    p.cd = p.reloadDuration = KINDS.player.fireRate * (p.pw.rapid > 0 ? .45 : 1);
+    if (p.railArmed && p.rail > 0) { p.railArmed = false; fireRail(p); }
+    else {
+      p.railArmed = false;
+      fire(p);
+      p.cd = p.reloadDuration = KINDS.player.fireRate * (p.pw.rapid > 0 ? .45 : 1);
+    }
   }
+  p.mgCd = Math.max(0, (p.mgCd || 0) - dt);
+  if (mouse.right && p.mgCd <= 0) { fireMachineGun(p, mouse.x, mouse.y); p.mgCd = MG_CONFIG.interval; }
 }

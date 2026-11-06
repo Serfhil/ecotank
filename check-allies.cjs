@@ -10,7 +10,7 @@ module.exports=function checkAllies(root){
   const html=fs.readFileSync(root+'/index.html','utf8');
   for(const [,attrs,code]of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)){const src=attrs.match(/src="([^"]+)"/)?.[1];vm.runInContext(src?fs.readFileSync(root+'/'+src,'utf8'):code,box);}
   const run=code=>vm.runInContext(code,box);
-  run('muted=true');
+  run('muted=true;CFG.bomberChance=0');
   assert.equal(run('CFG.allies'),false,'Allies are off by default');
   assert(run("CFG_FIELDS.some(([,f])=>f.some(([k,,t])=>k==='allies'&&t==='bool'))"),'Developer checkbox for allies');
   run("CFG.mapMode='original';CFG.mapSize=30;startGame()");
