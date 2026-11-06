@@ -6,8 +6,9 @@
 // Файл не запускает обработчики и не изменяет карту при подключении.
 
 function brickRects(c,r) {
-  const i=r*COLS+c;
-  return masonry(0).filter((b,q)=>brickMask[i]&(1<<q)).map(b=>({x:c*T+b.x,y:r*T+b.y,w:b.w,h:8}));
+  const mask=brickMask[r*COLS+c],rects=[];
+  for(let q=0;q<MASONRY.length;q++)if(mask&(1<<q)){const b=MASONRY[q];rects.push({x:c*T+b.x,y:r*T+b.y,w:b.w,h:8});}
+  return rects;
 }
 
 function fenceRects(c,r) {
@@ -56,27 +57,60 @@ function bulletBlockingCell(x,y,radius=0) {
 }
 function bulletBlocked(x,y,radius=0) { return !!bulletBlockingCell(x,y,radius); }
 
+// Hot path: fragmentEscape calls this ~1000 times per brick fragment, so it avoids allocations.
+function rectNear(x,y,bx,by,bw,bh,r2) {
+  const dx=x-clamp(x,bx,bx+bw),dy=y-clamp(y,by,by+bh);
+  return dx*dx+dy*dy<r2;
+}
 function fragmentBlocked(x,y,radius) {
   if(x-radius<0||y-radius<0||x+radius>W||y+radius>H)return true;
+  const r2=radius*radius;
   for(let r=Math.floor((y-radius)/T);r<=Math.floor((y+radius)/T);r++)
     for(let c=Math.floor((x-radius)/T);c<=Math.floor((x+radius)/T);c++) {
-      const tile=tileAt(c,r),rects=breakable(tile)||tile===STEEL?tileRects(c,r,tile):[];
-      if(rects.some(b=>Math.hypot(x-clamp(x,b.x,b.x+b.w),y-clamp(y,b.y,b.y+b.h))<radius))return true;
+      const tile=tileAt(c,r);
+      if(tile===BRICK) {
+        const mask=brickMask[r*COLS+c],ox=c*T,oy=r*T;
+        for(let q=0;q<MASONRY.length;q++){if(!(mask&(1<<q)))continue;const b=MASONRY[q];if(rectNear(x,y,ox+b.x,oy+b.y,b.w,8,r2))return true;}
+      } else if(tile===STEEL) { if(rectNear(x,y,c*T,r*T,T,T,r2))return true; }
+      else if(tile===FENCE) { for(const b of fenceRects(c,r))if(rectNear(x,y,b.x,b.y,b.w,b.h,r2))return true; }
     }
   return false;
 }
 
-function fragmentEscape(x,y,radius) {
+function fragmentEscape(x,y,radius,count=32,step=2) {
   const rays=[];
-  for(let k=0;k<32;k++) {
-    const angle=k*Math.PI/16,dx=Math.cos(angle),dy=Math.sin(angle);
+  for(let k=0;k<count;k++) {
+    const angle=k*Math.PI*2/count,dx=Math.cos(angle),dy=Math.sin(angle);
     let clearance=0;
-    for(let d=2;d<=72;d+=2){if(fragmentBlocked(x+dx*d,y+dy*d,radius))break;clearance=d;}
+    for(let d=step;d<=72;d+=step){if(fragmentBlocked(x+dx*d,y+dy*d,radius))break;clearance=d;}
     rays.push({angle,clearance});
   }
   const best=Math.max(...rays.map(ray=>ray.clearance));
   const choices=rays.filter(ray=>ray.clearance>=Math.max(2,best-2));
   return choices.length?choices[ri(0,choices.length-1)]:{angle:0,clearance:0};
+}
+
+// Cheap escape: fly away from the impact, trying neighbouring directions until one is open.
+const BLAST_ESCAPE_OFFSETS=[0,.45,-.45,.9,-.9,1.5,-1.5,2.3,-2.3,Math.PI];
+function blastFragmentEscape(x,y,radius,hx,hy) {
+  const base=Math.atan2(y-hy,x-hx);let best={angle:base,clearance:0};
+  for(const offset of BLAST_ESCAPE_OFFSETS) {
+    const angle=base+offset+rnd(-.15,.15),dx=Math.cos(angle),dy=Math.sin(angle);
+    let clearance=0;
+    for(let d=4;d<=72;d+=4){if(fragmentBlocked(x+dx*d,y+dy*d,radius))break;clearance=d;}
+    if(clearance>best.clearance)best={angle,clearance};
+    if(clearance>=24)break;
+  }
+  return best;
+}
+
+// An artillery blast can remove ~100 bricks (400 fragments) at once. Only the first
+// fragments in a frame get the precise 32-ray search; the rest use the cheap one.
+const PRECISE_FRAGMENTS_PER_FRAME=16;
+let fragmentBudgetTime=NaN,fragmentBudget=0;
+function budgetedFragmentEscape(x,y,radius,hx,hy) {
+  if(fragmentBudgetTime!==time){fragmentBudgetTime=time;fragmentBudget=PRECISE_FRAGMENTS_PER_FRAME;}
+  return fragmentBudget-->0?fragmentEscape(x,y,radius):blastFragmentEscape(x,y,radius,hx,hy);
 }
 
 function hitBrick(c, r, dmg, hx = c*T+16, hy = r*T+16) {
@@ -86,19 +120,19 @@ function hitBrick(c, r, dmg, hx = c*T+16, hy = r*T+16) {
   const previousMask=brickMask[i];
   if (dmg >= 99) { brickHp[i] = 0; brickMask[i] = 0; }
   else {
-    const bricks = masonry(0);
+    const bricks = MASONRY;
     const surviving = bricks.map((b,q)=>({b,q})).filter(({q})=>brickMask[i] & (1<<q));
     surviving.sort((a,b)=>Math.hypot(c*T+a.b.x+a.b.w/2-hx,r*T+a.b.y+4-hy)-Math.hypot(c*T+b.b.x+b.b.w/2-hx,r*T+b.b.y+4-hy)+(((a.q+brickVariant[i])%3)-((b.q+brickVariant[i])%3))*2);
     const count = Math.ceil(surviving.length / brickHp[i]);
     for(const {q} of surviving.slice(0,count)) brickMask[i] &= ~(1<<q);
     brickHp[i]--;
   }
-  masonry(0).forEach((b,q)=>{
+  MASONRY.forEach((b,q)=>{
     if(!(previousMask&(1<<q))||(brickMask[i]&(1<<q)))return;
     // Fragments originate inside the specific bricks removed by this impact.
     for(let row=0;row<2;row++)for(let col=0;col<2;col++){
       const w=b.w/2,h=4,x=c*T+b.x+(col+.5)*w,y=r*T+b.y+(row+.5)*h;
-      const escape=fragmentEscape(x,y,Math.min(w,h)*.35),angle=escape.angle;
+      const escape=budgetedFragmentEscape(x,y,Math.min(w,h)*.35,hx,hy),angle=escape.angle;
       const speed=Math.min(rnd(45,135),escape.clearance*2),life=rnd(.9,1.7);
       parts.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life,max:life,w:w-.6,h:h-.5,size:w,rot:0,vr:rnd(-8,8),color:['#b3633a','#a95833','#bd7149'][(q+brickVariant[i])%3],kind:'debris',brickFragment:true});
     }
@@ -148,6 +182,9 @@ function masonry(variant) {
   }
   return bricks;
 }
+
+// Shared read-only layout of the default masonry variant, reused by collision and drawing.
+const MASONRY=Object.freeze(masonry(0).map(b=>Object.freeze(b)));
 
 function damageTerrainFromBlast(x,y,radius,damage) {
   for(let r=Math.max(0,Math.floor((y-radius*2)/T));r<=Math.min(ROWS-1,Math.floor((y+radius*2)/T));r++)

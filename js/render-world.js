@@ -38,7 +38,7 @@ function drawTiles() {
 function drawBrick(x,y,hp,mask,variant) {
   const i=Math.floor(y/T)*COLS+Math.floor(x/T),jolt=brickShake[i]*5;
   ctx.save();ctx.translate(Math.sin(time*65+i)*jolt,Math.cos(time*59+i)*jolt*.5);
-  masonry(0).forEach((b,q)=>{
+  MASONRY.forEach((b,q)=>{
     if(!(mask & (1<<q)))return;
     detailBrick(ctx,x+b.x,y+b.y,b.w,Math.abs(Math.floor((x+b.x)/16)+Math.floor((y+b.y)/8)),hp);
   });
