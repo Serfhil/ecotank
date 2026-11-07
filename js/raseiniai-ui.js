@@ -54,9 +54,10 @@ function raseiniaiLosses(revised = null) {
 }
 
 function raseiniaiOpeningTitle() {
-  return `<div class="storyFull storyTitle"><div class="storySheet">
+  return `<div class="storyFull storyTitle" style="--title-step:${RASEINIAI_TITLE_STEP};--title-fade:${RASEINIAI_TITLE_FADE}"><div class="storySheet">
     <h1>${RASEINIAI_TITLE}</h1><p class="storySubtitle">Приграничные танковые бои. Июнь 1941</p>
     <div class="storyTitleLosses">${raseiniaiLosses()}</div>
+    <p class="storyTitleContinue" hidden>Чтобы продолжить - нажмите Пробел</p>
   </div></div>`;
 }
 
@@ -131,6 +132,12 @@ function syncRaseiniaiUI() {
         <img class="storyFarewellCharacter" src="${RASEINIAI_ASSETS}farewell-character.png" alt=""></div>`;
     }
     else raseiniaiScreen.innerHTML = '';
+  }
+  if (s.phase==='title') {
+    const title=raseiniaiScreen.querySelector('.storyTitle');
+    const hint=raseiniaiScreen.querySelector('.storyTitleContinue');
+    if (title) title.style.setProperty('--title-age',Math.min(s.age,RASEINIAI_TITLE_END));
+    if (hint) hint.hidden=!raseiniaiTitleRevealed();
   }
   if (d) {
     const [line,translation] = d.lines[d.index];

@@ -5,7 +5,9 @@ const RASEINIAI_EXITS = [8, 21];
 const RASEINIAI_FIRST_SPAWN = [1.4, 2];
 const RASEINIAI_TRANSLATION_DELAY = .5;
 const RASEINIAI_REPAIR_COST = 2;
-const RASEINIAI_TITLE_TIME = 6;
+const RASEINIAI_TITLE_STEP = 1.3;
+const RASEINIAI_TITLE_FADE = .65;
+const RASEINIAI_TITLE_END = 2*RASEINIAI_TITLE_STEP+RASEINIAI_TITLE_FADE;
 const RASEINIAI_MAP_REVEAL = 1.2;
 const RASEINIAI_CIVILIAN_DELAY = 2;
 const RASEINIAI_RADIO_BLIP_INTERVAL = .055;
@@ -118,7 +120,7 @@ function advanceRaseiniai() {
     else if (++d.index < d.lines.length) { d.elapsed = d.shown = d.translationWait = d.blipAt = 0; d.complete = false; }
     else { raseiniai.dialogue = null; d.done(); }
     raseiniai.dirty = true;
-  } else if (raseiniai.phase === 'title' && raseiniaiTankInPosition()) startRaseiniaiOrders();
+  } else if (raseiniai.phase === 'title' && raseiniaiTankInPosition() && raseiniaiTitleRevealed()) startRaseiniaiOrders();
   else if (raseiniai.phase === 'newspaper') raseiniaiPhase('timeline');
   else if (raseiniai.phase === 'timeline') raseiniaiPhase('farewell');
 }
@@ -167,12 +169,21 @@ function updateRaseiniaiEvacuation(dt) {
 
 function finishRaseiniaiLine(d) {
   d.complete=true;
-  d.translationWait=d.lines[d.index][1] ? RASEINIAI_TRANSLATION_DELAY : 0;
+  const delay=raseiniai.phase==='german' ? RASEINIAI_TRANSLATION_DELAY/1.5 : RASEINIAI_TRANSLATION_DELAY;
+  d.translationWait=d.lines[d.index][1] ? delay : 0;
+}
+
+function raseiniaiReducedMotion() {
+  return typeof matchMedia==='function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function raseiniaiTitleRevealed() {
+  return raseiniai.age>=RASEINIAI_TITLE_END || raseiniaiReducedMotion();
 }
 
 function raseiniaiMapShade() {
   if (!raseiniai || raseiniai.phase!=='civilians' || raseiniai.age>=RASEINIAI_MAP_REVEAL ||
-      (typeof matchMedia==='function' && matchMedia('(prefers-reduced-motion: reduce)').matches)) return 0;
+      raseiniaiReducedMotion()) return 0;
   const progress=clamp(raseiniai.age/RASEINIAI_MAP_REVEAL,0,1);
   return 1-progress*progress*(3-2*progress);
 }
@@ -222,7 +233,6 @@ function updateRaseiniaiStory(dt) {
   if (s.phase === 'title') {
     const step=Math.min(player.y-(H-2.5*T),dt*KINDS.player.speed);
     player.y-=step; player.tread=(player.tread+step)%6;
-    if (raseiniaiTankInPosition() && s.age>=RASEINIAI_TITLE_TIME) startRaseiniaiOrders();
   }
   if (s.phase === 'ordersOut' && s.age>=RASEINIAI_CAMERA.return) {
     startRaseiniaiWave(1);
@@ -271,7 +281,7 @@ function resumeRaseiniaiBattle() {
 
 function startRaseiniaiWave(number) {
   wave = number;
-  const batches = RASEINIAI_WAVES[number-1].map(batch=>[].concat(batch).map(group=>({...group,slot:0,entered:[],timer:.65})));
+  const batches = RASEINIAI_WAVES[number-1].map(batch=>[].concat(batch).map(group=>({...group,slot:0,entered:[],timer:number===3?0:.65})));
   const pending = batches.flat().reduce((total,group)=>total+group.lanes.length,0);
   raseiniai.tracks.push({number,batches,pending});
   banner = {text:number===4?'4-я волна. Штурм':number+'-я волна',sub:'',t:2.2};
@@ -298,7 +308,7 @@ function updateRaseiniaiSpawns(dt) {
     startRaseiniaiWave(2);
   }
   for (const track of raseiniai.tracks) {
-    if (!track.batches.length) continue;
+    if (!track.batches.length || (track.number===3 && banner.t>0)) continue;
     if (raseiniaiBatchCleared(track.batches[0])) {
       track.batches.shift();
       for (const group of track.batches[0] || []) group.timer = 0;

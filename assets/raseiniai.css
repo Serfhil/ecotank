@@ -20,9 +20,11 @@ body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#mu
 .storySubtitle{font-size:clamp(16px,2.5vw,23px);margin:.2em 0 1.3em;font-weight:400}
 .storySheet h2{font-size:clamp(17px,2.5vw,24px);margin:.7em 0 .35em}
 .storyTitle{background:transparent;text-shadow:0 1px 5px #000,0 2px 10px #000}
-.storyTitle h1,.storyTitle .storySubtitle,.storyTitleLosses{animation:storyReveal .65s var(--title-delay,0s) both}
-.storyTitle .storySubtitle{--title-delay:.65s}
-.storyTitleLosses{--title-delay:1.3s;background:#12090bb0;border-radius:8px;padding:8px clamp(8px,2vw,24px) 12px}
+.storyTitle h1,.storyTitle .storySubtitle,.storyTitleLosses{opacity:clamp(0,calc((var(--title-age,0) - var(--title-start,0))/var(--title-fade)),1)}
+.storyTitle .storySubtitle{--title-start:var(--title-step)}
+.storyTitleLosses{--title-start:calc(2 * var(--title-step));background:#12090bb0;border-radius:8px;padding:8px clamp(8px,2vw,24px) 12px}
+.storyTitleContinue{margin:.75em 0 0;font-weight:700}
+.storyTitleContinue[hidden]{display:block;visibility:hidden}
 .storyLosses{border-collapse:collapse;margin:.3em auto;line-height:1.45;text-align:left}
 .storyLosses th,.storyLosses td{padding:3px clamp(7px,2vw,18px);font-weight:400}
 .storyLosses td{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -66,7 +68,7 @@ body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#mu
   .storyFarewellCharacter{width:min(85%,390px);max-height:42dvh}
 }
 @media(prefers-reduced-motion:reduce){
-  .storyTitle h1,.storyTitle .storySubtitle,.storyTitleLosses,
+  .storyTitle h1,.storyTitle .storySubtitle,.storyTitleLosses{opacity:1}
   .storyRevision,.storyStrike::after,.storySpeechLines [data-story-translation]:not([hidden]){animation:none}
   .storySpeechOriginal{transition:none}
 }

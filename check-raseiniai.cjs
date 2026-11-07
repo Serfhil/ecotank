@@ -80,12 +80,18 @@ module.exports = function checkRaseiniai(box) {
       const arrivalY=player.y;
       update(.1);
       check(raseiniai.phase==='title'&&Math.abs(arrivalY-player.y-KINDS.player.speed*.1)<1e-7,'tank moves beneath title at gameplay speed');
-      until(()=>raseiniai.phase==='orders');
+      until(()=>raseiniaiTankInPosition());
+      check(!raseiniaiTitleRevealed(),'tank can arrive before the table finishes');
+      pressSpace();
+      until(()=>raseiniai.age>7);
+      pressSpace(true);
+      check(raseiniai.phase==='title'&&!raseiniai.dialogue&&raseiniaiTitleRevealed(),'title stays beyond the old timeout and ignores held Space');
+      keys.Space=false;pressSpace();keys.Space=false;
       fit();
       const dialogueLayout=JSON.stringify(gameLayout.field);
       check(savedTiles.some((tile,i)=>tile!==grid[i]) || brickHp.some((hp,i)=>savedTiles[i]===BRICK&&hp<4),'bombardment damages the map');
       check(raseiniai.phase==='orders'&&Math.floor(player.x/T)===8,'left road arrival');
-      check(raseiniaiCameraScale()>=1&&raseiniai.age<.1,'automatic radio starts at original scale');
+      check(raseiniaiCameraScale()>=1&&raseiniai.age<.1,'radio starts at original scale after fresh Space');
       sfx=name=>{if(name.startsWith('radio'))blips.push(name);};
       updateRaseiniaiStory(.4);
       check(blips.join()==='radioGerman,radioSoviet','Soviet radio uses a separate blip');
@@ -136,7 +142,7 @@ module.exports = function checkRaseiniai(box) {
       check(e.engaged&&bullets.length===1,'scout sees and shoots at player');
       player.dead=true;updateEnemy(e,.025);player.dead=false;bullets=[];
       check(!e.engaged&&flow[(ROWS-1)*COLS+8]===0,'scout returns to exit route');
-      let threshold=0, killedMoto=null, controlBetween=false;
+      let threshold=0, killedMoto=null, controlBetween=false, wave3Entry=false;
       for (let i=0;i<18000 && raseiniai.phase!=='retreat';i++) {
         if (raseiniai.phase==='german'&&raseiniai.dialogue) {
           check(raseiniai.evac.some(unit=>unit.truck),'German radio starts alongside trucks');
@@ -145,7 +151,10 @@ module.exports = function checkRaseiniai(box) {
             if(j===0)check(raseiniai.dialogue.lines[j].join('|')==='Herr Oberst, hier spricht Generaloberst Erich Hoepner.|Полковник, с вами говорит генерал-полковник Эрих Гёпнер','colonel replaces captain');
             pressSpace();keys.Space=false;
             check(raseiniai.dialogue.complete&&raseiniai.dialogue.lines[j][1],'phrase has translation');
-            updateRaseiniaiStory(.5);pressSpace();keys.Space=false;
+            check(Math.abs(raseiniai.dialogue.translationWait-1/3)<1e-9,'wave 4 radio translation waits one third of a second');
+            updateRaseiniaiStory(.32);
+            check(raseiniai.dialogue.translationWait>0,'translation stays hidden before a third of a second');
+            updateRaseiniaiStory(.02);pressSpace();keys.Space=false;
           }
           check(wave===3&&raseiniai.evac.length>0,'closing radio early waits for evacuation');
         }
@@ -153,6 +162,10 @@ module.exports = function checkRaseiniai(box) {
         for(const e of enemies){
           if(!spawned.has(e)){
             spawned.add(e);
+            if(e.storyWave===3) {
+              check(banner.t<=0,'wave 3 does not spawn while its announcement is visible');
+              wave3Entry=true;
+            }
             const key=e.storyWave+'-'+e.kind;
             count[key]=(count[key]||0)+1;
             if(e.storyWave===4&&e.storyColumn&&!columnStarts.has(e.storyColumn))columnStarts.set(e.storyColumn,i);
@@ -166,7 +179,7 @@ module.exports = function checkRaseiniai(box) {
         if(wave===2&&!threshold)threshold=raseiniai.firstKills;
         for(const e of spawned)if(e.escaped)reachedExits.add(e.storyRoute.exit);
       }
-      check(raseiniai.phase==='retreat'&&controlBetween,'all four waves finish with live interlude');
+      check(raseiniai.phase==='retreat'&&controlBetween&&wave3Entry,'all four waves finish with live interlude');
       check(JSON.stringify(count)===JSON.stringify({'1-scout':10,'2-scout':10,'2-moto':5,'3-scout':6,'3-moto':10,'4-scout':20,'4-moto':6}),'46 tanks and 21 motorcycles');
       const starts=[...columnStarts.values()];
       check(starts.length===5&&starts[0]===starts[1]&&starts[2]===starts[3]&&starts[2]>starts[0]&&starts[4]>starts[3],'wave 4 paired entries');
@@ -187,7 +200,7 @@ module.exports = function checkRaseiniai(box) {
       check(raseiniai.phase==='farewell','fresh Space advances the timeline once');
       startRaseiniai();
       check(!raseiniai.breaches,'new launch resets breaches');
-      player=makeTank(272,H-2.5*T,'player');raseiniai.dialogue=null;raseiniaiPhase('title');
+      player=makeTank(272,H-2.5*T,'player');raseiniai.dialogue=null;raseiniaiPhase('title');raseiniai.age=RASEINIAI_TITLE_END;
       pressSpace();pressSpace(true);
       check(raseiniai.phase==='orders'&&!raseiniai.dialogue.complete&&raseiniai.dialogue.index===0,'fresh Space skips ready title, held Space does not skip the first line');
       keys.Space=false;

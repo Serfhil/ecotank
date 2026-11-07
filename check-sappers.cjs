@@ -75,6 +75,22 @@ module.exports=function checkSappers(root){
    if(two.minesLeft!==3)throw Error('Less than a tile is blocked');
    two.x+=.01;plantCharge(two,two.dropWhat);
    if(two.minesLeft!==2||reports!==2||mines.filter(m=>m.kind==='mine'&&!m.done).length!==2)throw Error('Exactly one tile is allowed');
+   for (const story of [false,true]) {
+     const rider=makeTank(350,320,'moto');
+     initMoto(rider);
+     rider.angle=0;
+     if (story) { rider.storyWave=3; rider.storyRoute={path:[],exit:8}; }
+     const site=motoMinePoint(rider), drop={kind:'mine'};
+     mines=[{kind:'mine',x:site.x+T-.01,y:site.y}];
+     startDrop(rider,drop);
+     if(rider.dropT)throw Error('Spacing gate must block a close drop in either mode');
+     mines[0].x=site.x+T;
+     startDrop(rider,drop);
+     if(!rider.dropT)throw Error('Exactly one tile allows starting the drop in either mode');
+     rider.dropT=MOTO_DROP_TIME/2+.01;
+     updateMoto(rider,.02);
+     if(mines.length!==2)throw Error('Both update paths use the same placement rule');
+   }
    sfx=originalSound;
  }`);
  // «С»: надпись, следующий выстрел основного орудия — снаряд из НИИ.
