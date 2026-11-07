@@ -23,8 +23,8 @@ function drawRaseiniaiEvacuation() {
   for (const unit of raseiniai.evac) {
     if (unit.delay>0) continue;
     ctx.save(); ctx.translate(unit.x,unit.y);
+    if (unit.x!==unit.turnX) ctx.rotate(unit.x<unit.turnX?-Math.PI/2:Math.PI/2);
     if (unit.truck) {
-      if (unit.x!==unit.turnX) ctx.rotate(unit.x<unit.turnX?-Math.PI/2:Math.PI/2);
       ctx.fillStyle='#23211b'; ctx.fillRect(-11,-17,22,32);
       ctx.fillStyle='#776948'; ctx.fillRect(-9,-17,18,21);
       ctx.fillStyle='#536043'; ctx.fillRect(-8,4,16,13);
@@ -48,10 +48,16 @@ function raseiniaiLossTable(revised = null) {
   ).join('')}</tbody></table>`;
 }
 
-function raseiniaiSummary(revised = null) {
-  return `<h1>${RASEINIAI_TITLE}</h1><p class="storySubtitle">${RASEINIAI_SUBTITLE}</p>
-    <h2>Потери СССР <span${revised?' class="storyStrike"':''}>(исторические данные, приближенные)</span></h2>
+function raseiniaiLosses(revised = null) {
+  return `<h2>Потери СССР <span${revised?' class="storyStrike"':''}>(исторические данные, приближенные)</span></h2>
     ${raseiniaiLossTable(revised)}`;
+}
+
+function raseiniaiOpeningTitle() {
+  return `<div class="storyFull storyTitle"><div class="storySheet">
+    <h1>${RASEINIAI_TITLE}</h1><p class="storySubtitle">Приграничные танковые бои. Июнь 1941</p>
+    <div class="storyTitleLosses">${raseiniaiLosses()}</div>
+  </div></div>`;
 }
 
 function raseiniaiNewspaper() {
@@ -73,7 +79,8 @@ function raseiniaiTimeline() {
     ['scout','Танки',stats.enemies.scout+stats.enemies.soldier+stats.enemies.heavy],
     ['moto','Мотобригады',stats.enemies.moto], ['brick','Кирпичные блоки',stats.bricks], ['fence','Заборы',stats.fences],
   ];
-  return `<div class="storyFull storyTimeline"><div class="storySheet">${raseiniaiSummary(raseiniaiResults(n))}
+  return `<div class="storyFull storyTimeline"><div class="storySheet"><h1>${RASEINIAI_TITLE}</h1><p class="storySubtitle">${RASEINIAI_SUBTITLE}</p>
+    ${raseiniaiLosses(raseiniaiResults(n))}
     <h2>Уничтожено</h2>
     <ul class="storyDestroyed">${destroyed.map(([kind,label,count])=>
       `<li><canvas data-story-model="${kind}" width="64" height="64" aria-hidden="true"></canvas><span>${label}</span><strong>${count}</strong></li>`
@@ -111,7 +118,7 @@ function syncRaseiniaiUI() {
       raseiniaiScreen.innerHTML = `<div class="storyDialogue storyDialogue--${side} storyDialogue--${d.kind}">
         <img src="${RASEINIAI_ASSETS}${asset}.png" alt="">
         <div class="storySpeech"><div class="storySpeechLines"><p data-story-line${d.kind==='german'?' lang="de"':''}></p><p data-story-translation hidden></p></div><button data-raseiniai="continue" aria-label="Продолжить реплику">Пробел</button></div></div>`;
-    } else if (s.phase==='title') raseiniaiScreen.innerHTML = '<div class="storyFull storyTitle"><div class="storySheet">'+raseiniaiSummary()+'</div></div>';
+    } else if (s.phase==='title') raseiniaiScreen.innerHTML = raseiniaiOpeningTitle();
     else if (s.phase==='victory') raseiniaiScreen.innerHTML = '<div class="storyFull storyVictory"><h1>ПОБЕДА</h1></div>';
     else if (s.phase==='newspaper') raseiniaiScreen.innerHTML = raseiniaiNewspaper();
     else if (s.phase==='timeline') {

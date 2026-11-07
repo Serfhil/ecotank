@@ -6,6 +6,9 @@ const RASEINIAI_FIRST_SPAWN = [1.4, 2];
 const RASEINIAI_TRANSLATION_DELAY = .5;
 const RASEINIAI_REPAIR_COST = 2;
 const RASEINIAI_TITLE_TIME = 6;
+const RASEINIAI_MAP_REVEAL = 1.2;
+const RASEINIAI_CIVILIAN_DELAY = 2;
+const RASEINIAI_RADIO_BLIP_INTERVAL = .055;
 const RASEINIAI_CAMERA = {zoom:1.6, approach:.8, return:.55};
 const RASEINIAI_TITLE = 'Расейняй, Литва';
 const RASEINIAI_SUBTITLE = 'Приграничные танковые бои — июнь 1941';
@@ -63,7 +66,6 @@ function startRaseiniai() {
   banner.t = 0; hudOpacity = {left:1,right:1,score:1};
   mouse.down = mouse.right = false;
   evacuateRaseiniai(7);
-  raseiniaiDialogue('civilian', [['НЕМЦЫ! Немецкие танки наступают!!!']], () => {});
   syncMusic();
 }
 
@@ -89,23 +91,22 @@ function raseiniaiPhase(phase) {
 }
 
 function evacuateRaseiniai(count, trucks = false) {
-  const cells = [];
-  for (let r = ROWS - 4; r < ROWS; r++) {
-    for (const c of RASEINIAI_EXITS) if (road[r * COLS + c]) cells.push({c,r});
-  }
+  const roadY=(ROWS-3.5)*T;
   for (let i = 0; i < count; i++) {
-    if (trucks) {
-      const side=i%2;
-      raseiniai.evac.push({x:side?W+24:-24,y:(ROWS-4)*T+T/2,turnX:RASEINIAI_EXITS[side]*T+T/2,delay:i*.64,speed:118,truck:true,step:0});
-    } else {
-      const {c,r}=cells[i%cells.length];
-      raseiniai.evac.push({x:c*T+T/2+rnd(-7,7),y:r*T+T/2,delay:i*.12,speed:rnd(48,78),step:rnd(0,6),coat:['#79633d','#654450','#525944'][i%3]});
-    }
+    const side=i%2, margin=trucks?24:10;
+    raseiniai.evac.push({
+      x:side?W+margin:-margin,
+      y:roadY+(trucks?0:rnd(-7,7)),
+      turnX:RASEINIAI_EXITS[side]*T+T/2,
+      delay:trucks?i*.64:Math.floor(i/2)*.22,
+      speed:trucks?118:rnd(96,128),
+      truck:trucks,step:0,coat:['#79633d','#654450','#525944'][i%3],
+    });
   }
 }
 
 function raseiniaiDialogue(kind, lines, done) {
-  raseiniai.dialogue = {kind, lines, done, index:0, elapsed:0, shown:0, complete:false, translationWait:0};
+  raseiniai.dialogue = {kind, lines, done, index:0, elapsed:0, shown:0, complete:false, translationWait:0, blipAt:0};
   raseiniai.dirty = true;
 }
 
@@ -114,7 +115,7 @@ function advanceRaseiniai() {
   if (d) {
     if (!d.complete) finishRaseiniaiLine(d);
     else if (d.translationWait>0) return;
-    else if (++d.index < d.lines.length) { d.elapsed = d.shown = d.translationWait = 0; d.complete = false; }
+    else if (++d.index < d.lines.length) { d.elapsed = d.shown = d.translationWait = d.blipAt = 0; d.complete = false; }
     else { raseiniai.dialogue = null; d.done(); }
     raseiniai.dirty = true;
   } else if (raseiniai.phase === 'title' && raseiniaiTankInPosition()) startRaseiniaiOrders();
@@ -152,7 +153,7 @@ function updateRaseiniaiEvacuation(dt) {
     unit.delay -= dt;
     if (unit.delay > 0) continue;
     let distance = unit.speed*dt;
-    if (unit.truck && unit.x!==unit.turnX) {
+    if (unit.x!==unit.turnX) {
       const dx = unit.turnX-unit.x;
       const step = Math.min(distance,Math.abs(dx));
       unit.x = step===Math.abs(dx) ? unit.turnX : unit.x+Math.sign(dx)*step;
@@ -169,18 +170,39 @@ function finishRaseiniaiLine(d) {
   d.translationWait=d.lines[d.index][1] ? RASEINIAI_TRANSLATION_DELAY : 0;
 }
 
+function raseiniaiMapShade() {
+  if (!raseiniai || raseiniai.phase!=='civilians' || raseiniai.age>=RASEINIAI_MAP_REVEAL ||
+      (typeof matchMedia==='function' && matchMedia('(prefers-reduced-motion: reduce)').matches)) return 0;
+  const progress=clamp(raseiniai.age/RASEINIAI_MAP_REVEAL,0,1);
+  return 1-progress*progress*(3-2*progress);
+}
+
 function updateRaseiniaiStory(dt) {
   const s = raseiniai;
   s.age += dt;
   updateRaseiniaiEvacuation(dt);
+  if (s.phase==='civilians' && !s.civilianWarned) {
+    if (s.civilianSeenAt===undefined && s.evac.some(unit=>unit.delay<=0 && unit.x>=0 && unit.x<=W)) {
+      s.civilianSeenAt=s.age;
+    }
+    if (s.age-s.civilianSeenAt>=RASEINIAI_CIVILIAN_DELAY) {
+      s.civilianWarned=true;
+      raseiniaiDialogue('civilian',[['НЕМЦЫ! Немецкие танки наступают!!!']],()=>{});
+    }
+  }
   const d = s.dialogue;
   if (d && !d.complete) {
     d.elapsed += dt;
     const pause = d.kind==='civilian' && d.elapsed>.2 ? Math.min(.38,d.elapsed-.2) : 0;
-    d.shown = Math.floor((d.elapsed-pause)*35);
-    if (d.shown >= d.lines[d.index][0].length) finishRaseiniaiLine(d);
+    const line=d.lines[d.index][0], previous=d.shown;
+    d.shown=Math.min(line.length,Math.floor((d.elapsed-pause)*35));
+    if (d.kind!=='civilian' && d.elapsed>=d.blipAt && /\p{L}/u.test(line.slice(previous,d.shown))) {
+      sfx(d.kind==='german'?'radioGerman':'radioSoviet');
+      d.blipAt=d.elapsed+RASEINIAI_RADIO_BLIP_INTERVAL;
+    }
+    if (d.shown===line.length) finishRaseiniaiLine(d);
   } else if (d) d.translationWait=d.translationWait-dt>1e-9 ? d.translationWait-dt : 0;
-  if (s.phase === 'civilians' && !s.evac.length && !s.dialogue) {
+  if (s.phase === 'civilians' && s.civilianWarned && !s.evac.length && !s.dialogue) {
     raseiniaiPhase('fireOrder');
     raseiniaiDialogue('german',[RASEINIAI_RADIO.fire],raseiniaiBombardment);
   }

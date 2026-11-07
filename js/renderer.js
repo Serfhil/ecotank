@@ -129,6 +129,11 @@ function drawBattleFrame() {
   ctx.scale(W / UI_W, H / UI_H);
   drawUI();
   ctx.restore();
+
+  const shade=raseiniaiMapShade();
+  if (shade>0) {
+    ctx.save(); ctx.globalAlpha=shade; ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); ctx.restore();
+  }
 }
 
 // Пульсирующая зона удара: общая для артиллерии и РСЗО. appear 0..1 — проявление новой метки.
