@@ -6,15 +6,20 @@ const RASEINIAI_FIRST_SPAWN = [1.4, 2];
 const RASEINIAI_TRANSLATION_DELAY = .5;
 const RASEINIAI_REPAIR_COST = 2;
 const RASEINIAI_TITLE_TIME = 6;
+const RASEINIAI_CAMERA = {zoom:1.6, approach:.8, return:.55};
 const RASEINIAI_TITLE = 'Расейняй, Литва';
 const RASEINIAI_SUBTITLE = 'Приграничные танковые бои — июнь 1941';
 const RASEINIAI_ESTIMATES = ['9–12 тыс. солдат', '10–14 тыс. человек', '746'];
 const RASEINIAI_RADIO = {
-  order: 'Товарищ, против нас 4-я танковая группа под командованием генерал-полковника Эриха Гёпнера. Приказываю продержаться до эвакуации гражданских!',
-  retreat: 'Мы закончили эвакуацию! Противника слишком много! Мы должны сохранить войска! Приказываю отступать!!!',
+  order: [
+    ['Товарищ, не знаю как вы здесь оказались, но должен доложить.'],
+    ['Против нас выступает четвертая танковая группа Вермахта под командованием Эриха Гёпнера.'],
+    ['Приказываю продержаться до окончания эвакуации гражданских!'],
+  ],
+  retreat: 'Мы закончили эвакуацию! Противников слишком много! Приказываю отступать!!!',
   fire: ['Feuer frei!', 'Огонь!'],
   german: [
-    ['Oberst, melden Sie sich!', 'Полковник, доложите!'],
+    ['Herr Oberst, hier spricht Generaloberst Erich Hoepner.', 'Полковник, с вами говорит генерал-полковник Эрих Гёпнер'],
     ['Was ist mit Ihrer Truppe los?!', 'Что у вас там с войсками?!'],
     ['WAS HEISST DAS, EIN EINZIGER PANZER HAT IHRE BRIGADE ZERSCHLAGEN?!', 'ЧТО ЗНАЧИТ ОДИН ТАНК РАЗБИЛ ВАШУ БРИГАДУ?!'],
     ['ICH HABE DEN ANGRIFF BEFOHLEN!', 'Я ПРИКАЗАЛ АТАКОВАТЬ!'],
@@ -112,7 +117,8 @@ function advanceRaseiniai() {
     else if (++d.index < d.lines.length) { d.elapsed = d.shown = d.translationWait = 0; d.complete = false; }
     else { raseiniai.dialogue = null; d.done(); }
     raseiniai.dirty = true;
-  } else if (raseiniai.phase === 'newspaper') raseiniaiPhase('timeline');
+  } else if (raseiniai.phase === 'title' && raseiniaiTankInPosition()) startRaseiniaiOrders();
+  else if (raseiniai.phase === 'newspaper') raseiniaiPhase('timeline');
   else if (raseiniai.phase === 'timeline') raseiniaiPhase('farewell');
 }
 
@@ -194,13 +200,11 @@ function updateRaseiniaiStory(dt) {
   if (s.phase === 'title') {
     const step=Math.min(player.y-(H-2.5*T),dt*KINDS.player.speed);
     player.y-=step; player.tread=(player.tread+step)%6;
-    if (player.y === H-2.5*T && s.age>=RASEINIAI_TITLE_TIME) {
-      raseiniaiPhase('orders');
-      raseiniaiDialogue('soviet', [[RASEINIAI_RADIO.order]], () => {
-        startRaseiniaiWave(1);
-        resumeRaseiniaiBattle();
-      });
-    }
+    if (raseiniaiTankInPosition() && s.age>=RASEINIAI_TITLE_TIME) startRaseiniaiOrders();
+  }
+  if (s.phase === 'ordersOut' && s.age>=RASEINIAI_CAMERA.return) {
+    startRaseiniaiWave(1);
+    resumeRaseiniaiBattle();
   }
   if (s.phase === 'german' && !s.evac.length && !s.dialogue) {
     startRaseiniaiWave(4); resumeRaseiniaiBattle();
@@ -212,6 +216,27 @@ function updateRaseiniaiStory(dt) {
     });
   }
   if (s.phase === 'victory' && s.age >= 2.5) raseiniaiPhase('newspaper');
+}
+
+function raseiniaiTankInPosition() {
+  return player && player.y===H-2.5*T;
+}
+
+function startRaseiniaiOrders() {
+  raseiniaiPhase('orders');
+  raseiniaiDialogue('soviet',RASEINIAI_RADIO.order,()=>{
+    raseiniai.returnZoom=raseiniaiCameraScale();
+    raseiniaiPhase('ordersOut');
+  });
+}
+
+function raseiniaiCameraScale() {
+  if (!raseiniai || !player) return 1;
+  const {phase,age,returnZoom}=raseiniai;
+  if (phase!=='orders' && phase!=='ordersOut') return 1;
+  const progress=clamp(age/(phase==='orders'?RASEINIAI_CAMERA.approach:RASEINIAI_CAMERA.return),0,1);
+  const eased=progress*progress*(3-2*progress);
+  return phase==='orders' ? 1+(RASEINIAI_CAMERA.zoom-1)*eased : 1+(returnZoom-1)*(1-eased);
 }
 
 function resumeRaseiniaiBattle() {

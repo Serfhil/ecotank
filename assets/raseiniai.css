@@ -31,8 +31,10 @@ body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#mu
 .storyTimeline .storyLosses :is(th,td){white-space:normal}
 .storyTimeline .storyLosses thead th:not(:first-child){text-align:right}
 .storyRevision{animation:storyReveal .55s 2.2s both}
-.storyStrike{background:linear-gradient(#f45247,#f45247) left center/100% 2px no-repeat;box-decoration-break:clone;-webkit-box-decoration-break:clone;animation:storyStrike .32s var(--strike-delay,.4s) both}
-@keyframes storyStrike{from{background-size:0 2px}to{background-size:100% 2px}}
+.storyStrike{position:relative;display:inline-block;white-space:nowrap}
+.storyTimeline h2 .storyStrike{font-size:.88em}
+.storyStrike::after{content:"";position:absolute;inset-inline:0;top:50%;height:2px;background:#f45247;pointer-events:none;transform-origin:left;animation:storyStrike .32s var(--strike-delay,.4s) both}
+@keyframes storyStrike{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .storyDestroyed{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));list-style:none;margin:0;padding:0;gap:8px}
 .storyDestroyed li{display:grid;justify-items:center;gap:2px;font-size:clamp(11px,2vw,15px)}
 .storyDestroyed strong{font-size:1.2em}
@@ -62,6 +64,6 @@ body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#mu
   .storyFarewellCharacter{width:min(85%,390px);max-height:42dvh}
 }
 @media(prefers-reduced-motion:reduce){
-  .storyRevision,.storyStrike,.storySpeechLines [data-story-translation]:not([hidden]){animation:none}
+  .storyRevision,.storyStrike::after,.storySpeechLines [data-story-translation]:not([hidden]){animation:none}
   .storySpeechOriginal{transition:none}
 }

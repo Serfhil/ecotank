@@ -61,6 +61,22 @@ module.exports=function checkSappers(root){
  assert(run("bombers[0].state==='down'"),'One machine-gun hit kills a bomber');
  run("grid[9*COLS+14]=BRICK;brickHp[9*COLS+14]=4;brickMask[9*COLS+14]=1023;bullets=[{x:14*T-6,y:9*T+16,vx:900,vy:0,owner:'p',mg:true,dmg:0,mgTier:0,r:1.5,life:1,trail:[]}];updateBullets(1/60);");
  assert(run("brickHp[9*COLS+14]===4&&brickMask[9*COLS+14]===1023"),'Machine gun does not chip bricks');
+ run(`{
+   const one=makeTank(300,300,'moto'), two=makeTank(300,300,'moto');
+   one.angle=two.angle=0;one.minesLeft=two.minesLeft=3;
+   const p=motoMinePoint(one);
+   mines=[{...p,kind:'mine',done:true},{...p,kind:'charge'}];
+   const originalSound=sfx;let reports=0;sfx=name=>{if(name==='mineDrop')reports++;};
+   startDrop(one,{kind:'mine'});startDrop(two,{kind:'mine'});
+   if(!one.dropT||!two.dropT)throw Error('Done mines and charges do not occupy a site');
+   plantCharge(one,one.dropWhat);plantCharge(two,two.dropWhat);
+   if(one.minesLeft!==2||two.minesLeft!==3||reports!==1)throw Error('Only one of two concurrent drops can spend a mine and play sound');
+   two.x+=T-.01;plantCharge(two,two.dropWhat);
+   if(two.minesLeft!==3)throw Error('Less than a tile is blocked');
+   two.x+=.01;plantCharge(two,two.dropWhat);
+   if(two.minesLeft!==2||reports!==2||mines.filter(m=>m.kind==='mine'&&!m.done).length!==2)throw Error('Exactly one tile is allowed');
+   sfx=originalSound;
+ }`);
  // «С»: надпись, следующий выстрел основного орудия — снаряд из НИИ.
  run("grid.fill(EMPTY);bullets=[];rails=[];parts=[];player.rail=2;player.cd=0;");
  b.send('global','keydown',{code:'KeyC'});

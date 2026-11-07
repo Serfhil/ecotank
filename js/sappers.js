@@ -144,7 +144,7 @@ function pickMineSpot(e){
     const c=ri(1,COLS-2),r=ri(3,ROWS-4),x=c*T+16,y=r*T+16;
     if(tileAt(c,r)!==EMPTY||reservedCell(COLS,c,r))continue;
     if(base&&Math.hypot(base.x-x,base.y-y)<4*T)continue;
-    if(mines.some(m=>Math.hypot(m.x-x,m.y-y)<3*T))continue;
+    if(!mineSiteFree(x,y))continue;
     const f=motoFlow(e);buildFlow(c,r,2,f);
     if(f[Math.floor(e.y/T)*COLS+Math.floor(e.x/T)]>=1e9)continue;
     return {c,r,x,y};
@@ -152,13 +152,32 @@ function pickMineSpot(e){
   return null;
 }
 
-function startDrop(e,what){e.dropT=MOTO_DROP_TIME;e.dropWhat=what;e.dropped=false;e.vx=e.vy=0;}
+function mineSiteFree(x,y) {
+  return !mines.some(m=>m.kind==='mine' && !m.done && Math.hypot(m.x-x,m.y-y)<T);
+}
+
+function motoMinePoint(e) {
+  // Мина ложится у правого заднего колеса коляски, как на спрайте.
+  const right=e.angle+Math.PI/2;
+  return {
+    x:clamp(e.x+Math.cos(right)*12-Math.cos(e.angle)*10,8,W-8),
+    y:clamp(e.y+Math.sin(right)*12-Math.sin(e.angle)*10,8,H-8),
+  };
+}
+
+function startDrop(e,what){
+  if (what.kind==='mine') {
+    const {x,y}=motoMinePoint(e);
+    if (!mineSiteFree(x,y)) return;
+  }
+  e.dropT=MOTO_DROP_TIME;e.dropWhat=what;e.dropped=false;e.vx=e.vy=0;
+}
 
 function plantCharge(e,what){
   if(what.kind==='mine'){
-    // Мина ложится у правого заднего колеса коляски, как на спрайте.
-    const right=e.angle+Math.PI/2,x=e.x+Math.cos(right)*12-Math.cos(e.angle)*10,y=e.y+Math.sin(right)*12-Math.sin(e.angle)*10;
-    mines.push({kind:'mine',x:clamp(x,8,W-8),y:clamp(y,8,H-8),age:0});e.minesLeft--;sfx('mineDrop');
+    const {x,y}=motoMinePoint(e);
+    if (!mineSiteFree(x,y)) return;
+    mines.push({kind:'mine',x,y,age:0});e.minesLeft--;sfx('mineDrop');
     return;
   }
   const charge={kind:'charge',x:what.x,y:what.y,age:0,fuse:CHARGE_FUSE,target:what.target,c:what.c,r:what.r};

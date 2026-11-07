@@ -78,7 +78,7 @@ function raseiniaiTimeline() {
     <ul class="storyDestroyed">${destroyed.map(([kind,label,count])=>
       `<li><canvas data-story-model="${kind}" width="64" height="64" aria-hidden="true"></canvas><span>${label}</span><strong>${count}</strong></li>`
     ).join('')}</ul>
-    <p>Пропущено машин — ${n}. Потери могли быть меньше.</p>
+    <p>Пропущено машин — ${n}. ${n===0?'Непревзойденный уровень.':'Потери могли быть меньше.'}</p>
     <button data-raseiniai="continue" aria-label="Продолжить, пробел">Пробел</button>
   </div></div>`;
 }
@@ -131,6 +131,15 @@ function syncRaseiniaiUI() {
     const translated = raseiniaiScreen.querySelector('[data-story-translation]');
     const visible = d.complete ? line : line.slice(0,d.shown);
     if (target && target.textContent!==visible) target.textContent=visible;
+    if (s.phase==='orders') {
+      const button=raseiniaiScreen.querySelector('[data-raseiniai="continue"]');
+      const confirmation=d.complete && d.index===d.lines.length-1;
+      const label=confirmation?'Есть, держаться до окончания эвакуации!':'Пробел';
+      if (button && button.textContent!==label) {
+        button.textContent=label;
+        button.setAttribute('aria-label',confirmation?label:'Продолжить реплику');
+      }
+    }
     if (translated && translation && d.complete && !d.translationWait && translated.hidden) {
       translated.textContent=translation;
       translated.hidden=false;

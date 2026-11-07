@@ -97,6 +97,11 @@ function draw() {
 
 function drawBattleFrame() {
   ctx.save();
+  const zoom=raseiniaiCameraScale();
+  if (zoom>1) {
+    ctx.translate(clamp(W/2-player.x*zoom,W*(1-zoom),0),clamp(H/2-player.y*zoom,H*(1-zoom),0));
+    ctx.scale(zoom,zoom);
+  }
   const sk = shake * CFG.shake * .5;
   if (sk > 0) ctx.translate(rnd(-sk, sk), rnd(-sk, sk));
   ctx.drawImage(groundCanvas, 0, 0);
