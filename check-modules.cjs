@@ -8,6 +8,7 @@ module.exports=function checkModules(root){
     'js/tanks.js','js/weapons.js','js/damage.js','js/pickups.js','js/enemy-ai.js','js/allies.js','js/waves.js','js/sappers.js',
     'js/render-world.js','js/render-detail.js','js/vehicle-sprites.js','js/render-tanks.js','js/effects.js','js/layout.js','js/defeat.js','js/victory.js','js/render-ui.js','js/renderer.js',
     'js/editor-common.js','js/preset-editor.js','js/map-editor.js',
+    'js/raseiniai-map.js','js/raseiniai.js','js/raseiniai-ui.js',
   ]);
   assert(!/<script\b[^>]*type="module"/.test(html),'Direct file opening must not require ES-module loading');
   // Catalog and parameters must be usable without the browser, audio or stored settings.

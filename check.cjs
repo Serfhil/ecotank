@@ -358,5 +358,6 @@ actx={sampleRate:2000,currentTime:0,destination:audioNode(),createGain:audioNode
 cannonNoiseLayers=heavyImpulse=noiseBuf=masterGain=null;heavyGunSound();const initialAudioBuffers=createdAudioBuffers;for(let i=0;i<4;i++)heavyGunSound();if(createdAudioBuffers!==initialAudioBuffers||!heavyImpulse||cannonNoiseLayers.length!==4)throw Error('Artillery reports reuse audio buffers');
 actx=noiseBuf=masterGain=cannonNoiseLayers=heavyImpulse=null;
 `,box);
+require('./check-raseiniai.cjs')(box);
 assert(!code.includes("tone(420, 110"));
 console.log('PASS: screenshot defaults, storage migration, turret rate/wrap, four-hit brick damage, density, 20 dense connected maps, asymmetry, render calls, settings persistence');

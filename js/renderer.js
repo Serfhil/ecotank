@@ -91,6 +91,7 @@ function drawBattleFrame() {
   if (sk > 0) ctx.translate(rnd(-sk, sk), rnd(-sk, sk));
   ctx.drawImage(groundCanvas, 0, 0);
   drawTiles();
+  drawRaseiniaiMill();
   if(state!=='menu')drawBase();
   if (state !== 'menu') {
     drawWrecks();
@@ -100,6 +101,7 @@ function drawBattleFrame() {
     for (const a of allies) if (!a.dead) drawTank(a);
     if (player && !player.dead) drawTank(player);
     drawBombers();
+    drawRaseiniaiEvacuation();
     drawBullets();drawArtilleryShells();drawRocketZones();drawRockets();
     drawRails();
     drawParts();

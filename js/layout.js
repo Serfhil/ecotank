@@ -15,7 +15,7 @@ function calculateGameLayout(width, height, mapWidth, mapHeight, withHud) {
 }
 
 function gameHasHud() {
-  return state !== 'menu' && !editorOpen && !mapEdOpen;
+  return state !== 'menu' && state !== 'story' && !editorOpen && !mapEdOpen;
 }
 
 function applyGameLayout() {
@@ -23,8 +23,8 @@ function applyGameLayout() {
     hudCanvas = document.getElementById('hudCanvas');
     gameHud = document.getElementById('gameHud');
   }
-  const withHud = gameHasHud(), key = [innerWidth, innerHeight, W, H, withHud].join(':');
-  if (gameHud) gameHud.hidden = !withHud || (state === 'over');
+  const withHud = gameHasHud() || state==='story', key = [innerWidth, innerHeight, W, H, withHud].join(':');
+  if (gameHud) gameHud.hidden = !gameHasHud() || state === 'over';
   if (key === layoutKey) return;
   layoutKey = key;
   gameLayout = calculateGameLayout(innerWidth, innerHeight, W, H, withHud);

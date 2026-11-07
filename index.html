@@ -120,9 +120,17 @@
 <script src="js/editor-common.js"></script>
 <script src="js/preset-editor.js"></script>
 <script src="js/map-editor.js"></script>
+<script src="js/raseiniai-map.js"></script>
+<script src="js/raseiniai.js"></script>
+<script src="js/raseiniai-ui.js"></script>
 <link rel="stylesheet" href="assets/menu.css">
 <link rel="stylesheet" href="assets/theme.css">
 <link rel="stylesheet" href="assets/victory.css">
+<link rel="stylesheet" href="assets/raseiniai.css">
+<link rel="preload" as="image" href="assets/raseiniai/civilian.png">
+<link rel="preload" as="image" href="assets/raseiniai/soviet-radio.png">
+<link rel="preload" as="image" href="assets/raseiniai/german-radio.png">
+<link rel="preload" as="image" href="assets/raseiniai/pravda.png">
 </head>
 <body>
 <div id="musicControls" style="position:fixed;top:8px;right:10px;z-index:2;display:flex;align-items:center;gap:8px;background:#14181cdd;padding:5px;border-radius:6px;color:#bbc9b5;font-size:12px">
@@ -131,16 +139,18 @@
 <section id="mainMenu" aria-label="" data-ui-aria-label="glavnoe_menyu_ecotank">
 <div class="menuSmoke" aria-hidden="true"></div><div class="menuHero"><img class="menuForeground" src="assets/menu-marx-cutout.png" alt="" data-ui-alt="karl_marks_derzhit_model_tanka"><img class="menuLight" src="assets/menu-marx-cutout.png" alt="" aria-hidden="true"><div class="heroFade"></div><div class="risingTitle"><img class="menuTitleImage" src="assets/ecotank-title.png" alt="ECOTANK"></div><div class="heroCaption" data-ui-text="stal_taktika_obshchee_delo"></div></div>
 <div class="menuLower"><div class="menuHeading"><span data-ui-text="vyberi_operatsiyu"></span><small data-ui-text="tankovyy_poligon"></small></div>
-<div class="modeButtons"><button id="mode-original" data-ui-leading="modeOriginal"><small data-ui-text="sluchaynaya_karta"></small></button><button id="mode-preset01" data-ui-leading="modePresets"><small data-ui-text="gotovye_uchastki"></small></button><button id="mode-map" data-ui-leading="modeMap"><small data-ui-text="vybor_i_redaktor"></small></button><button id="mode-campaign" data-ui-leading="modeCampaign"><small data-ui-text="posledovatelnye_urovni"></small></button></div>
+<div class="modeButtons"><button id="mode-story" data-ui-leading="modeStory"><small data-ui-text="raseiniaiMission"></small></button><button id="mode-campaign" data-ui-leading="modeCampaign"><small data-ui-text="posledovatelnye_urovni"></small></button><button id="mode-preset01" data-ui-leading="modePresets"><small data-ui-text="gotovye_uchastki"></small></button><button id="mode-map" data-ui-leading="modeMap"><small data-ui-text="vybor_i_redaktor"></small></button></div>
 <div class="menuActions"><button id="menuStart" class="startButton" data-ui-text="startBattle"></button><button id="menuSettings" class="ghost" data-ui-text="settings"></button><span data-ui-text="wasd_tank_mysh_bashnya_probel_ogon_shift_uskorenie"></span></div>
 <div id="mapControl" style="position:fixed;top:8px;left:10px;z-index:2;background:#14181cdd;padding:7px;color:#d5dfcc;font-size:12px;border-radius:6px" data-ui-leading="mapControl"><select id="mapSize" aria-label="" data-ui-aria-label="razmer_karty_dlya_novoy_igry" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="30">30×20</option><option value="45">45×30</option><option value="60">60×40</option></select>
-<select id="mapMode" aria-label="" data-ui-aria-label="rezhim_rasstanovki_dekoratsiy_dlya_novoy_igry" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="original" data-ui-text="originalnyy"></option><option value="preset01" data-ui-text="preset_test_0_1"></option><option value="map" data-ui-text="karta"></option><option value="campaign" data-ui-text="kampaniya"></option></select>
+<select id="mapMode" aria-label="" data-ui-aria-label="rezhim_rasstanovki_dekoratsiy_dlya_novoy_igry" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="original" data-ui-text="modeOriginal"></option><option value="preset01" data-ui-text="modePresets"></option><option value="map" data-ui-text="modeMap"></option><option value="campaign" data-ui-text="modeCampaign"></option></select>
 <select id="campaignPick" aria-label="" data-ui-aria-label="uroven_s_kotorogo_nachat_kampaniyu" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:220px"></select>
 <select id="mapPick" aria-label="" data-ui-aria-label="gotovaya_karta_dlya_novoy_igry" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:200px"></select>
 <button id="btnEditor" class="ghost" style="font-size:12px;padding:4px 10px" data-ui-text="btnEditor"></button>
 <button id="btnMapEditor" class="ghost" style="font-size:12px;padding:4px 10px" data-ui-text="btnMapEditor"></button></div>
 </div></section>
 <div id="wrap"><canvas id="c" width="960" height="640"></canvas><aside id="gameHud" hidden aria-label="" data-ui-aria-label="hudTitle"><canvas id="hudCanvas"></canvas></aside></div>
+<img id="raseiniaiMill" src="assets/raseiniai/windmill.png" alt="" hidden>
+<section id="raseiniaiScreen" hidden aria-label="Расейняй, Литва"></section>
 <section id="defeatScreen" hidden tabindex="-1" role="region" aria-label="" data-ui-aria-label="defeatScreen">
   <canvas id="defeatCanvas" aria-hidden="true"></canvas>
   <button id="defeatRestart" hidden data-ui-text="newGame"></button>
@@ -215,6 +225,8 @@ let best = 0;
 try { best = +localStorage.getItem('ecotank-best') || 0; } catch (e) {}
 
 function startGame(retry = false) {
+  if (retry && raseiniai) { startRaseiniai(); return; }
+  raseiniai = null;
   if (!retry) resetStatistics();
   hudOpacity = {left:1,right:1,score:1};
   resetVictory();
@@ -279,6 +291,7 @@ addEventListener('keydown', e => {
   }
   if (['INPUT','SELECT'].includes(e.target.tagName)) return;
   if(state==='menu'&&devOpen)return;
+  if (raseiniaiStoryInput(e)) return;
   if((e.code==='ShiftLeft'||e.code==='ShiftRight')&&!e.repeat&&player&&!player.dead&&state==='play')player.boostQueued=true;
   const held = !!keys[e.code];
   keys[e.code] = true;
@@ -289,8 +302,8 @@ addEventListener('keydown', e => {
   else if (e.code === 'KeyM') { muted = !muted; syncMusic(); }
   else if (e.code === 'KeyC' && (state === 'play' || state === 'between')) armRail(player);
 });
-addEventListener('keyup', e => { keys[e.code] = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; mouse.right = false; if (state === 'play') state = 'pause'; });
+addEventListener('keyup', e => { keys[e.code] = false; if (raseiniai && e.code==='Space') raseiniai.blockSpace=false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; mouse.right = false; if (raseiniai) raseiniai.blockSpace=false; if (state === 'play') state = 'pause'; });
 cv.addEventListener('mousemove', e => {
   const b = cv.getBoundingClientRect();
   Object.assign(mouse, pointerToWorld(e.clientX, e.clientY, b));
@@ -320,6 +333,12 @@ function update(dt) {
   if (state === 'menu' || state === 'pause') return;
   if (state === 'over' && victory) { updateVictory(dt); return; }
   if (state === 'over' && !victory) { updateDefeat(dt); return; }
+  if (state === 'story') {
+    updateParts(dt);
+    shake = Math.max(0, shake - dt * 30);
+    updateRaseiniaiStory(dt);
+    return;
+  }
   updateBaseCollapse(dt);
   if (hitstop > 0) { hitstop -= dt; return; }
   simTime += dt;
@@ -338,9 +357,17 @@ function update(dt) {
     }
   }
   updatePlayer(dt); updateTreadSound(dt);
-  updateArtilleryShells(dt);updateRockets(dt);updateRandomItems(dt);updateSappers(dt);updateReinforcements(dt);updateBaseWalls(cellOccupied);
-  if (state === 'play' && !player.dead && !(base && base.dead)) updateSpawns(dt);
-  formColumns();
+  updateArtilleryShells(dt); updateRockets(dt);
+  if (raseiniai) {
+    updateSappers(dt);
+    updateRaseiniaiEvacuation(dt);
+    if (!player.dead) updateRaseiniaiSpawns(dt);
+    raseiniaiFormColumns();
+  } else {
+    updateRandomItems(dt); updateSappers(dt); updateReinforcements(dt); updateBaseWalls(cellOccupied);
+    if (state === 'play' && !player.dead && !(base && base.dead)) updateSpawns(dt);
+    formColumns();
+  }
   for (const e of enemies) updateEnemy(e, dt);
   enemies = enemies.filter(e => !e.dead);
   for (const a of allies) updateAlly(a, dt);
@@ -353,6 +380,8 @@ function update(dt) {
   if (player.dead || (base && base.dead)) {
     deadT -= dt;
     if (deadT <= 0 && defeatBlastsFinished()) enterDefeat();
+  } else if (raseiniai) {
+    finishRaseiniaiBattle();
   } else if (state === 'play' && !player.upgradeT && !toSpawn.length && !enemies.length && !wrecks.some(w=>w.exploded===false)&&!artilleryShells.length&&!rockets.length&&!hasPendingBarrage()&&!sappersBusy()) {
     const bonus = CFG.waveBonus * wave;
     score += bonus;
@@ -430,7 +459,7 @@ devEl.querySelector('.devActions').addEventListener('click', e => {
   else if (act === 'rail' && alive) player.rail = Math.min(CFG.railMax, player.rail + 1);
   else if (act === 'powerups' && alive) {for (const k in player.pw) player.pw[k] = CFG.powerupTime;setPlayerUpgrade(player,2);}
   else if (act === 'kill') { for (const e of enemies) if (e.spawnT <= 0) hitEnemy(e, { x: e.x, y: e.y, dmg: 999 }); enemies = enemies.filter(e => !e.dead); }
-  else if (act === 'skip' && alive) { nextWave(); state = 'pause'; }
+  else if (act === 'skip' && alive && !raseiniai) { nextWave(); state = 'pause'; }
   else if (act === 'reset') {
     applyDev(JSON.parse(DEV_DEFAULTS));
     try { localStorage.removeItem('ecotank-dev-v2'); } catch (e) {}
@@ -469,6 +498,7 @@ document.getElementById('mapPick').addEventListener('change', e => {
 
 // стартовый экран: фон-превью собирается из выбранных размера и режима карты
 function toMenu() {
+  raseiniai = null;
   resetVictory();
   resetDefeat();
   resetArtillery();resetReinforcements();itemSpawnTimer=10;state = 'menu'; player = null; base = null; enemies = []; allies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
@@ -490,6 +520,7 @@ function syncUI() {
   fit();
   syncDefeatUI();
   syncVictoryUI();
+  syncRaseiniaiUI();
   const mapPick=document.getElementById('mapPick'),campaignPick=document.getElementById('campaignPick');
   const fixed=CFG.mapMode==='map',camp=CFG.mapMode==='campaign';
   document.getElementById('mapSize').value=String(CFG.mapSize||30);
@@ -502,7 +533,7 @@ function syncUI() {
   document.getElementById('mapControl').hidden=editorOpen||mapEdOpen||state!=='menu';
   document.getElementById('mainMenu').hidden=state!=='menu'||editorOpen||mapEdOpen;
   document.getElementById('menuHome').hidden=state==='menu'||editorOpen||mapEdOpen;
-  for(const mode of ['original','preset01','map','campaign'])document.getElementById('mode-'+mode).classList.toggle('selected',CFG.mapMode===mode);
+  for(const mode of ['preset01','map','campaign'])document.getElementById('mode-'+mode).classList.toggle('selected',CFG.mapMode===mode);
   if (editorEl.hidden === editorOpen) editorEl.hidden = !editorOpen;
   if (mapEditorEl.hidden === mapEdOpen) mapEditorEl.hidden = !mapEdOpen;
   syncMusic();
@@ -514,9 +545,12 @@ function syncUI() {
 document.getElementById('menuStart').addEventListener('click',()=>startGame());
 document.getElementById('menuSettings').addEventListener('click',()=>{devOpen=true;buildDev();});
 document.getElementById('menuHome').addEventListener('click',()=>{devOpen=false;toMenu();syncMusic();});
-for(const mode of ['original','preset01','map','campaign'])document.getElementById('mode-'+mode).addEventListener('click',()=>{CFG.mapMode=mode;saveDev();toMenu();});
+for(const mode of ['preset01','map','campaign'])document.getElementById('mode-'+mode).addEventListener('click',()=>{CFG.mapMode=mode;saveDev();toMenu();});
+
+document.getElementById('mode-story').addEventListener('click', e=>{ e.currentTarget.blur(); devOpen=false; startRaseiniai(); });
 
 // ---------- запуск ----------
+initRaseiniai();
 initDefeat();
 initVehicleSprites();
 initSapperSprites();

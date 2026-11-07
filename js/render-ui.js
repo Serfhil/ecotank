@@ -32,7 +32,7 @@ function drawHud(force = false) {
   });
   panel('right',p=>{
     c.fillStyle='#f6db9a';c.font='600 '+(p.w<170?11:13)+'px "Segoe UI",sans-serif';
-    c.fillText(UI_TEXT.hudLevelShort+' '+wave,10,19);c.fillText(UI_TEXT.hudEnemiesShort+' '+(toSpawn.length+enemies.filter(e=>!e.dead).length),10,44);
+    c.fillText(UI_TEXT.hudLevelShort+' '+wave,10,19);c.fillText(UI_TEXT.hudEnemiesShort+' '+(raseiniai ? raseiniaiEnemyCount() : toSpawn.length+enemies.filter(e=>!e.dead).length),10,44);
     c.fillText(UI_TEXT.metallolom_5+': '+scrap,10,69);
     c.fillText('★ '+(player.upgrade>=2?UI_TEXT.is_2_ii:player.upgrade?UI_TEXT.is_2:UI_TEXT.hudBaseTank)+' · '+machineGun(player).name,10,96);
     let x=12;for(const k of ['shield','rapid'])if(player.pw[k]>0){c.fillStyle=ITEMS[k].color;c.font='700 23px "Segoe UI",sans-serif';c.fillText(ITEMS[k].glyph,x,128);x+=30;}

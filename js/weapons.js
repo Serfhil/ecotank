@@ -58,9 +58,10 @@ function fireRail(p) {
   p.rail--;
   const dx = Math.cos(p.turret), dy = Math.sin(p.turret);
   const muzzle=vehicleMuzzle(p,vehicleMount(p).offsets[0]),x0=muzzle.x,y0=muzzle.y,hit=new Set();
-  carveSteelRay(x0,y0,x0+dx*1400,y0+dy*1400);
+  const reach = raseiniai ? millRayLimit(x0,y0,dx,dy,1400) : 1400;
+  carveSteelRay(x0,y0,x0+dx*reach,y0+dy*reach);
   let len = 0; const foliageRay = {};
-  for (; len < 1400; len += 4) {
+  for (; len < reach; len = Math.min(reach,len+4)) {
     const x = x0 + dx * len, y = y0 + dy * len, c = Math.floor(x / T), r = Math.floor(y / T), t = tileAt(c, r);
     if (x<0||y<0||x>=W||y>=H) break;
     if (t === TREE) hitFoliage(c,r,x,y,foliageRay);
@@ -131,9 +132,9 @@ function updateBullets(dt) {
   bullets=bullets.filter(b=>!b.dead);
 }
 
-function launchArtillery(sx,sy,tx,ty,friendly=false){
-  const speed=friendly?3000:KINDS.artillery.bulletSpeed;
-  const shell={sx,sy,tx:clamp(tx,0,W),ty:clamp(ty,0,H),age:0,delay:friendly?2:0,speed,friendly,radius:45,damage:2};
+function launchArtillery(sx,sy,tx,ty,friendly=false,options={}){
+  const speed=options.speed ?? (friendly?3000:KINDS.artillery.bulletSpeed);
+  const shell={sx,sy,tx:clamp(tx,0,W),ty:clamp(ty,0,H),age:0,delay:options.delay ?? (friendly?2:0),speed,friendly,radius:45,damage:2};
   prepareArtilleryTrajectory(shell);artilleryShells.push(shell);
   if(!friendly)sfx('heavyShoot');
 }

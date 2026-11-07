@@ -170,6 +170,7 @@ function plantCharge(e,what){
 
 function updateMoto(e,dt){
   if(e.mode===undefined)initMoto(e);
+  if (e.storyWave) { updateRaseiniaiMoto(e,dt); return; }
   if(e.dropT>0){
     e.dropT-=dt;e.vx=e.vy=0;
     if(!e.dropped&&e.dropT<=MOTO_DROP_TIME/2){e.dropped=true;plantCharge(e,e.dropWhat);}

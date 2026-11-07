@@ -97,7 +97,7 @@ function buildAllyFlow(a,tc,tr,breakWalls) {
     for(const [dc,dr] of DIRS){
       const nc=c+dc,nr=r+dr,t=tileAt(nc,nr);
       // забор союзник продавливает без штрафа; ломать приходится только кирпич
-      if(t===STEEL||t===WATER||baseWall(nc,nr)||(!breakWalls&&t===BRICK))continue;
+      if(blocksRoute(t)||baseWall(nc,nr)||(!breakWalls&&t===BRICK))continue;
       const j=nr*COLS+nc,nd=f[i]+(t===BRICK?5:1)+busy[j]*6;
       if(nd<f[j]){f[j]=nd;q.push(j);}
     }
@@ -108,7 +108,7 @@ function allyStep(a,random) {
   const c=Math.floor(a.x/T),r=Math.floor(a.y/T),f=a.flow,opts=[];
   for(const [dc,dr] of DIRS){
     const nc=c+dc,nr=r+dr,t=tileAt(nc,nr),v=f[nr*COLS+nc];
-    if(t===STEEL||t===WATER||baseWall(nc,nr)||v>=1e9||(random&&t===BRICK))continue;
+    if(blocksRoute(t)||baseWall(nc,nr)||v>=1e9||(random&&t===BRICK))continue;
     opts.push({nc,nr,t,v});
   }
   a.brick=null;

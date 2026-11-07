@@ -7,14 +7,15 @@
 
 let COLS=30,ROWS=20,W=COLS*T,H=ROWS*T;
 
-const EMPTY = 0, BRICK = 1, STEEL = 2, WATER = 3, TREE = 4, FENCE = 5;
+const EMPTY = 0, BRICK = 1, STEEL = 2, WATER = 3, TREE = 4, FENCE = 5, MILL = 6;
 
-const blocksTank = t => t === BRICK || t === STEEL || t === WATER || t === FENCE;
+const blocksRoute = t => t === STEEL || t === WATER;
+const blocksTank = t => t === BRICK || t === FENCE || t === MILL || blocksRoute(t);
 
-const blocksBullet = t => t === BRICK || t === STEEL || t === FENCE;
+const blocksBullet = t => t === BRICK || t === STEEL || t === FENCE || t === MILL;
 
 // Танки давят забор при наезде, поэтому для их маршрутов он проходим; мотоцикл и пешеходы его объезжают или минируют.
-const blocksCrusher = t => t === BRICK || t === STEEL || t === WATER;
+const blocksCrusher = t => t === BRICK || t === MILL || blocksRoute(t);
 
 const ARM_N = 1, ARM_E = 2, ARM_S = 4, ARM_W = 8;
 
@@ -237,7 +238,7 @@ function shapeFences() {
     fenceArms[r * COLS + c] = vert && horiz ? (n ? ARM_N : ARM_S) | (e ? ARM_E : ARM_W) : vert ? FENCE_V : FENCE_H;
   }
 }
-function genMap(w) {
+function genMap(w, authored = false) {
   steelDamage.clear(); pendingBaseWalls.clear();
   const center=Math.floor(COLS/2);
   let marks;
@@ -247,6 +248,7 @@ function genMap(w) {
     const set = (c, r, t) => { if (c >= 0 && r >= 0 && c < COLS && r < ROWS) { grid[r * COLS + c] = t; } };
     if (mapMode === 'map') placeMap(set, marks, activeMap);
     else if (mapMode === 'preset01') placePresets(set, marks); else placeOriginal(set);
+    if (authored) break;
     for (let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++) if (reservedCell(COLS,c,r)) grid[r * COLS + c] = EMPTY;
     if (connected()) break;
     // At extreme density, clear guaranteed routes rather than return a sealed map.
@@ -320,7 +322,7 @@ function connected() {
     const c = q[h] % COLS, r = (q[h] / COLS) | 0;
     for (const [dc, dr] of DIRS) {
       const nc = c + dc, nr = r + dr, t = tileAt(nc, nr), j = nr * COLS + nc;
-      if (t === STEEL || t === WATER || seen[j]) continue;
+      if (blocksRoute(t) || seen[j]) continue;
       seen[j] = 1; q.push(j);
     }
   }

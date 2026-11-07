@@ -21,7 +21,9 @@ function hitEnemy(e, b) {
   if (e.hp < 1e-6) e.hp = 0;
   burst(b.x,b.y,18,['#fff4bd','#ffb650','#d7e6ed'],260,.35,4,'spark');
   if (e.hp > 0) { burst(b.x, b.y, 10, ['#fff', '#ffd76a'], 180, .3, 4); sfx('hit'); return; }
-  e.dead = true; recordStatistic('enemies', e.kind);
+  e.dead = true;
+  if (raseiniai && e.storyWave===1 && e.kind==='scout') raseiniai.firstKills++;
+  recordStatistic('enemies', e.kind);
   const K = KINDS[e.kind];
   score += K.score;
   floatText(e.x, e.y - 10, '+' + K.score, '#ffe08a');

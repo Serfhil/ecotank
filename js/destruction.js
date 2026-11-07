@@ -20,7 +20,7 @@ function fenceRects(c,r) {
   return rects;
 }
 
-const tileRects=(c,r,type)=>type===BRICK?brickRects(c,r):type===FENCE?fenceRects(c,r):[{x:c*T,y:r*T,w:T,h:T}];
+const tileRects=(c,r,type)=>type===BRICK?brickRects(c,r):type===FENCE?fenceRects(c,r):type===MILL?millRects(c,r):[{x:c*T,y:r*T,w:T,h:T}];
 
 const breakable=t=>t===BRICK||t===FENCE;
 
@@ -78,7 +78,7 @@ function heatSteelEdge(d,fresh) {
 function bulletBlockingCell(x,y,radius=0) {
   if(x-radius<0||y-radius<0||x+radius>W||y+radius>H)return {c:-1,r:-1,type:STEEL};
   for(let r=Math.floor((y-radius)/T);r<=Math.floor((y+radius)/T);r++)for(let c=Math.floor((x-radius)/T);c<=Math.floor((x+radius)/T);c++){
-    const type=tileAt(c,r);if(type!==STEEL&&!breakable(type))continue;
+    const type=tileAt(c,r);if(!blocksBullet(type))continue;
     const rects=type===STEEL?steelRects(c,r):tileRects(c,r,type);
     if(rects.some(b=>Math.hypot(x-clamp(x,b.x,b.x+b.w),y-clamp(y,b.y,b.y+b.h))<=radius))return {c,r,type};
   }
@@ -101,6 +101,7 @@ function fragmentBlocked(x,y,radius) {
         const mask=brickMask[r*COLS+c],ox=c*T,oy=r*T;
         for(let q=0;q<MASONRY.length;q++){if(!(mask&(1<<q)))continue;const b=MASONRY[q];if(rectNear(x,y,ox+b.x,oy+b.y,b.w,8,r2))return true;}
       } else if(tile===STEEL) { if(rectNear(x,y,c*T,r*T,T,T,r2))return true; }
+      else if(tile===MILL) { if(millRects(c,r).some(b=>rectNear(x,y,b.x,b.y,b.w,b.h,r2)))return true; }
       else if(tile===FENCE) { for(const b of fenceRects(c,r))if(rectNear(x,y,b.x,b.y,b.w,b.h,r2))return true; }
     }
   return false;

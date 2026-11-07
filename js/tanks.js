@@ -90,12 +90,14 @@ function separate() {
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
     const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
     if (a.dead || b.dead || d >= min) continue;
+    // Scripted motorcyclists yield along their road route instead of pushing each other off it.
+    if (a.storyWave && b.storyWave && a.kind==='moto' && b.kind==='moto') continue;
     // Наезд игрока или союзника убивает мотобригаду до раздвигания моделей; вражеская техника её не давит.
     const moto=a.kind==='moto'?a:b.kind==='moto'?b:null,other=moto===a?b:a;
     if(moto&&(other===player||other.ally)){hitEnemy(moto,{x:moto.x,y:moto.y,dmg:Infinity,crushed:true});if(moto.dead)continue;}
     if (d === 0) continue;
     const push = (min - d) / 2, nx = dx / d, ny = dy / d;
-    const fixedA=a.upgradeT>0||!!a.entering,fixedB=b.upgradeT>0||!!b.entering;
+    const fixedA=a.upgradeT>0||a.entering||a.storyLeaving,fixedB=b.upgradeT>0||b.entering||b.storyLeaving;
     if(!fixedA){a.x-=nx*push*(fixedB?2:1);a.y-=ny*push*(fixedB?2:1);collideTiles(a);}
     if(!fixedB){b.x+=nx*push*(fixedA?2:1);b.y+=ny*push*(fixedA?2:1);collideTiles(b);}
   }
@@ -152,7 +154,7 @@ function updatePlayer(dt) {
   p.turret = turnTo(p.turret, Math.atan2(mouse.y - p.y, mouse.x - p.x), dt * KINDS.player.turretSpeed);
   p.cd -= dt; p.inv -= dt; p.recoil=(p.recoilMax||5)*(1-reloadProgress(p));
   for (const k in p.pw) p.pw[k] = Math.max(0, p.pw[k] - dt);
-  if ((mouse.down || keys.Space) && p.cd <= 0) {
+  if ((mouse.down || keys.Space && !(raseiniai && raseiniai.blockSpace)) && p.cd <= 0) {
     if (p.railArmed && p.rail > 0) { p.railArmed = false; fireRail(p); }
     else {
       p.railArmed = false;

@@ -1,0 +1,45 @@
+#raseiniaiScreen{position:fixed;inset:0;z-index:8;color:#f8e3b1;pointer-events:none}
+#raseiniaiScreen[hidden]{display:none}
+body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#musicControls,#menuHome){display:none!important}
+.storyDialogue{position:absolute;bottom:0;width:min(48vw,600px);display:flex;flex-direction:column-reverse;align-items:flex-end;padding:0 clamp(8px,2vw,24px) 12px;box-sizing:border-box}
+.storyDialogue--right{right:0}.storyDialogue--left{left:0;align-items:flex-start}
+.storyDialogue img{display:block;width:min(85%,380px);height:auto;max-height:28dvh;object-fit:contain;object-position:bottom}
+.storyDialogue--civilian{height:70dvh;justify-content:flex-start}
+.storyDialogue--civilian img{width:auto;max-width:100%;height:100%;max-height:70dvh;object-position:right bottom}
+.storySpeech{min-height:5.5em;width:100%;box-sizing:border-box;padding:12px 16px;background:#2b1018f5;border:1px solid #d5a960;border-radius:8px;box-shadow:0 4px 24px #0008}
+.storyDialogue--civilian .storySpeech{position:absolute;top:-4em;width:100%}
+.storySpeech p{font-size:clamp(15px,2vw,22px);line-height:1.35;margin:0 0 4px}
+.storySpeech button{display:block;margin-left:auto;color:#f8e3b1;pointer-events:auto;font-size:12px;padding:4px 9px}
+.storyFull,.storyNewspaper{position:absolute;inset:0;overflow:auto;pointer-events:auto;box-sizing:border-box}
+.storyFull{display:grid;place-items:center;padding:20px;background:#080506;text-align:center}
+.storySheet{max-width:44rem}.storySheet h1,.storyVictory h1{font-size:clamp(34px,7vw,84px);font-weight:900;margin:.15em 0}
+.storySubtitle{font-size:clamp(16px,2.5vw,23px);margin:.2em 0 1.3em;font-weight:400}
+.storySheet h2{font-size:clamp(17px,2.5vw,24px);margin:.7em 0 .35em}
+.storyTitle{background:#08050655;text-shadow:0 1px 4px #000}
+.storyTitle .storySheet{padding:clamp(12px,3vw,32px);background:#12090b80;border-radius:8px}
+.storyLosses{border-collapse:collapse;margin:.3em auto;line-height:1.45;text-align:left}
+.storyLosses th,.storyLosses td{padding:3px clamp(7px,2vw,18px);font-weight:400}
+.storyLosses td{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.storyCaveat{color:#cfbca4;font-size:13px;line-height:1.35}
+.storyVictory{background:#24090ded}.storyVictory h1{color:#ffe0a2;text-shadow:0 0 32px #c93a37}
+.storyTimeline{background:#000}.storyTimeline .storyOld{position:relative}
+.storyTimeline .storyOld::after{content:"";position:absolute;left:0;top:52%;width:100%;height:2px;background:#f45247;transform-origin:left;animation:storyStrike .32s var(--strike,.55s) both}
+.storyRevised{animation:storyReveal .55s 2.45s both}.storyRevised p{margin:.6em 0}
+@keyframes storyStrike{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes storyReveal{from{visibility:hidden;opacity:0}to{visibility:visible;opacity:1}}
+.storyNewspaper{padding:12px;background:#130b0b;text-align:center}
+.storyPaper{position:relative;width:min(100%,1100px);margin:0 auto 12px;container-type:inline-size;color:#181a22;text-align:left;font-family:Georgia,serif}
+.storyPaper img{display:block;width:100%;height:auto}
+.storyPaper article{position:absolute;left:4.2%;width:46%;top:39.5%;height:58%;columns:3;column-gap:2.7cqw;column-fill:balance;font-size:1.23cqw;line-height:1.23;text-align:justify;hyphens:auto}
+.storyPaper article h1{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.storyPaper p{margin:0 0 .44em}
+.storyPaper figcaption{position:absolute;top:86.6%;left:52.4%;width:44%;font-size:1.35cqw;line-height:1.25}
+@media(max-width:960px){
+  .storyPaper{background:#e9dbc1}
+  .storyPaper article,.storyPaper figcaption{position:static;width:auto;height:auto;columns:auto;font-size:clamp(16px,2.5vw,19px);padding:12px 18px;text-align:left}
+  .storyPaper article h1{position:static;width:auto;height:auto;overflow:visible;clip-path:none;font-size:1.14em;margin:0 0 .6em}
+  .storyPaper figcaption{border-bottom:1px solid #b5a486;font-style:italic}
+  .storyPaper{display:flex;flex-direction:column}.storyPaper article{order:1}
+}
+@media(max-width:620px){.storyDialogue{width:min(92vw,450px)}.storyDialogue--civilian .storySpeech{width:min(100%,23rem)}}
+@media(prefers-reduced-motion:reduce){.storyTimeline .storyOld::after,.storyRevised{animation:none}}
