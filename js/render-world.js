@@ -71,7 +71,27 @@ function drawSteel(x, y) {
   ctx.fillStyle = '#b9c3ca'; ctx.fillRect(x + 3, y + 3, T - 6, 3);
   ctx.fillStyle = '#5b666f';
   for (const [ox, oy] of [[7, 7], [25, 7], [7, 25], [25, 25]]) { ctx.beginPath(); ctx.arc(x + ox, y + oy, 2, 0, Math.PI * 2); ctx.fill(); }
+  drawSteelBurn(Math.floor(x/T),Math.floor(y/T));
   ctx.restore();
+}
+
+// Оплавленный край прорези (destruction.js, heatSteelEdge): у прорези жёлтый, глубже в металл красный;
+// за STEEL_BURN.cool секунд времени симуляции темнеет до черноты. Остывшая клетка рисуется из кэша.
+const BURN_HOT=[[255,232,110],[255,146,40],[205,52,26]],BURN_COLD=[[16,13,12],[32,28,27],[56,54,56]];
+function paintSteelBurn(g,b,x0,y0) {
+  for(let k=0;k<b.idx.length;k++){
+    const p=b.idx[k],h=BURN_HOT[b.depth[k]-1],cold=BURN_COLD[b.depth[k]-1];
+    const t=clamp((simTime-b.heat[k])/STEEL_BURN.cool,0,1),e=t*t*(3-2*t);
+    g.fillStyle=`rgb(${h[0]+(cold[0]-h[0])*e|0},${h[1]+(cold[1]-h[1])*e|0},${h[2]+(cold[2]-h[2])*e|0})`;
+    g.fillRect(x0+p%T,y0+((p/T)|0),1,1);
+  }
+}
+function drawSteelBurn(c,r) {
+  const d=steelDamage.get(r*COLS+c),b=d&&d.burn;
+  if(!b||!b.idx.length)return;
+  if(simTime<b.hotUntil){paintSteelBurn(ctx,b,c*T,r*T);return;}
+  if(!b.cache){const canvas=document.createElement('canvas');canvas.width=canvas.height=T;paintSteelBurn(canvas.getContext('2d'),b,0,0);b.cache=canvas;}
+  ctx.drawImage(b.cache,c*T,r*T);
 }
 
 function drawWater(x,y,c,r) { detailWater(ctx,x,y,c); }

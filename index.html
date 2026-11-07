@@ -64,6 +64,9 @@
   .t-P { background: repeating-linear-gradient(-8deg, #b59e64 0 5px, #c9b277 5px 6px); }
   .t-T, .t-t { background: radial-gradient(circle, #3f8a3a 55%, #2c5e2a 62%, #56693f 64%); }
   .t-b, .t-t { opacity: .5; }
+  .t-R { background: repeating-linear-gradient(90deg, transparent 0 7px, #5a5c58 7px 8px), repeating-linear-gradient(0deg, #8a8b86 0 7px, #5a5c58 7px 8px); }
+  .t-D { background: linear-gradient(#b3633a, #b3633a) 0 50% / 50% 25% no-repeat, linear-gradient(#b3633a, #b3633a) 0 100% / 75% 25% no-repeat, #56693f; }
+  .t-L { background: radial-gradient(circle, #3f8a3a 22%, #2c5e2a 27%, #56693f 30%); }
   .epanel select { background: #0f1416; color: #eef5e8; border: 1px solid #2f3a40; border-radius: 6px; padding: 5px 6px; font: inherit; }
   .pe-pack { border: 1px solid #2f3a40; border-radius: 8px; padding: 8px 12px 4px; margin-top: 12px; }
   .pe-packhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-bottom: 6px; }
@@ -217,6 +220,8 @@ function startGame(retry = false) {
   resetVictory();
   resetDefeat();
   applyMapChoice();score = 0; scrap = 0; wave = campaign ? CFG.campaignStart : 0; player = null; victory = false;
+  // новая операция начинает учёт союзников и их улучшений заново
+  allies = []; resetReinforcements();
   base = { ...BASE_POS, hp: 5, maxHp: 5, dead: false };
   nextWave(); syncMusic();
 }
@@ -236,15 +241,13 @@ function nextWave() {
     activeMap = campaign[wave - 1];
     if (activeMap.cols !== COLS) { configureMap(activeMap.cols); if (base) { base.x = BASE_POS.x; base.y = BASE_POS.y; } }
   }
+  // каждая новая волна или уровень начинается с целой базой
+  if (base) base.hp = base.maxHp;
+  // ступени живых союзников переходят на следующий уровень (позже allies пересоздаются)
+  const keptAllies = allies.filter(a => !a.dead).map(a => a.upgrade || 0);
   genMap(wave);
   placeBombers();
-  if(base) {
-    const center=Math.floor(COLS/2);
-    for(let r=ROWS-2;r<ROWS;r++)for(let c=center-1;c<=center+1;c++) {
-      const i=r*COLS+c,wall=r===ROWS-2||c!==center;
-      grid[i]=wall?BRICK:EMPTY;brickHp[i]=wall?4:0;brickMask[i]=wall?1023:0;
-    }
-  }
+  if(base) fortifyBase('level');
   const tier=player&&!player.dead?(player.upgrade||0):0;
   const maxHp=playerMaxHp(tier),hp=player?Math.min(maxHp,player.hp+CFG.waveHeal):maxHp;
   const rail = player ? player.rail : 0;
@@ -254,7 +257,7 @@ function nextWave() {
   setPlayerUpgrade(player,tier,false);player.hp = hp; player.rail = rail; player.armor=tier>0; Object.assign(player,boostState); player.cd = .3;
   enemies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; resetArtillery();itemSpawnTimer=10;
   toSpawn = waveList(wave); spawnTimer = 1.2; flowTimer = 0;
-  spawnAllies();
+  spawnAllies(keptAllies);
   banner = campaign
     ? { text: `${UI_TEXT.uroven}${wave}${UI_TEXT.iz}${campaign.length}`, sub: `${activeMap.name}${UI_TEXT.vragov}${toSpawn.length}`, t: 2.4 }
     : { text: `${UI_TEXT.volna}${wave}`, sub: `${UI_TEXT.vragov_2}${toSpawn.length}`, t: 2.2 };
@@ -319,6 +322,7 @@ function update(dt) {
   if (state === 'over' && !victory) { updateDefeat(dt); return; }
   updateBaseCollapse(dt);
   if (hitstop > 0) { hitstop -= dt; return; }
+  simTime += dt;
   updateParts(dt);
   shake = Math.max(0, shake - dt * 30);
   banner.t -= dt;
@@ -334,7 +338,7 @@ function update(dt) {
     }
   }
   updatePlayer(dt); updateTreadSound(dt);
-  updateArtilleryShells(dt);updateRandomItems(dt);updateSappers(dt);
+  updateArtilleryShells(dt);updateRockets(dt);updateRandomItems(dt);updateSappers(dt);updateReinforcements(dt);updateBaseWalls(cellOccupied);
   if (state === 'play' && !player.dead && !(base && base.dead)) updateSpawns(dt);
   formColumns();
   for (const e of enemies) updateEnemy(e, dt);
@@ -349,7 +353,7 @@ function update(dt) {
   if (player.dead || (base && base.dead)) {
     deadT -= dt;
     if (deadT <= 0 && defeatBlastsFinished()) enterDefeat();
-  } else if (state === 'play' && !player.upgradeT && !toSpawn.length && !enemies.length && !wrecks.some(w=>w.exploded===false)&&!artilleryShells.length&&!hasPendingBarrage()&&!sappersBusy()) {
+  } else if (state === 'play' && !player.upgradeT && !toSpawn.length && !enemies.length && !wrecks.some(w=>w.exploded===false)&&!artilleryShells.length&&!rockets.length&&!hasPendingBarrage()&&!sappersBusy()) {
     const bonus = CFG.waveBonus * wave;
     score += bonus;
     const collected=collectRemainingScrap();
@@ -378,6 +382,8 @@ function applyDev(s) {
   }
   // До sapperVersion 2 таймер смертника по умолчанию был 5 с; старое значение не переносится.
   const cfg={...s.CFG};if(!(s.sapperVersion>=2))delete cfg.bomberFuse;
+  // Шанс выпадения бонусов с врагов убран: старые сохранения грузятся, а эти поля отбрасываются.
+  delete cfg.dropChance;delete cfg.heavyDropBonus;
   Object.assign(CFG, cfg);
 }
 function saveDev() { try { localStorage.setItem('ecotank-dev-v2', JSON.stringify({ KINDS, CFG, balanceVersion:2,artilleryVersion:2,sapperVersion:2 })); } catch (e) {} }
@@ -465,7 +471,7 @@ document.getElementById('mapPick').addEventListener('change', e => {
 function toMenu() {
   resetVictory();
   resetDefeat();
-  resetArtillery();itemSpawnTimer=10;state = 'menu'; player = null; base = null; enemies = []; allies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
+  resetArtillery();resetReinforcements();itemSpawnTimer=10;state = 'menu'; player = null; base = null; enemies = []; allies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
   applyMapChoice(); genMap(1);
 }
 document.getElementById('btnDev').addEventListener('click', e => { e.currentTarget.blur(); devOpen = true; buildDev(); });

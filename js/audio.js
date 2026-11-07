@@ -6,7 +6,7 @@
 // Обычный script без import/fetch сохраняет запуск через file://.
 
 // ---------- звук ----------
-let actx = null, noiseBuf = null, muted = false, cannonNoiseLayers=null,heavyImpulse=null;
+let actx = null, noiseBuf = null, muted = false, cannonNoiseLayers=null,heavyImpulse=null,dshkEcho=null;
 
 let music = null;
 let musicOff=false,musicWanted=false,musicLevel=.22,musicScene='',musicTrack=MENU_TRACK,musicBlocked=false,audioUnlocked=false;
@@ -93,6 +93,8 @@ function sfx(n) {
       case 'scrap': tone(900, 600, .06, 'square', .05); setTimeout(() => tone(1200, 800, .06, 'square', .05), 70); break;
       case 'hurt': tone(220, 60, .25, 'sawtooth', .1); noise(.2, .2, 900); break;
       case 'mg': noise(.05, .1, 3200); tone(190, 90, .04, 'square', .035); break;
+      case 'dshk': dshkSound(); break;
+      case 'rocket': noise(.55, .16, 2400); noise(.2, .12, 6000); tone(260, 820, .4, 'sawtooth', .03); break;
       case 'fuse': noise(.6, .05, 7000); noise(.12, .08, 2500); break;
       case 'mineDrop': tone(420, 230, .07, 'square', .05); noise(.08, .08, 900); break;
       case 'pick': tone(520, 1100, .16, 'triangle', .1); break;
@@ -111,6 +113,24 @@ function heavyGunSound(){
   if(!heavyImpulse){heavyImpulse=actx.createBuffer(2,Math.floor(actx.sampleRate*1.8),actx.sampleRate);for(let channel=0;channel<2;channel++){const data=heavyImpulse.getChannelData(channel);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,3);}}
   reverb.buffer=heavyImpulse;dry.connect(reverb);const revGain=actx.createGain();revGain.gain.value=.35;reverb.connect(revGain).connect(soundBus());source.start(t);source.stop(t+.65);
   setTimeout(()=>{delay.disconnect();feedback.disconnect();reverb.disconnect();wet.disconnect();revGain.disconnect();dry.disconnect();filter.disconnect();},5200);
+}
+
+// ДШК: громче и ниже ДТ-29, с плотным эхом. Шина эха (задержка с обратной связью и свёртка с
+// уже созданным heavyImpulse) строится один раз; каждый выстрел только подключается к ней.
+function dshkSound(){
+  if(!noiseBuf)noise(.01,.001,100);
+  if(!heavyImpulse){heavyImpulse=actx.createBuffer(2,Math.floor(actx.sampleRate*1.8),actx.sampleRate);for(let channel=0;channel<2;channel++){const data=heavyImpulse.getChannelData(channel);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,3);}}
+  if(!dshkEcho){
+    const input=actx.createGain(),delay=actx.createDelay(1),feedback=actx.createGain(),wet=actx.createGain(),reverb=actx.createConvolver(),revGain=actx.createGain();
+    delay.delayTime.value=.19;feedback.gain.value=.45;wet.gain.value=.55;reverb.buffer=heavyImpulse;revGain.gain.value=.4;
+    input.connect(delay);delay.connect(feedback).connect(delay);delay.connect(wet).connect(soundBus());input.connect(reverb).connect(revGain).connect(soundBus());
+    dshkEcho=input;
+  }
+  const t=actx.currentTime,src=actx.createBufferSource(),filter=actx.createBiquadFilter(),g=actx.createGain();
+  src.buffer=noiseBuf;filter.type='lowpass';filter.frequency.value=1500;
+  g.gain.setValueAtTime(.42,t);g.gain.exponentialRampToValueAtTime(.0001,t+.11);
+  src.connect(filter).connect(g);g.connect(soundBus());g.connect(dshkEcho);src.start(t,Math.random()*.5);src.stop(t+.12);
+  tone(130,42,.09,'square',.08);
 }
 
 // Вызывается один раз из index.html после создания DOM и базовых утилит.

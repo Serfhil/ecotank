@@ -14,6 +14,7 @@ function drawPlayerModel(t, context = ctx) {
   const ctx = context;
   if(t.kind==='moto'){drawMoto(t,ctx);return;}
   if(t.kind==='bomber'){drawBomberModel(t,ctx);return;}
+  if(t.kind==='rocket'){if(!drawVehicleSheet(t,ctx))drawRocketLauncherModel(t,ctx);return;}
   if(drawVehicleSprite(t,ctx))return;
   if(t.kind==='artillery'){drawArtilleryModel(t, ctx);return;}
   const isP=t.kind==='player'||(t.ally||t.kind==='ally')&&t.upgrade>0,ally=t.kind==='ally',heavy=t.kind==='heavy',panther=t.kind==='soldier';
@@ -133,4 +134,19 @@ function drawArtilleryModel(t, context = ctx){
   ctx.strokeStyle='#566048';ctx.beginPath();ctx.moveTo(-10,-3);ctx.lineTo(-10,7);ctx.moveTo(10,11);ctx.lineTo(10,18);ctx.stroke();ctx.strokeStyle='#944b36';ctx.beginPath();ctx.moveTo(-6,19);ctx.lineTo(3,19);ctx.moveTo(10,-3);ctx.lineTo(10,5);ctx.stroke();
   ctx.fillStyle='#77715a';ctx.fillRect(-4,-3,8,16);ctx.fillStyle='#dad3ac';ctx.fillRect(-8,10,3,6);ctx.fillRect(6,8,3,7);detailHull(ctx,t);ctx.restore();
   ctx.save();ctx.translate(t.x,t.y);ctx.rotate(t.turret+Math.PI/2);const recoil=recoilOffset(t);ctx.fillStyle='#302f2b';ctx.fillRect(-4,-35+recoil,8,35);ctx.fillStyle='#d5be7d';ctx.fillRect(-2,-34+recoil,4,31);ctx.fillStyle='#566048';ctx.fillRect(-2,-29+recoil,4,7);ctx.fillStyle='#944b36';ctx.fillRect(-2,-18+recoil,4,5);ctx.fillStyle='#877a53';ctx.fillRect(-6,-5,12,10);ctx.restore();
+}
+
+// Резервная модель Panzerwerfer 42, если атлас не загрузился: полугусеничный корпус и пакет труб.
+function drawRocketLauncherModel(t, context = ctx){
+  const c=context,s=tankScale(t),flash=t.flash>0;
+  c.save();c.translate(t.x,t.y);c.rotate(t.angle+Math.PI/2);c.scale(s,s);
+  c.fillStyle='#1d1f1c';c.fillRect(-11,-4,4,26);c.fillRect(7,-4,4,26);
+  c.fillStyle='#2a2b27';c.beginPath();c.arc(-9,-17,3.2,0,Math.PI*2);c.arc(9,-17,3.2,0,Math.PI*2);c.fill();
+  c.fillStyle=flash?'#fff':'#b9a27a';c.beginPath();c.moveTo(-6,-26);c.lineTo(6,-26);c.lineTo(9,-14);c.lineTo(9,24);c.lineTo(-9,24);c.lineTo(-9,-14);c.closePath();c.fill();
+  c.fillStyle='#8c7b5a';c.fillRect(-6,-22,12,9);c.fillStyle='#5d5038';c.fillRect(-7,16,14,6);
+  c.restore();
+  c.save();c.translate(t.x-Math.cos(t.angle)*3*s,t.y-Math.sin(t.angle)*3*s);c.rotate(t.turret+Math.PI/2);c.scale(s,s);
+  c.fillStyle=flash?'#fff':'#a59466';c.fillRect(-7,-9,14,15);c.fillStyle='#3c372b';
+  for(let k=0;k<5;k++){c.beginPath();c.arc(-5.6+k*2.8,-8,1.1,0,Math.PI*2);c.fill();}
+  c.restore();
 }

@@ -29,8 +29,28 @@ function drawItems() {
     ctx.strokeStyle = I.color; ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = I.color; ctx.font = 'bold 14px "Segoe UI", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if(it.type==='rail')drawNiiIcon(ctx,it.x-10,y-10,20);else ctx.fillText(I.glyph, it.x, y + 1);
+    if(it.type==='rail')drawNiiIcon(ctx,it.x-10,y-10,20);else if(!drawItemIcon(ctx,it.type,it.x,y,I.color))ctx.fillText(I.glyph, it.x, y + 1);
   }
+}
+
+// Значки новых бонусов: силуэт бойца с плюсом, кладка, стальная плита. false — рисуется глиф.
+function drawItemIcon(c,type,x,y,color) {
+  if(type==='reinforce'){
+    c.fillStyle=color;c.beginPath();c.arc(x-3,y-4,3.2,0,Math.PI*2);c.fill();
+    c.beginPath();c.moveTo(x-9,y+8);c.quadraticCurveTo(x-9,y-.5,x-3,y-.5);c.quadraticCurveTo(x+3,y-.5,x+3,y+8);c.closePath();c.fill();
+    c.fillRect(x+3,y-6,8,2.4);c.fillRect(x+5.8,y-8.8,2.4,8);return true;
+  }
+  if(type==='stroybat'){
+    c.fillStyle=color;
+    for(let row=0;row<3;row++)for(let k=0;k<3;k++){const off=row%2?3:0,bx=x-9+k*6+off;if(bx+5>x+9)continue;c.fillRect(bx,y-7+row*5,5,4);}
+    return true;
+  }
+  if(type==='curtain'){
+    c.fillStyle='#6f7b85';c.fillRect(x-8,y-8,16,16);c.fillStyle=color;c.fillRect(x-6,y-6,12,12);
+    c.fillStyle='#5b666f';for(const [ox,oy]of [[-4,-4],[4,-4],[-4,4],[4,4]]){c.beginPath();c.arc(x+ox,y+oy,1.3,0,Math.PI*2);c.fill();}
+    return true;
+  }
+  return false;
 }
 
 function drawBullets() {
@@ -80,7 +100,7 @@ function drawBattleFrame() {
     for (const a of allies) if (!a.dead) drawTank(a);
     if (player && !player.dead) drawTank(player);
     drawBombers();
-    drawBullets();drawArtilleryShells();
+    drawBullets();drawArtilleryShells();drawRocketZones();drawRockets();
     drawRails();
     drawParts();
     drawMineFx();
@@ -94,12 +114,46 @@ function drawBattleFrame() {
   ctx.restore();
 }
 
+// Пульсирующая зона удара: общая для артиллерии и РСЗО. appear 0..1 — проявление новой метки.
+function drawWarningZone(x,y,radius,appear=1) {
+  const pulse=.5+.5*Math.sin(time*7);
+  ctx.save();ctx.globalAlpha*=appear;ctx.fillStyle=`rgba(255,208,45,${.07+pulse*.1})`;ctx.strokeStyle=`rgba(255,218,65,${.5+pulse*.5})`;ctx.lineWidth=2;ctx.setLineDash([6,4]);
+  ctx.beginPath();ctx.arc(x,y,radius*(.6+.4*appear),0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(x-8,y);ctx.lineTo(x+8,y);ctx.moveTo(x,y-8);ctx.lineTo(x,y+8);ctx.stroke();
+  ctx.restore();
+}
+
+function drawRocketZones(){
+  for(const p of rocketZones())drawWarningZone(p.x,p.y,ROCKET_CONFIG.radius,clamp((simTime-p.markedAt)/.25,0,1));
+}
+
+// Ракета и инверсионный след: не больше ROCKET_CONFIG.trail точек, прозрачность — по возрасту точки.
+function drawRocketTrail(trail,head) {
+  ctx.lineCap='round';
+  for(let k=1;k<trail.length+(head?1:0);k++){
+    const a=trail[k-1],b=trail[k]||head,fade=clamp(1-(rocketClock-a.t)/ROCKET_CONFIG.trailLife,0,1);
+    if(!fade)continue;
+    ctx.strokeStyle=`rgba(226,222,210,${.55*fade})`;ctx.lineWidth=1.5+2.5*fade;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  }
+  ctx.lineCap='butt';
+}
+function drawRockets(){
+  for(const trail of rocketTrails)drawRocketTrail(trail,null);
+  for(const r of rockets){
+    drawRocketTrail(r.trail,r);
+    ctx.save();ctx.translate(r.x,r.y);ctx.rotate(r.angle);
+    ctx.fillStyle='rgba(255,170,60,.85)';ctx.beginPath();ctx.ellipse(-7,0,4+Math.random()*2,2,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#57543f';ctx.fillRect(-5,-1.6,9,3.2);ctx.fillStyle='#2b2a22';ctx.beginPath();ctx.moveTo(4,-1.6);ctx.lineTo(7,0);ctx.lineTo(4,1.6);ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+}
+
 function drawArtilleryShells(){
   for(const shell of artilleryShells){
     const pulse=.5+.5*Math.sin(time*7),p=clamp((shell.age-shell.delay)/shell.duration,0,1);
-    ctx.save();ctx.fillStyle=`rgba(255,208,45,${.07+pulse*.1})`;ctx.strokeStyle=`rgba(255,218,65,${.5+pulse*.5})`;ctx.lineWidth=2;ctx.setLineDash([6,4]);
-    ctx.beginPath();ctx.arc(shell.tx,shell.ty,shell.radius,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);
-    ctx.beginPath();ctx.moveTo(shell.tx-8,shell.ty);ctx.lineTo(shell.tx+8,shell.ty);ctx.moveTo(shell.tx,shell.ty-8);ctx.lineTo(shell.tx,shell.ty+8);ctx.stroke();
+    drawWarningZone(shell.tx,shell.ty,shell.radius);
+    ctx.save();
     if(shell.pending||shell.age<shell.delay){ctx.restore();continue;}
     const x=shell.sx+shell.dx*p,y=shell.sy+shell.dy*p-Math.sin(p*Math.PI)*65;
     ctx.fillStyle='rgba(235,45,35,0.2)';ctx.beginPath();ctx.arc(x,y,10+pulse*5,0,Math.PI*2);ctx.fill();

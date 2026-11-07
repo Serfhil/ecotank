@@ -45,7 +45,7 @@ const UI_TEXT = Object.freeze({
   "posledovatelnye_urovni": "Последовательные уровни",
   "startBattle": "В бой, товарищ!",
   "settings": "Постановления",
-  "wasd_tank_mysh_bashnya_probel_ogon_shift_uskorenie": "WASD — танк · Мышь — башня · Пробел — огонь · Shift — ускорение",
+  "wasd_tank_mysh_bashnya_probel_ogon_shift_uskorenie": "WASD — танк · Мышь — башня · Пробел — огонь · ПКМ — пулемёт (ДТ-29 / 2×ДТ-29 / ДШК) · Shift — ускорение",
   "mapControl": "Карта (новая игра)\r\n",
   "originalnyy": "Оригинальный",
   "preset_test_0_1": "Пресет тест 0.1",
@@ -81,6 +81,10 @@ const UI_TEXT = Object.freeze({
   "skorostrel": "Скорострел",
   "shchit": "Щит",
   "relsotron": "Снаряд из НИИ",
+  "podkreplenie": "Подкрепление",
+  "stroybat": "Стройбат",
+  "zheleznyy_zanaves": "Железный занавес",
+  "podkreplenie_idet": "Подкрепление выходит",
   "radiotochka_vyklyuchena": "♫ Радиоточка выключена",
   "vklyuchit_radiotochku": "♫ Включить радиоточку",
   "post": "Пост",
@@ -125,7 +129,10 @@ const UI_TEXT = Object.freeze({
   "vragi": "Враги ",
   "metallolom_3": "Металлолом ",
   "pkm": "ПКМ",
-  "kursovoy_pulemet": "курсовой пулемёт",
+  "kursovoy_pulemet": "курсовой пулемёт: Т-34 — ДТ-29, ИС-2 — 2×ДТ-29, ИС-2-II — ДШК",
+  "mg_dt29": "ДТ-29",
+  "mg_dt29x2": "ДТ-29 ×2",
+  "mg_dshk": "ДШК",
   "klavisha_c": "C",
   "zaryadit_snaryad_iz_nii": "зарядить снаряд из НИИ в основное орудие",
   "zaryazhayu_eksperimentalnym": "Заряжаю экспериментальным",
@@ -139,7 +146,7 @@ const UI_TEXT = Object.freeze({
   "ogon": "огонь",
   "pauza": "пауза",
   "zvuk": "звук",
-  "zabor_lomaetsya_s_vystrela_kirpich_s_chetyryokh_stal_i_voda_net_v_kronakh_vragi_tebya": "Забор ломается с выстрела, кирпич — с четырёх, сталь и вода — нет. В кронах враги тебя не видят.",
+  "zabor_lomaetsya_s_vystrela_kirpich_s_chetyryokh_stal_i_voda_net_v_kronakh_vragi_tebya": "Забор ломается с выстрела, пулемётом или наездом, кирпич — с четырёх, сталь и вода — нет. В кронах враги тебя не видят.",
   "proezzhay_po_oblomkam_vragov_chtoby_sobrat_metallolom": "Проезжай по обломкам врагов, чтобы собрать металлолом.",
   "nazhmi_enter_ili_klikni_chtoby_nachat": "Нажми Enter или кликни, чтобы начать",
   "rekord": "Рекорд: ",
@@ -162,6 +169,10 @@ const UI_TEXT = Object.freeze({
   "artilleriya": "Ferdinand (САУ)",
   "motocikl_miner": "Мотоцикл-минёр",
   "smertnik": "Смертник",
+  "panzerwerfer": "Panzerwerfer 42 (РСЗО)",
+  "rszo": "РСЗО Panzerwerfer 42",
+  "shans_rszo_v_volne": "Шанс РСЗО после каждого врага волны",
+  "pauza_mezhdu_zalpami_s": "Пауза между залпами, с",
   "miny_i_smertniki": "Минёры и смертники",
   "shans_smertnika_v_zeleni": "Шанс смертника в клетке зелени",
   "vzryv_smertnika_cherez_s": "Взрыв смертника через, с",
@@ -177,8 +188,6 @@ const UI_TEXT = Object.freeze({
   "ochki_za_unichtozhenie": "Очки за уничтожение",
   "metallolom_5": "Металлолом",
   "bonusy": "Бонусы",
-  "shans_vypadeniya": "Шанс выпадения",
-  "dop_shans_s_tyazhyologo": "Доп. шанс с тяжёлого",
   "dlitelnost_bonusov_s": "Длительность бонусов, с",
   "remont_khp": "Ремонт, ХП",
   "maks_zaryadov_relsotrona": "Макс. снарядов из НИИ",
@@ -210,8 +219,9 @@ const UI_TEXT = Object.freeze({
   "voda": "Вода",
   "lesoposadka": "Лесопосадка",
   "pesok": "Песок",
-  "kirpich_60": "Кирпич · 60%",
-  "lesoposadka_60": "Лесопосадка · 60%",
+  "doroga": "Дорога",
+  "kirpich_75": "Кирпич, разрушенный на 75%",
+  "zelen_75": "Зелень, разрушенная на 75%",
   "raschistit": "Расчистить",
   "ne_trogat": "Не трогать",
   "kopiya": " (копия)",
@@ -285,9 +295,9 @@ const UI_TEXT = Object.freeze({
   "net_kart_kampanii": "Нет карт кампании"
 });
 
-const KIND_NAMES = { player: UI_TEXT.igrok, scout: UI_TEXT.razvedchik, soldier: UI_TEXT.soldat, heavy: UI_TEXT.tyazhyolyy, artillery:UI_TEXT.artilleriya, moto:UI_TEXT.motocikl_miner, bomber:UI_TEXT.smertnik, ally:UI_TEXT.soyuznik };
+const KIND_NAMES = { player: UI_TEXT.igrok, scout: UI_TEXT.razvedchik, soldier: UI_TEXT.soldat, heavy: UI_TEXT.tyazhyolyy, artillery:UI_TEXT.artilleriya, moto:UI_TEXT.motocikl_miner, bomber:UI_TEXT.smertnik, rocket:UI_TEXT.panzerwerfer, ally:UI_TEXT.soyuznik };
 
-const BRUSHES = [['B', UI_TEXT.kirpich], ['F', UI_TEXT.zabor], ['S', UI_TEXT.broneplita], ['W', UI_TEXT.voda], ['T', UI_TEXT.lesoposadka], ['P', UI_TEXT.pesok], ['b', UI_TEXT.kirpich_60], ['t', UI_TEXT.lesoposadka_60], ['.', UI_TEXT.raschistit], [' ', UI_TEXT.ne_trogat]];
+const BRUSHES = [['B', UI_TEXT.kirpich], ['F', UI_TEXT.zabor], ['S', UI_TEXT.broneplita], ['W', UI_TEXT.voda], ['T', UI_TEXT.lesoposadka], ['P', UI_TEXT.pesok], ['R', UI_TEXT.doroga], ['D', UI_TEXT.kirpich_75], ['L', UI_TEXT.zelen_75], ['.', UI_TEXT.raschistit], [' ', UI_TEXT.ne_trogat]];
 
 // Classic scripts work over file:// as well as HTTP; no fetch or imports needed.
 function applyInterfaceTexts(root=document) {

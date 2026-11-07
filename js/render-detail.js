@@ -16,6 +16,8 @@ function detailGround(c) {
     if(water||sand[i]){
       for(let k=0;k<8;k++){const h=tileHash(x*13+k,r*7+k);c.fillStyle=water?'#6ab3bf25':k%2?'#ecda9d66':'#75634233';c.fillRect(px+h*29,py+tileHash(x+k,r-k)*30,water?4:2,1);}
       if(sand[i]&&!water){c.strokeStyle='#e5cc903d';c.lineWidth=1;for(let y=6;y<32;y+=11){c.beginPath();for(let xx=0;xx<=32;xx+=4){const yy=py+y+Math.sin((px+xx)*.09+py)*1.6;if(!xx)c.moveTo(px+xx,yy);else c.lineTo(px+xx,yy);}c.stroke();}}
+    }else if(road&&road[i]){
+      detailRoad(c,px,py,x,r);
     }else{
       for(let k=0;k<5;k++){const dx=tileHash(x*7+k,r)*30,dy=tileHash(x,r*7+k)*30;c.strokeStyle=k%2?'#a6b66f55':'#263d2355';c.lineWidth=.7;c.beginPath();c.moveTo(px+dx,py+dy);c.lineTo(px+dx-1,py+dy-3);c.lineTo(px+dx+2,py+dy-1);c.stroke();}
     }
@@ -35,6 +37,19 @@ function detailGround(c) {
           if(k)c.lineTo(px,py);else c.moveTo(px,py);
         }c.stroke();
       }
+    }
+  }
+}
+// Дорога: серая брусчатка рядами со смещением, швы и случайный оттенок камня по координатам.
+function detailRoad(c,px,py,col,row) {
+  c.fillStyle='#4d4f4c';c.fillRect(px,py,T,T);
+  for(let ry=0;ry<4;ry++){
+    const shift=(ry+row*4)%2?4:0;
+    for(let rx=-1;rx<4;rx++){
+      const sx=px+rx*8+shift,sy=py+ry*8,h=tileHash(col*5+rx,row*5+ry),x0=Math.max(px,sx+1),x1=Math.min(px+T,sx+8);
+      if(x1<=x0)continue;
+      c.fillStyle=['#8a8b86','#7c7e7a','#969690','#85837c'][Math.floor(h*4)];c.fillRect(x0,sy+1,x1-x0,6);
+      c.fillStyle='#b7b6ad55';c.fillRect(x0,sy+1,x1-x0,1);c.fillStyle='#2f312f55';c.fillRect(x0,sy+6,x1-x0,1);
     }
   }
 }

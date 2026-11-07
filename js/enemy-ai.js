@@ -5,20 +5,25 @@
 // массив flow принадлежит world.js. enemyInterval также используется отрисовкой.
 // При подключении определяет функции, без DOM, событий и запуска симуляции.
 
-function buildFlow(tc, tr) {
-  flow.fill(1e9);
+// fenceCost: 1 — танки давят забор и едут через него без штрафа; мотобригада передаёт 2 и свой массив,
+// чтобы её маршрут не затирал общий flow танков.
+function buildFlow(tc, tr, fenceCost = 1, f = flow) {
+  f.fill(1e9);
   const s = tr * COLS + tc, q = [s];
-  flow[s] = 0;
+  f[s] = 0;
   for (let h = 0; h < q.length; h++) {
     const i = q[h], c = i % COLS, r = (i / COLS) | 0;
     for (const [dc, dr] of DIRS) {
       const nc = c + dc, nr = r + dr, t = tileAt(nc, nr);
       if (t === STEEL || t === WATER) continue;
-      const j = nr * COLS + nc, nd = flow[i] + (t === BRICK ? 4 : t === FENCE ? 2 : 1);
-      if (nd < flow[j]) { flow[j] = nd; q.push(j); }
+      const j = nr * COLS + nc, nd = f[i] + (t === BRICK ? 4 : t === FENCE ? fenceCost : 1);
+      if (nd < f[j]) { f[j] = nd; q.push(j); }
     }
   }
 }
+
+// Что участник ломает или минирует, а не проезжает: танки — только кирпич (забор давят), мотобригада — и забор.
+const obstacleFor = (e, t) => t === BRICK || (t === FENCE && !crushesFence(e));
 
 function los(x0, y0, x1, y1) {
   const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 8);
@@ -29,20 +34,20 @@ function los(x0, y0, x1, y1) {
   return true;
 }
 
-function decide(e, random) {
+function decide(e, random, f = flow) {
   const K = KINDS[e.kind], c = Math.floor(e.x / T), r = Math.floor(e.y / T);
   const opts = [];
   for (const [dc, dr] of DIRS) {
     const nc = c + dc, nr = r + dr, t = tileAt(nc, nr);
     if (t === STEEL || t === WATER) continue;
-    if (random && breakable(t) && e.kind!=='heavy') continue;
-    opts.push({ nc, nr, t, v: flow[nr * COLS + nc] });
+    if (random && obstacleFor(e, t) && e.kind!=='heavy') continue;
+    opts.push({ nc, nr, t, v: f[nr * COLS + nc] });
   }
   e.brick = null;
   if (!opts.length) { e.tx = c * T + 16; e.ty = r * T + 16; return; }
   let pick = opts.reduce((a, b) => b.v < a.v ? b : a);
   if (random || Math.random() < K.wander) pick = opts[ri(0, opts.length - 1)];
-  if (breakable(pick.t)) {
+  if (obstacleFor(e, pick.t)) {
     e.brick = { x: pick.nc * T + 16, y: pick.nr * T + 16 };
     e.tx = c * T + 16; e.ty = r * T + 16;
   } else {
@@ -58,7 +63,7 @@ function enemyGoal(e) {
 }
 
 function formColumns() {
-  const rank={heavy:3,soldier:2,scout:1},eligible=enemies.filter(e=>!e.dead&&!e.entering&&!(e.detourTime>0)&&e.kind!=='moto');
+  const rank={heavy:3,soldier:2,scout:1},eligible=enemies.filter(e=>!e.dead&&!e.entering&&!(e.detourTime>0)&&e.kind!=='moto'&&e.kind!=='rocket');
   const pool=eligible.filter(e=>e.kind!=='artillery').sort((a,b)=>rank[b.kind]-rank[a.kind]),guns=eligible.filter(e=>e.kind==='artillery'&&!e.deployed);
   for(const e of eligible){e.leader=null;e.columnSlot=0;}
   while(pool.length){const lead=pool.shift(),gun=guns.find(e=>Math.hypot(e.x-lead.x,e.y-lead.y)<260);
@@ -68,8 +73,10 @@ function formColumns() {
   }
 }
 
-function coverClear(x,y,r) {
-  return [[0,0],[-r,-r],[r,-r],[-r,r],[r,r]].every(([dx,dy])=>!blocksTank(tileAt(Math.floor((x+dx)/T),Math.floor((y+dy)/T))));
+// crush=true — забор не мешает (танк его продавит): для маршрутов союзников к бонусам и точек въезда.
+function coverClear(x,y,r,crush=false) {
+  const blocks=crush?blocksCrusher:blocksTank;
+  return [[0,0],[-r,-r],[r,-r],[-r,r],[r,r]].every(([dx,dy])=>!blocks(tileAt(Math.floor((x+dx)/T),Math.floor((y+dy)/T))));
 }
 
 function updateCover(e,goal,dt) {
@@ -98,7 +105,7 @@ function updateCover(e,goal,dt) {
 function blockingBrick(e,goal) {
   const n=Math.ceil(Math.hypot(goal.x-e.x,goal.y-e.y)/6);
   for(let j=1;j<n;j++) {const x=e.x+(goal.x-e.x)*j/n,y=e.y+(goal.y-e.y)*j/n,c=Math.floor(x/T),r=Math.floor(y/T),t=tileAt(c,r);
-    if(t===STEEL||t===WATER)return null;if(breakable(t)&&bulletBlocked(x,y))return {x,y};}
+    if(t===STEEL||t===WATER)return null;if(t===BRICK&&bulletBlocked(x,y))return {x,y};}
   return null;
 }
 
@@ -139,6 +146,7 @@ function updateEnemy(e, dt) {
   if(e.kind==='moto'){updateMoto(e,dt);return;}
   e.cd -= dt; e.decideT -= dt;reconsiderRoute(e,dt);
   if(e.kind==='artillery'){updateArtillery(e,dt);return;}
+  if(e.kind==='rocket'){updateRocketLauncher(e,dt);return;}
   const goal=enemyGoal(e);
   if(!e.leader)buildFlow(Math.floor(goal.x/T),Math.floor(goal.y/T));
 
@@ -171,7 +179,7 @@ function updateEnemy(e, dt) {
     const speed = K.speed * (1 + Math.min(wave, 10) * CFG.enemySpeedPerWave);
     const step = Math.min(md, speed * dt);
     e.angle = turnTo(e.angle, Math.atan2(my, mx), dt * 8);
-    const moved = moveTank(e, mx / md * step, my / md * step, dt);
+    const moved = moveTank(e, mx / md * step, my / md * step, dt, md);
     if (step > .5 && moved < step * .3) e.stuck += dt; else e.stuck = Math.max(0, e.stuck - dt);
   }
 
@@ -202,9 +210,77 @@ function updateArtillery(e,dt){
     if(e.leader&&!e.leader.dead){e.tx=e.leader.x-Math.cos(e.leader.angle)*48*e.columnSlot;e.ty=e.leader.y-Math.sin(e.leader.angle)*48*e.columnSlot;}
     else {buildFlow(Math.floor(goal.x/T),Math.floor(goal.y/T));if(Math.hypot(e.tx-e.x,e.ty-e.y)<5||e.stuck>.6){decide(e,false);e.stuck=0;}}
     const dx=e.tx-e.x,dy=e.ty-e.y,d=Math.hypot(dx,dy),step=Math.min(d,KINDS.artillery.speed*dt);
-    if(d>1){e.angle=turnTo(e.angle,Math.atan2(dy,dx),dt*2);const moved=moveTank(e,dx/d*step,dy/d*step,dt);if(moved<step*.3)e.stuck+=dt;}
+    if(d>1){e.angle=turnTo(e.angle,Math.atan2(dy,dx),dt*2);const moved=moveTank(e,dx/d*step,dy/d*step,dt,d);if(moved<step*.3)e.stuck+=dt;}
   }else {e.vx=e.vy=0;const target=playerInRange?player:base;
     const aim=Math.atan2(target.y-e.y,target.x-e.x);e.turret=turnTo(e.turret,aim,dt*KINDS.artillery.turretSpeed);
     if(e.cd<=0&&Math.abs(angDiff(e.turret,aim))<.15){const muzzle=vehicleMuzzle(e);launchArtillery(muzzle.x,muzzle.y,target.x,target.y);e.cd=enemyInterval('artillery');e.recoilMax=e.recoil=8;}
   }
+}
+
+// ---------- Panzerwerfer 42 (РСЗО) ----------
+// Цикл хранится на машине (e.salvo): за ROCKET_CONFIG.mark секунд последовательно отмечаются три точки,
+// затем пауза ROCKET_CONFIG.wait и два залпа по три ракеты (пауза между залпами — CFG.rocketVolleyGap).
+// Гибель машины удаляет её из enemies вместе с e.salvo: оставшиеся пуски отменяются, выпущенные долетают.
+const ROCKET_RIPPLE=.12;
+function rocketLaunchTime(n){const C=ROCKET_CONFIG;return C.mark+C.wait+Math.floor(n/C.points)*CFG.rocketVolleyGap+(n%C.points)*ROCKET_RIPPLE;}
+// Цели: игрок и союзники (ещё не отмеченные), запасная — база; без отдельных целей точки разносятся вокруг доступной.
+function pickRocketPoint(points) {
+  const used=new Set(points.map(p=>p.src)),friends=[player,...allies].filter(t=>t&&!t.dead);
+  const baseAlive=base&&!base.dead?base:null;
+  const src=friends.find(t=>!used.has(t))||(baseAlive&&!used.has(baseAlive)?baseAlive:null);
+  let x,y;
+  if(src){x=src.x;y=src.y;}
+  else {
+    const anchors=[...friends,...(baseAlive?[baseAlive]:[])],anchor=anchors[points.length%Math.max(1,anchors.length)]||{x:W/2,y:H/2};
+    for(let attempt=0;attempt<16;attempt++){
+      const a=rnd(0,Math.PI*2),d=rnd(1.5,2.6)*T;x=clamp(anchor.x+Math.cos(a)*d,16,W-16);y=clamp(anchor.y+Math.sin(a)*d,16,H-16);
+      if(points.every(p=>Math.hypot(p.x-x,p.y-y)>=ROCKET_CONFIG.radius*1.6))break;
+    }
+  }
+  return {x:clamp(x,16,W-16),y:clamp(y,16,H-16),src,markedAt:simTime};
+}
+function rocketLauncherMuzzle(e){const s=tankScale(e);return {x:e.x-Math.cos(e.angle)*3*s+Math.cos(e.turret)*8*s,y:e.y-Math.sin(e.angle)*3*s+Math.sin(e.turret)*8*s};}
+function driveRocketLauncher(e,dt) {
+  const K=KINDS.rocket;
+  e.turret=turnTo(e.turret,e.angle,dt*K.turretSpeed);
+  // от базы держится на расстоянии: стрелять можно с любой дистанции
+  if(base&&!base.dead&&Math.hypot(base.x-e.x,base.y-e.y)<6*T){e.vx=e.vy=0;return;}
+  const goal=enemyGoal(e);buildFlow(Math.floor(goal.x/T),Math.floor(goal.y/T));
+  if(e.stuck>.7){e.stuck=0;decide(e,true);e.decideT=.5;}
+  else if(Math.hypot(e.tx-e.x,e.ty-e.y)<1.5&&e.decideT<=0){decide(e,false);e.decideT=0;}
+  // РСЗО не стреляет по стенам: вместо пролома выбирает соседнюю свободную клетку
+  if(e.brick){e.brick=null;decide(e,true);e.decideT=.5;}
+  const mx=e.tx-e.x,my=e.ty-e.y,md=Math.hypot(mx,my);
+  e.vx=e.vy=0;
+  if(md>.5){
+    const speed=K.speed*(1+Math.min(wave,10)*CFG.enemySpeedPerWave),step=Math.min(md,speed*dt);
+    e.angle=turnTo(e.angle,Math.atan2(my,mx),dt*3);
+    const moved=moveTank(e,mx/md*step,my/md*step,dt,md);
+    if(step>.5&&moved<step*.3)e.stuck+=dt;else e.stuck=Math.max(0,e.stuck-dt);
+  }
+}
+function updateRocketLauncher(e,dt) {
+  const C=ROCKET_CONFIG,K=KINDS.rocket;
+  if(!e.salvo){
+    e.rocketCd=(e.rocketCd??C.firstDelay)-dt;
+    if(e.rocketCd>0){driveRocketLauncher(e,dt);return;}
+    e.salvo={t:0,points:[],launched:0};
+  }
+  const S=e.salvo,total=C.points*C.volleys;
+  e.vx=e.vy=0;S.t+=dt;
+  while(S.points.length<C.points&&S.t>=S.points.length*C.mark/C.points)S.points.push(pickRocketPoint(S.points));
+  const aim=S.points[S.t<C.mark?S.points.length-1:S.launched%C.points];
+  e.turret=turnTo(e.turret,Math.atan2(aim.y-e.y,aim.x-e.x),dt*K.turretSpeed);
+  while(S.launched<total&&S.t>=rocketLaunchTime(S.launched)){
+    const point=S.points[S.launched%C.points],m=rocketLauncherMuzzle(e);
+    launchRocket(m.x,m.y,point,S.launched);S.launched++;e.recoilMax=e.recoil=3;
+  }
+  if(S.launched>=total){e.salvo=null;e.rocketCd=K.fireRate;}
+}
+// Зоны ударов: отмеченные точки живых РСЗО и точки, куда ещё летят ракеты (Set убирает повторы).
+function rocketZones() {
+  const zones=new Set();
+  for(const e of enemies)if(!e.dead&&e.salvo)for(const p of e.salvo.points)zones.add(p);
+  for(const r of rockets)zones.add(r.point);
+  return zones;
 }

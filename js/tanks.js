@@ -11,6 +11,8 @@ function makeTank(x, y, kind) {
     hp: K.hp, maxHp: K.hp, cd: rnd(.6, 1.4), vx: 0, vy: 0, tread: 0, trackAcc: 0, recoil: 0, flash: 0,
     tx: x, ty: y, stuck: 0, decideT: 0, brick: null, spawnT: 0, inv: 0, rail: 0, armor: false, boostLeft:0, boostCooldown:0, shiftHeld:false,
     upgrade:0, pw: { rapid: 0, shield: 0 },
+    // инерция корпуса игрока и плавный коэффициент покрытия; у нового танка всё с нуля
+    speedCur:0, turnRate:0, terrainK:1, terrainTarget:1, terrainRate:0,
   };
 }
 
@@ -27,11 +29,40 @@ function collideTiles(t) {
   }
 }
 
-function moveTank(t, dx, dy, dt) {
-  const terrain=sand[Math.floor(t.y/T)*COLS+Math.floor(t.x/T)]?.5:1;dx*=terrain;dy*=terrain;
+// Покрытие под центром машины: дорога и песок; мотоцикл на дороге быстрее танка.
+function surfaceTarget(t) {
+  const c=Math.floor(t.x/T),r=Math.floor(t.y/T);
+  if(c<0||r<0||c>=COLS||r>=ROWS)return 1;
+  const i=r*COLS+c,who=t.kind==='moto'?'moto':'tank';
+  return road&&road[i]?SURFACE_SPEED.road[who]:sand&&sand[i]?SURFACE_SPEED.sand[who]:1;
+}
+// Линейный переход: от обычной земли к покрытию и обратно — SURFACE_SPEED.blend секунд.
+// Скорость перехода задаётся в момент смены покрытия, поэтому смена посреди перехода продолжает с текущего значения.
+function surfaceFactor(t,dt) {
+  const target=surfaceTarget(t);
+  if(t.terrainK===undefined)t.terrainK=1;
+  if(target!==t.terrainTarget){t.terrainTarget=target;t.terrainRate=Math.max(Math.abs(target-1),Math.abs(t.terrainK-1))/SURFACE_SPEED.blend;}
+  const gap=target-t.terrainK,step=(t.terrainRate||0)*dt;
+  t.terrainK=Math.abs(gap)<=step?target:t.terrainK+Math.sign(gap)*step;
+  return t.terrainK;
+}
+// Забор давят танки; мотобригада сохраняет его как препятствие (минирует), смертники ходят через collideTiles.
+const crushesFence=t=>t.kind!=='moto';
+function crushFences(t) {
+  if(!crushesFence(t))return;
+  const c0=Math.floor((t.x-t.r)/T),c1=Math.floor((t.x+t.r)/T),r0=Math.floor((t.y-t.r)/T),r1=Math.floor((t.y+t.r)/T);
+  for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){
+    if(c<0||r<0||c>=COLS||r>=ROWS||grid[r*COLS+c]!==FENCE)continue;
+    if(fenceRects(c,r).some(b=>Math.hypot(t.x-clamp(t.x,b.x,b.x+b.w),t.y-clamp(t.y,b.y,b.y+b.h))<t.r))hitFence(c,r,t.x,t.y);
+  }
+}
+// limit — наибольший шаг (расстояние до точки маршрута), чтобы ускорение на дороге не проскакивало цель.
+function moveTank(t, dx, dy, dt, limit = Infinity) {
+  const terrain=surfaceFactor(t,dt);dx*=terrain;dy*=terrain;
+  const len=Math.hypot(dx,dy);if(len>limit){dx*=limit/len;dy*=limit/len;}
   const ox = t.x, oy = t.y;
-  t.x += dx; collideTiles(t);
-  t.y += dy; collideTiles(t);
+  t.x += dx; crushFences(t); collideTiles(t);
+  t.y += dy; crushFences(t); collideTiles(t);
   if(base && !base.dead) {
     const bx=t.x-base.x,by=t.y-base.y,d=Math.hypot(bx,by),min=t.r+base.r;
     if(d<min) {t.x=base.x+(d?bx/d:1)*min;t.y=base.y+(d?by/d:0)*min;}
@@ -58,9 +89,13 @@ function separate() {
   for (const a of allies) if (!a.dead) all.push(a);
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
     const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
-    if (d >= min || d === 0) continue;
+    if (a.dead || b.dead || d >= min) continue;
+    // Наезд игрока или союзника убивает мотобригаду до раздвигания моделей; вражеская техника её не давит.
+    const moto=a.kind==='moto'?a:b.kind==='moto'?b:null,other=moto===a?b:a;
+    if(moto&&(other===player||other.ally)){hitEnemy(moto,{x:moto.x,y:moto.y,dmg:Infinity,crushed:true});if(moto.dead)continue;}
+    if (d === 0) continue;
     const push = (min - d) / 2, nx = dx / d, ny = dy / d;
-    const fixedA=a.upgradeT>0,fixedB=b.upgradeT>0;
+    const fixedA=a.upgradeT>0||!!a.entering,fixedB=b.upgradeT>0||!!b.entering;
     if(!fixedA){a.x-=nx*push*(fixedB?2:1);a.y-=ny*push*(fixedB?2:1);collideTiles(a);}
     if(!fixedB){b.x+=nx*push*(fixedA?2:1);b.y+=ny*push*(fixedA?2:1);collideTiles(b);}
   }
@@ -74,14 +109,14 @@ function setPlayerUpgrade(p,tier,heal=true){p.upgrade=clamp(tier,0,2);p.armor=p.
 
 function beginPlayerUpgrade(p){
   if(p.upgrade>=2||p.upgradeT>0)return;
-  p.upgradeFrom=p.upgrade||0;setPlayerUpgrade(p,p.upgradeFrom+1);p.upgradeT=UPGRADE_DURATION;p.upgradeFx=0;p.inv=Math.max(p.inv,UPGRADE_DURATION);p.vx=p.vy=0;
+  p.upgradeFrom=p.upgrade||0;setPlayerUpgrade(p,p.upgradeFrom+1);p.upgradeT=UPGRADE_DURATION;p.upgradeFx=0;p.inv=Math.max(p.inv,UPGRADE_DURATION);p.vx=p.vy=0;p.speedCur=p.turnRate=0;
 }
 
 function playerGunLength(t){return (t.upgrade>0?35:30)*(t.upgrade>=2?.8:1);}
 
 function updateTankUpgrade(p,dt) {
   if(!(p.upgradeT>0))return false;
-  p.upgradeT=Math.max(0,p.upgradeT-dt);p.inv=Math.max(p.upgradeT,p.inv-dt);p.vx=p.vy=0;p.upgradeFx-=dt;
+  p.upgradeT=Math.max(0,p.upgradeT-dt);p.inv=Math.max(p.upgradeT,p.inv-dt);p.vx=p.vy=0;p.speedCur=p.turnRate=0;p.upgradeFx-=dt;
   if(p.upgradeFx<=0){p.upgradeFx=.12;burst(p.x,p.y,5,['#fff4bf','#ffd65d','#b2e8ff'],60,.5,2,'spark');}
   return true;
 }
@@ -97,11 +132,23 @@ function updatePlayer(dt) {
   p.shiftHeld=shift;
   const steer = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
   const throttle = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
+  // Корпус разгоняется, тормозит и поворачивается с лёгкой инерцией (PLAYER_INERTIA); башня наводится как прежде.
   // Башня сидит на корпусе: поворот шасси поворачивает и её, а наведение догоняет со своей скоростью.
-  const hullTurn = steer * 2.2 * dt;
+  p.turnRate=(p.turnRate||0)+(steer*2.2-(p.turnRate||0))*(1-Math.exp(-dt/PLAYER_INERTIA.turn));
+  if(!steer&&Math.abs(p.turnRate)<1e-3)p.turnRate=0;
+  const hullTurn = p.turnRate * dt;
   p.angle += hullTurn; p.turret += hullTurn;
+  const targetSpeed=throttle*KINDS.player.speed*(p.boostLeft>0?2:1);
+  p.speedCur=(p.speedCur||0)+(targetSpeed-(p.speedCur||0))*(1-Math.exp(-dt/PLAYER_INERTIA.move));
+  if(!throttle&&Math.abs(p.speedCur)<.05)p.speedCur=0;
   p.vx = p.vy = 0;
-  if (throttle) moveTank(p, Math.cos(p.angle)*throttle*KINDS.player.speed*(p.boostLeft>0?2:1)*dt, Math.sin(p.angle)*throttle*KINDS.player.speed*(p.boostLeft>0?2:1)*dt, dt);
+  if (p.speedCur) {
+    const fx=Math.cos(p.angle),fy=Math.sin(p.angle),ox=p.x,oy=p.y;
+    moveTank(p,fx*p.speedCur*dt,fy*p.speedCur*dt,dt);
+    // после столкновения остаётся только скорость, которую корпус реально прошёл вдоль своей оси
+    const along=((p.x-ox)*fx+(p.y-oy)*fy)/((p.terrainK||1)*dt);
+    if(Math.sign(along)!==Math.sign(p.speedCur))p.speedCur=0;else if(Math.abs(along)<Math.abs(p.speedCur))p.speedCur=along;
+  }
   p.turret = turnTo(p.turret, Math.atan2(mouse.y - p.y, mouse.x - p.x), dt * KINDS.player.turretSpeed);
   p.cd -= dt; p.inv -= dt; p.recoil=(p.recoilMax||5)*(1-reloadProgress(p));
   for (const k in p.pw) p.pw[k] = Math.max(0, p.pw[k] - dt);
@@ -114,5 +161,5 @@ function updatePlayer(dt) {
     }
   }
   p.mgCd = Math.max(0, (p.mgCd || 0) - dt);
-  if (mouse.right && p.mgCd <= 0) { fireMachineGun(p, mouse.x, mouse.y); p.mgCd = MG_CONFIG.interval; }
+  if (mouse.right && p.mgCd <= 0) { fireMachineGun(p, mouse.x, mouse.y); p.mgCd = machineGun(p).interval; }
 }

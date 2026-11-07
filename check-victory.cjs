@@ -67,7 +67,7 @@ module.exports=function checkVictory(root){
  natural.run("wrecks=[];state='between';betweenT=.01;update(.02)");assert.equal(natural.run('victory'),true,'Last campaign level reaches victory through main loop');
  natural.run('draw();update(.5)');natural.draws.length=0;natural.run('draw()');assert(!natural.draws.some(d=>d[0]==='c'||d[0]==='hudCanvas'),'Battle remains frozen during transition');
  const fallback=boot(true);fallback.run("CFG.mapMode='campaign';startGame();winCampaign();update(100);update(1);draw();syncUI()");assert.equal(fallback.run('victoryImageLoaded'),false);assert.equal(fallback.elements.get('victoryNew').hidden,false);
- assert.equal(run('STAT_ENEMY_TYPES.length'),6);
+ assert.equal(run('STAT_ENEMY_TYPES.length'),7);
  for(const kind of ['scout','soldier','heavy','artillery'])assert(b.elements.has('victoryModel-'+kind));
  console.log('PASS: victory transitions, event statistics, retries/reset, immutable totals, held input, keyboard, award, campaign restart, fallback and responsive canvas');
 };

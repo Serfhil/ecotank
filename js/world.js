@@ -13,6 +13,9 @@ const blocksTank = t => t === BRICK || t === STEEL || t === WATER || t === FENCE
 
 const blocksBullet = t => t === BRICK || t === STEEL || t === FENCE;
 
+// Танки давят забор при наезде, поэтому для их маршрутов он проходим; мотоцикл и пешеходы его объезжают или минируют.
+const blocksCrusher = t => t === BRICK || t === STEEL || t === WATER;
+
 const ARM_N = 1, ARM_E = 2, ARM_S = 4, ARM_W = 8;
 
 const FENCE_H = ARM_E | ARM_W, FENCE_V = ARM_N | ARM_S;
@@ -26,7 +29,12 @@ const PLAYER_START = { x: W / 2 - 80, y: H - 48 };
 const BASE_POS = { x: W / 2 + 16, y: H - 16, r: 16 };
 
 // ---------- карта ----------
-let grid, brickHp, brickMask, brickVariant, fenceArms, foliageMask, foliageShake, brickShake, sand, groundCanvas, gctx;
+let grid, brickHp, brickMask, brickVariant, fenceArms, foliageMask, foliageShake, brickShake, sand, road, groundCanvas, gctx;
+// Время симуляции: идёт только в бою, без паузы и стоп-кадра (остывание прожигов стали).
+let simTime = 0;
+// Повреждённые клетки из редакторов: около четверти кладки (3 из 10 кирпичей, одно попадание до
+// разрушения) и одна крона из пяти — ближайшее к четверти с учётом дискретности маски листвы.
+const DAMAGED_BRICK_MASK = (1 << 5) | (1 << 7) | (1 << 8), DAMAGED_BRICK_HP = 1, DAMAGED_LEAF_MASK = 1 << 4;
 let steelDamage = new Map();
 let flow = new Int32Array(COLS * ROWS);
 const tileAt = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS) ? STEEL : grid[r * COLS + c];
@@ -48,8 +56,9 @@ function configureMap(size) {
 }
 // режим декораций фиксируется в начале игры, как и размер карты
 let mapMode = CFG.mapMode;
-// группы декораций для «Пресет тест 0.1»: B кирпич, F забор, S сталь, W вода, T дерево, P песок, . пусто,
-// b/t — кирпич/дерево с шансом 60% (руины, редкий подлесок), пробел — клетка не трогается
+// группы декораций для «Пресет тест 0.1»: B кирпич, F забор, S сталь, W вода, T дерево, P песок, R дорога, . пусто,
+// D — кирпич, разрушенный на 75%, L — зелень, разрушенная на 75%,
+// b/t — кирпич/дерево с шансом 60% (старый формат, в палитрах больше нет), пробел — клетка не трогается
 const PREFABS = [
   { name: UI_TEXT.post,       rows: ['TBT'] },
   { name: UI_TEXT.ugol,       rows: ['BB', 'B.'] },
@@ -69,14 +78,24 @@ const PREFABS = [
   { name: UI_TEXT.derevnya,    rows: ['BBB..t.', 'B.b.BBB', '....B.B', 't......', '.BBB.tt', '.B.B.t.'] },
   { name: UI_TEXT.karer,     rows: [' PPP ', 'PPBPP', 'PbPPP', ' PPP '] },
 ];
-// песок — грунт под пустой клеткой (замедляет танки), а не отдельный тип клетки
-const PREFAB_TILES = { B: BRICK, F: FENCE, S: STEEL, W: WATER, T: TREE, P: EMPTY, '.': EMPTY };
+// песок и дорога — грунт под пустой клеткой (меняют скорость), а не отдельный тип клетки
+const PREFAB_TILES = { B: BRICK, F: FENCE, S: STEEL, W: WATER, T: TREE, P: EMPTY, R: EMPTY, D: BRICK, L: TREE, '.': EMPTY };
+const MAP_CELL_RE = /^[BFSWTPRDLbt.]+$/, PRESET_CELL_RE = /^[BFSWTPRDLbt. ]+$/;
+// Символ клетки → тип; b/t сохраняют прежнюю вероятность 60%. marks: sand/road/damage для genMap.
+function placeCell(set, marks, c, r, ch) {
+  const t = ch === 'b' ? (Math.random() < .6 ? BRICK : EMPTY) : ch === 't' ? (Math.random() < .6 ? TREE : EMPTY) : PREFAB_TILES[ch];
+  set(c, r, t);
+  if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return t;
+  const i = r * COLS + c;
+  marks.sand[i] = ch === 'P' ? 1 : 0; marks.road[i] = ch === 'R' ? 1 : 0; marks.damage[i] = ch === 'D' || ch === 'L' ? 1 : 0;
+  return t;
+}
 // пресеты живут в паках, паки хранятся в браузере; PREFABS — исходное содержимое пака «Пресеты Клода»
 const PACKS_KEY = 'ecotank-packs-v1', OLD_PRESETS_KEY = 'ecotank-presets-v1';
 const CLAUDE_PACK = 'claude', CLAUDE_PACK_NAME = UI_TEXT.presety_kloda;
 const validPreset = p => p && typeof p.name === 'string' && p.name.trim() && Array.isArray(p.rows)
   && p.rows.length >= 1 && p.rows.length <= PRESET_MAX
-  && p.rows.every(r => typeof r === 'string' && r.length === p.rows[0].length && r.length <= PRESET_MAX && /^[BFSWTPbt. ]+$/.test(r))
+  && p.rows.every(r => typeof r === 'string' && r.length === p.rows[0].length && r.length <= PRESET_MAX && PRESET_CELL_RE.test(r))
   && p.rows.some(r => r.trim());
 const defaultClaudePack = () => ({ id: CLAUDE_PACK, name: CLAUDE_PACK_NAME, enabled: true, presets: PREFABS.map(p => ({ name: p.name, rows: [...p.rows] })) });
 function loadPacks() {
@@ -121,7 +140,7 @@ function placeOriginal(set) {
   }
 }
 // группы не перекрываются и держат проход в клетку между собой
-function placePresets(set, sandMark) {
+function placePresets(set, marks) {
   const occ = new Uint8Array(COLS * ROWS), budget = Math.round(CFG.mapElements*COLS*ROWS/600*3);
   const list = activePresets();
   if (!list.length) return;
@@ -134,11 +153,7 @@ function placePresets(set, sandMark) {
     for (let y = r0 - 1; y <= r0 + h && free; y++) for (let x = c0 - 1; x <= c0 + w; x++) if (x >= 0 && y >= 0 && x < COLS && y < ROWS && occ[y * COLS + x]) { free = false; break; }
     if (!free) continue;
     for (let y = r0; y < r0 + h; y++) for (let x = c0; x < c0 + w; x++) occ[y * COLS + x] = 1;
-    for (const [x, y, ch] of cells) {
-      const t = ch === 'b' ? (Math.random() < .6 ? BRICK : EMPTY) : ch === 't' ? (Math.random() < .6 ? TREE : EMPTY) : PREFAB_TILES[ch];
-      set(c0 + x, r0 + y, t); if (t !== EMPTY || ch === 'P') filled++;
-      if (ch === 'P') sandMark[(r0 + y) * COLS + c0 + x] = 1;
-    }
+    for (const [x, y, ch] of cells) if (placeCell(set, marks, c0 + x, r0 + y, ch) !== EMPTY || ch === 'P' || ch === 'R') filled++;
   }
 }
 // ---------- готовые карты ----------
@@ -148,7 +163,7 @@ const MAPS_KEY = 'ecotank-maps-v1';
 function normalizeMap(m) {
   if (!m || typeof m.name !== 'string' || !m.name.trim() || !MAP_SIZES.includes(m.cols) || !Array.isArray(m.rows) || m.rows.length !== m.cols * 2 / 3) return null;
   const rows = m.rows.map(r => typeof r === 'string' ? r.replace(/ /g, '.') : '');
-  if (rows.some(r => r.length !== m.cols || !/^[BFSWTPbt.]+$/.test(r))) return null;
+  if (rows.some(r => r.length !== m.cols || !MAP_CELL_RE.test(r))) return null;
   return { id: typeof m.id === 'string' ? m.id : '', name: m.name.trim(), cols: m.cols, rows };
 }
 const claudeMaps = () => (Array.isArray(window.ECOTANK_MAPS) ? window.ECOTANK_MAPS : []).map(normalizeMap).filter(m => m && m.id).map(m => ({ ...m, claude: true }));
@@ -173,11 +188,8 @@ function mapPassable(cols, rows) {
   }
   return spawnCols(cols).every(c => seen[cols + c]);
 }
-function placeMap(set, sandMark, map) {
-  map.rows.forEach((row, r) => [...row].forEach((ch, c) => {
-    set(c, r, ch === 'b' ? (Math.random() < .6 ? BRICK : EMPTY) : ch === 't' ? (Math.random() < .6 ? TREE : EMPTY) : PREFAB_TILES[ch]);
-    if (ch === 'P') sandMark[r * COLS + c] = 1;
-  }));
+function placeMap(set, marks, map) {
+  map.rows.forEach((row, r) => [...row].forEach((ch, c) => placeCell(set, marks, c, r, ch)));
 }
 // ---------- кампания ----------
 // уровни — карты Клода в порядке window.ECOTANK_CAMPAIGN (без него — все карты из maps.js по порядку);
@@ -226,15 +238,15 @@ function shapeFences() {
   }
 }
 function genMap(w) {
-  steelDamage.clear();
+  steelDamage.clear(); pendingBaseWalls.clear();
   const center=Math.floor(COLS/2);
-  let sandMark;
+  let marks;
   for (let tries = 0; tries < 60; tries++) {
-    grid = new Uint8Array(COLS * ROWS); sandMark = new Uint8Array(COLS * ROWS);
+    grid = new Uint8Array(COLS * ROWS); marks = { sand: new Uint8Array(COLS * ROWS), road: new Uint8Array(COLS * ROWS), damage: new Uint8Array(COLS * ROWS) };
     foliageMask = new Uint8Array(COLS*ROWS); foliageMask.fill(31); foliageShake = new Float32Array(COLS*ROWS);
     const set = (c, r, t) => { if (c >= 0 && r >= 0 && c < COLS && r < ROWS) { grid[r * COLS + c] = t; } };
-    if (mapMode === 'map') placeMap(set, sandMark, activeMap);
-    else if (mapMode === 'preset01') placePresets(set, sandMark); else placeOriginal(set);
+    if (mapMode === 'map') placeMap(set, marks, activeMap);
+    else if (mapMode === 'preset01') placePresets(set, marks); else placeOriginal(set);
     for (let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++) if (reservedCell(COLS,c,r)) grid[r * COLS + c] = EMPTY;
     if (connected()) break;
     // At extreme density, clear guaranteed routes rather than return a sealed map.
@@ -247,16 +259,59 @@ function genMap(w) {
   brickMask = new Uint16Array(COLS * ROWS);
   brickVariant = new Uint8Array(COLS * ROWS); brickShake = new Float32Array(COLS*ROWS);
   for (let i = 0; i < grid.length; i++) if (grid[i] === BRICK) { brickHp[i] = 4; brickMask[i] = 1023; brickVariant[i] = ri(0,2); }
+  // D/L из редакторов становятся обычными BRICK/TREE с заранее заданными масками
+  for (let i = 0; i < grid.length; i++) if (marks.damage[i]) {
+    if (grid[i] === BRICK) { brickHp[i] = DAMAGED_BRICK_HP; brickMask[i] = DAMAGED_BRICK_MASK; }
+    else if (grid[i] === TREE) foliageMask[i] = DAMAGED_LEAF_MASK;
+  }
   shapeFences();
-  sand=new Uint8Array(COLS*ROWS);
+  sand=new Uint8Array(COLS*ROWS);road=new Uint8Array(COLS*ROWS);
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++) {
+    const i=r*COLS+c;
+    if(grid[i]===EMPTY&&marks.road[i]){road[i]=1;continue;}
     if(![EMPTY,TREE].includes(tileAt(c,r)))continue;
     const near=DIRS.some(([dx,dy])=>tileAt(c+dx,r+dy)===WATER);
     // на готовой карте песок только нарисованный, без случайного
-    sand[r*COLS+c]=sandMark[r*COLS+c]||(mapMode!=='map'&&Math.random()<(near?.7:.035))?1:0;
+    sand[i]=marks.sand[i]||(mapMode!=='map'&&Math.random()<(near?.7:.035))?1:0;
   }
   buildGround();
 }
+
+// ---------- контур базы ----------
+// Штатный контур: три клетки над базой и по клетке слева и справа; клетка самой базы остаётся свободной.
+function baseWallCells() {
+  const center=Math.floor(COLS/2),cells=[];
+  for(let r=ROWS-2;r<ROWS;r++)for(let c=center-1;c<=center+1;c++)if(r===ROWS-2||c!==center)cells.push(r*COLS+c);
+  return cells;
+}
+// Пустые клетки контура, занятые техникой: стена встаёт туда, когда машина уедет.
+const pendingBaseWalls = new Map();
+// Ставит целую стену и сбрасывает всё, от чего зависят коллизии, отрисовка и маршруты клетки.
+function setBaseWall(i, material) {
+  grid[i]=material;brickShake[i]=0;foliageMask[i]=31;fenceArms[i]=0;steelDamage.delete(i);
+  if(material===BRICK){brickHp[i]=4;brickMask[i]=1023;brickVariant[i]=ri(0,2);}else{brickHp[i]=0;brickMask[i]=0;}
+  flowTimer=0;
+}
+const baseWallReady = (i, material) => grid[i] === material && (material !== BRICK || brickMask[i] === 1023 && brickHp[i] === 4) && (material !== STEEL || !steelDamage.has(i));
+// mode: 'level' — кирпич на старте уровня; 'brick' — Стройбат (уже стоящую сталь не трогает);
+// 'steel' — Железный занавес. occupied(c,r) — стоит ли в клетке машина: пустая клетка под ней откладывается.
+function fortifyBase(mode, occupied = () => false) {
+  let changed = 0;
+  for (const i of baseWallCells()) {
+    if (mode === 'brick' && grid[i] === STEEL) continue;
+    const material = mode === 'steel' ? STEEL : BRICK;
+    if (baseWallReady(i, material)) { pendingBaseWalls.delete(i); continue; }
+    changed++;
+    if (mode !== 'level' && !blocksTank(grid[i]) && occupied(i % COLS, (i / COLS) | 0)) { pendingBaseWalls.set(i, material); continue; }
+    setBaseWall(i, material); pendingBaseWalls.delete(i);
+  }
+  return changed;
+}
+function updateBaseWalls(occupied) {
+  for (const [i, material] of pendingBaseWalls) if (!occupied(i % COLS, (i / COLS) | 0)) { setBaseWall(i, material); pendingBaseWalls.delete(i); }
+}
+// Есть ли что восстанавливать этим бонусом (для itemUseful).
+const baseWallsNeed = mode => baseWallCells().some(i => !(mode === 'brick' && grid[i] === STEEL) && !baseWallReady(i, mode === 'steel' ? STEEL : BRICK) && pendingBaseWalls.get(i) !== (mode === 'steel' ? STEEL : BRICK));
 
 function connected() {
   const seen = new Uint8Array(COLS * ROWS), start=(ROWS-2)*COLS+Math.floor(COLS/2), q = [start];

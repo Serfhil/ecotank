@@ -8,19 +8,33 @@
 const baseWall=(c,r)=>!!base&&r>=ROWS-2&&Math.abs(c-Math.floor(COLS/2))<=1;
 
 // Клетки, достижимые танком от старта игрока: союзник не должен появиться в замкнутом кармане.
+// Забор танк продавливает, поэтому он не отделяет карман.
 function reachableFromStart() {
   const seen=new Uint8Array(COLS*ROWS),c0=clamp(Math.floor(PLAYER_START.x/T),0,COLS-1),r0=clamp(Math.floor(PLAYER_START.y/T),0,ROWS-1),q=[r0*COLS+c0];
   seen[q[0]]=1;
   for(let h=0;h<q.length;h++){
     const i=q[h],c=i%COLS,r=(i/COLS)|0;
-    for(const [dc,dr] of DIRS){const nc=c+dc,nr=r+dr;if(blocksTank(tileAt(nc,nr)))continue;const j=nr*COLS+nc;if(!seen[j]){seen[j]=1;q.push(j);}}
+    for(const [dc,dr] of DIRS){const nc=c+dc,nr=r+dr;if(blocksCrusher(tileAt(nc,nr)))continue;const j=nr*COLS+nc;if(!seen[j]){seen[j]=1;q.push(j);}}
   }
   return seen;
 }
 
-function spawnAllies() {
+// Общее создание союзника: штатное появление, перенос между уровнями и подкрепление.
+// tier применяется сразу, без анимации улучшения.
+function makeAlly(x,y,tier=0) {
+  const a=makeTank(x,y,'ally');
+  a.ally=true;a.repathT=0;a.cd=rnd(.5,1.2);
+  if(tier>0)setPlayerUpgrade(a,tier,true);
+  return a;
+}
+
+// kept — ступени улучшения союзников, живых в конце прошлого уровня: они выезжают первыми и с теми же ступенями.
+// Штатное появление (CFG.allies) добирает до allyCount новыми машинами; без него выезжают только сохранённые.
+function spawnAllies(kept=[]) {
   allies=[];
-  if(!CFG.allies)return;
+  const want=Math.max(kept.length,CFG.allies?CFG.allyCount:0);
+  if(!want)return;
+  const tiers=[...kept].sort((a,b)=>b-a);while(tiers.length<want)tiers.push(0);
   const reach=reachableFromStart(),cells=[];
   for(let r=Math.floor(ROWS*3/4);r<ROWS;r++)for(let c=0;c<COLS;c++){
     const x=c*T+16,y=r*T+16;
@@ -30,12 +44,41 @@ function spawnAllies() {
   }
   for(let i=cells.length-1;i>0;i--){const j=ri(0,i);[cells[i],cells[j]]=[cells[j],cells[i]];}
   for(const q of cells){
-    if(allies.length>=CFG.allyCount)break;
+    if(allies.length>=want)break;
     if(allies.some(a=>Math.hypot(a.x-q.x,a.y-q.y)<56))continue;
-    const a=makeTank(q.x,q.y,'ally');
-    a.ally=true;a.repathT=0;a.cd=rnd(.5,1.2);
-    allies.push(a);
+    allies.push(makeAlly(q.x,q.y,tiers[allies.length]));
   }
+}
+
+// ---------- подкрепление ----------
+// Бонус «Подкрепление» ставит в очередь две машины; они выезжают снизу поля по одной в свободную безопасную точку.
+// Если все точки заняты, очередь ждёт, поэтому в итоге выезжают обе. Работает и при выключенных союзниках.
+let pendingReinforcements=0,reinforceTimer=0;
+const REINFORCE_GAP=.6;
+function queueReinforcements(n=2){pendingReinforcements+=n;floatText(PLAYER_START.x,H-40,UI_TEXT.podkreplenie_idet,'#9be36f');}
+function resetReinforcements(){pendingReinforcements=0;reinforceTimer=0;}
+function reinforcementEntries() {
+  const reach=reachableFromStart(),entries=[],vehicles=[player,...allies,...enemies].filter(t=>t&&!t.dead);
+  for(let c=1;c<COLS-1;c++){
+    const x=c*T+16,y=H-16;
+    if(blocksCrusher(tileAt(c,ROWS-1))||blocksCrusher(tileAt(c,ROWS-2))||baseWall(c,ROWS-1)||baseWall(c,ROWS-2))continue;
+    if(!reach[(ROWS-1)*COLS+c]||!coverClear(x,y,14,true))continue;
+    if(base&&Math.hypot(x-base.x,y-base.y)<base.r+40)continue;
+    // безопасно: рядом нет машин, мин и подожжённых смертников
+    if(vehicles.some(t=>Math.hypot(t.x-x,t.y-y)<44))continue;
+    if(mines.some(m=>!m.done&&Math.hypot(m.x-x,m.y-y)<2*T)||bombers.some(b=>b.state==='lit'&&Math.hypot(b.x-x,b.y-y)<3*T))continue;
+    entries.push({x,y});
+  }
+  return entries;
+}
+function updateReinforcements(dt) {
+  reinforceTimer-=dt;
+  if(!pendingReinforcements||reinforceTimer>0||state!=='play'&&state!=='between')return;
+  const entries=reinforcementEntries();
+  if(!entries.length)return;
+  const q=entries[ri(0,entries.length-1)],a=makeAlly(q.x,H+T*.75);
+  a.angle=a.turret=-Math.PI/2;a.entering=true;a.tx=q.x;a.ty=q.y;
+  allies.push(a);pendingReinforcements--;reinforceTimer=REINFORCE_GAP;
 }
 
 // Поле расстояний союзника; без противника он не ломает стены, а обходит их.
@@ -53,8 +96,9 @@ function buildAllyFlow(a,tc,tr,breakWalls) {
     const i=q[h],c=i%COLS,r=(i/COLS)|0;
     for(const [dc,dr] of DIRS){
       const nc=c+dc,nr=r+dr,t=tileAt(nc,nr);
-      if(t===STEEL||t===WATER||baseWall(nc,nr)||(!breakWalls&&breakable(t)))continue;
-      const j=nr*COLS+nc,nd=f[i]+(t===BRICK?5:t===FENCE?3:1)+busy[j]*6;
+      // забор союзник продавливает без штрафа; ломать приходится только кирпич
+      if(t===STEEL||t===WATER||baseWall(nc,nr)||(!breakWalls&&t===BRICK))continue;
+      const j=nr*COLS+nc,nd=f[i]+(t===BRICK?5:1)+busy[j]*6;
       if(nd<f[j]){f[j]=nd;q.push(j);}
     }
   }
@@ -64,14 +108,14 @@ function allyStep(a,random) {
   const c=Math.floor(a.x/T),r=Math.floor(a.y/T),f=a.flow,opts=[];
   for(const [dc,dr] of DIRS){
     const nc=c+dc,nr=r+dr,t=tileAt(nc,nr),v=f[nr*COLS+nc];
-    if(t===STEEL||t===WATER||baseWall(nc,nr)||v>=1e9||(random&&breakable(t)))continue;
+    if(t===STEEL||t===WATER||baseWall(nc,nr)||v>=1e9||(random&&t===BRICK))continue;
     opts.push({nc,nr,t,v});
   }
   a.brick=null;
   if(!opts.length){a.tx=c*T+16;a.ty=r*T+16;return;}
   const pick=random?opts[ri(0,opts.length-1)]:opts.reduce((p,q)=>q.v<p.v?q:p);
   if(!random&&pick.v>=f[r*COLS+c]){a.tx=c*T+16;a.ty=r*T+16;return;}
-  if(breakable(pick.t)){a.brick={x:pick.nc*T+16,y:pick.nr*T+16};a.tx=c*T+16;a.ty=r*T+16;}
+  if(pick.t===BRICK){a.brick={x:pick.nc*T+16,y:pick.nr*T+16};a.tx=c*T+16;a.ty=r*T+16;}
   else {a.tx=pick.nc*T+16;a.ty=pick.nr*T+16;}
 }
 
@@ -85,9 +129,9 @@ function findAllyItem(a) {
   for(let n=0;n<q.length;n++){
     const i=q[n],c=i%COLS,r=(i/COLS)|0;
     for(const [dc,dr]of DIRS){const nc=c+dc,nr=r+dr,j=nr*COLS+nc;
-      if(nc<0||nr<0||nc>=COLS||nr>=ROWS||reach[j]||blocksTank(tileAt(nc,nr))||baseWall(nc,nr))continue;
+      if(nc<0||nr<0||nc>=COLS||nr>=ROWS||reach[j]||blocksCrusher(tileAt(nc,nr))||baseWall(nc,nr))continue;
       const x=nc*T+16,y=nr*T+16;
-      if(!coverClear(x,y,a.r)||base&&!base.dead&&Math.hypot(x-base.x,y-base.y)<base.r+a.r)continue;
+      if(!coverClear(x,y,a.r,true)||base&&!base.dead&&Math.hypot(x-base.x,y-base.y)<base.r+a.r)continue;
       reach[j]=1;q.push(j);
     }
   }
@@ -119,6 +163,12 @@ function shotHitsBase(a) {
 
 function updateAlly(a,dt) {
   if(a.dead)return;
+  // подкрепление выезжает из-за нижнего края прямо вверх, без столкновений с границей поля
+  if(a.entering){
+    const step=KINDS.ally.speed*dt;a.y-=step;a.tread=(a.tread+step)%6;a.vx=0;a.vy=-KINDS.ally.speed;a.flash-=dt;
+    if(a.y<=a.ty){a.y=a.ty;a.entering=false;a.vy=0;a.decideT=0;a.repathT=0;}
+    return;
+  }
   if(updateTankUpgrade(a,dt))return;
   for(const k in a.pw)a.pw[k]=Math.max(0,a.pw[k]-dt);
   a.itemScanT=(a.itemScanT||0)-dt;
@@ -143,7 +193,7 @@ function updateAlly(a,dt) {
   if(!hold&&md>.5){
     const step=Math.min(md,K.speed*dt);
     a.angle=turnTo(a.angle,Math.atan2(my,mx),dt*8);
-    const moved=moveTank(a,mx/md*step,my/md*step,dt);
+    const moved=moveTank(a,mx/md*step,my/md*step,dt,md);
     if(step>.5&&moved<step*.3)a.stuck+=dt;else a.stuck=Math.max(0,a.stuck-dt);
   }
 

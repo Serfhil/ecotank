@@ -34,17 +34,46 @@ function carveSteelRay(x0,y0,x1,y1,width=14) {
   for(let r=Math.max(0,Math.floor((Math.min(y0,y1)-rad)/T));r<=Math.min(ROWS-1,Math.floor((Math.max(y0,y1)+rad)/T));r++)
     for(let c=Math.max(0,Math.floor((Math.min(x0,x1)-rad)/T));c<=Math.min(COLS-1,Math.floor((Math.max(x0,x1)+rad)/T));c++){
       const i=r*COLS+c;if(grid[i]!==STEEL)continue;
-      let d=steelDamage.get(i),changed=false;
-      if(!d)d={mask:new Uint8Array(T*T),rects:[]};
+      let d=steelDamage.get(i);const fresh=[];
+      if(!d)d={mask:new Uint8Array(T*T),rects:[],burn:null};
       for(let y=0;y<T;y++)for(let x=0;x<T;x++){
         const px=c*T+x+.5,py=r*T+y+.5,k=clamp(((px-x0)*dx+(py-y0)*dy)/l,0,1);
-        if(!d.mask[y*T+x]&&Math.hypot(px-x0-dx*k,py-y0-dy*k)<=rad){d.mask[y*T+x]=1;changed=true;}
+        if(!d.mask[y*T+x]&&Math.hypot(px-x0-dx*k,py-y0-dy*k)<=rad){d.mask[y*T+x]=1;fresh.push(y*T+x);}
       }
-      if(!changed)continue;
+      if(!fresh.length)continue;
       d.rects=[];
       for(let y=0;y<T;y++)for(let x=0;x<T;){if(d.mask[y*T+x]){x++;continue;}const start=x;while(x<T&&!d.mask[y*T+x])x++;d.rects.push({x:c*T+start,y:r*T+y,w:x-start,h:1});}
+      heatSteelEdge(d,fresh);
       steelDamage.set(i,d);
     }
+}
+// Оплавленный край — пиксели оставшейся стали не дальше STEEL_BURN.depth от прорези. Геометрия
+// коллизий (mask/rects) не меняется: край только рисуется. heat — момент нагрева по simTime;
+// повторный прожиг нагревает заново всё, что рядом с новыми вырезанными пикселями.
+const STEEL_BURN=Object.freeze({depth:3,cool:3});
+function steelDistance(mask,seeds) {
+  const dist=new Uint8Array(T*T).fill(255),q=[];
+  for(const p of seeds){dist[p]=0;q.push(p);}
+  for(let h=0;h<q.length;h++){
+    const p=q[h],x=p%T,y=(p/T)|0,nd=dist[p]+1;if(nd>STEEL_BURN.depth)continue;
+    for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){
+      const nx=x+ox,ny=y+oy,j=ny*T+nx;
+      if(nx<0||ny<0||nx>=T||ny>=T||mask[j]||dist[j]<=nd)continue;
+      dist[j]=nd;q.push(j);
+    }
+  }
+  return dist;
+}
+function heatSteelEdge(d,fresh) {
+  const carved=[];for(let p=0;p<T*T;p++)if(d.mask[p])carved.push(p);
+  const all=steelDistance(d.mask,carved),near=steelDistance(d.mask,fresh),old=new Map();
+  if(d.burn)d.burn.idx.forEach((p,k)=>old.set(p,d.burn.heat[k]));
+  const idx=[],depth=[],heat=[];
+  for(let p=0;p<T*T;p++){
+    if(d.mask[p]||all[p]<1||all[p]>STEEL_BURN.depth)continue;
+    idx.push(p);depth.push(all[p]);heat.push(near[p]<=STEEL_BURN.depth||!old.has(p)?simTime:old.get(p));
+  }
+  d.burn={idx:Int16Array.from(idx),depth:Uint8Array.from(depth),heat:Float64Array.from(heat),hotUntil:simTime+STEEL_BURN.cool,cache:null};
 }
 function bulletBlockingCell(x,y,radius=0) {
   if(x-radius<0||y-radius<0||x+radius>W||y+radius>H)return {c:-1,r:-1,type:STEEL};

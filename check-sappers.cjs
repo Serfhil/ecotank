@@ -53,13 +53,13 @@ module.exports=function checkSappers(root){
  assert(run("bullets.length===1&&bullets[0].mg&&Math.abs(Math.atan2(bullets[0].vy,bullets[0].vx))<.1"),'Machine gun fires toward the cursor');
  assert(run("Math.abs(player.turret+Math.PI/2)<.05"),'Machine gun does not use the turret');
  run("updatePlayer(.05);var burst1=bullets.length;updatePlayer(.1);");assert(run("burst1===1&&bullets.length===2"),'Machine gun fire rate');
- run("mouse.right=false;bullets=[];var moto=makeTank(400,300,'moto');enemies=[moto];const shot=()=>bullets.push({x:moto.x-6,y:moto.y,vx:900,vy:0,owner:'p',mg:true,dmg:MG_CONFIG.damage,r:1.5,life:1,trail:[]});shot();updateBullets(1/60);var afterOne=moto.dead;bullets=[];shot();updateBullets(1/60);");
+ run("mouse.right=false;bullets=[];var moto=makeTank(400,300,'moto');enemies=[moto];const shot=()=>bullets.push({x:moto.x-6,y:moto.y,vx:900,vy:0,owner:'p',mg:true,dmg:0,mgTier:0,r:1.5,life:1,trail:[]});shot();updateBullets(1/60);var afterOne=moto.dead;bullets=[];shot();updateBullets(1/60);");
  assert(run("!afterOne&&moto.hp===0&&moto.dead"),'Two machine-gun hits destroy a motorcycle');
- run("bullets=[];var tank=makeTank(400,300,'scout');enemies=[tank];bullets.push({x:tank.x-12,y:tank.y,vx:900,vy:0,owner:'p',mg:true,dmg:MG_CONFIG.damage,r:1.5,life:1,trail:[]});updateBullets(1/60);");
+ run("bullets=[];var tank=makeTank(400,300,'scout');enemies=[tank];bullets.push({x:tank.x-12,y:tank.y,vx:900,vy:0,owner:'p',mg:true,dmg:0,mgTier:0,r:1.5,life:1,trail:[]});updateBullets(1/60);");
  assert(run("!tank.dead&&tank.hp===tank.maxHp&&bullets.every(b=>b.dead||!bullets.length)"),'Machine gun bounces off tank armor');
- run("enemies=[];bombers=[{x:400,y:300,r:BOMBER_RADIUS,c:12,row:9,state:'lit',fuse:2,angle:0,walk:0,sparkT:0,pathT:0,path:null}];bullets=[{x:394,y:300,vx:900,vy:0,owner:'p',mg:true,dmg:MG_CONFIG.damage,r:1.5,life:1,trail:[]}];updateBullets(1/60);");
+ run("enemies=[];bombers=[{x:400,y:300,r:BOMBER_RADIUS,c:12,row:9,state:'lit',fuse:2,angle:0,walk:0,sparkT:0,pathT:0,path:null}];bullets=[{x:394,y:300,vx:900,vy:0,owner:'p',mg:true,dmg:0,mgTier:0,r:1.5,life:1,trail:[]}];updateBullets(1/60);");
  assert(run("bombers[0].state==='down'"),'One machine-gun hit kills a bomber');
- run("grid[9*COLS+14]=BRICK;brickHp[9*COLS+14]=4;brickMask[9*COLS+14]=1023;bullets=[{x:14*T-6,y:9*T+16,vx:900,vy:0,owner:'p',mg:true,dmg:MG_CONFIG.damage,r:1.5,life:1,trail:[]}];updateBullets(1/60);");
+ run("grid[9*COLS+14]=BRICK;brickHp[9*COLS+14]=4;brickMask[9*COLS+14]=1023;bullets=[{x:14*T-6,y:9*T+16,vx:900,vy:0,owner:'p',mg:true,dmg:0,mgTier:0,r:1.5,life:1,trail:[]}];updateBullets(1/60);");
  assert(run("brickHp[9*COLS+14]===4&&brickMask[9*COLS+14]===1023"),'Machine gun does not chip bricks');
  // «С»: надпись, следующий выстрел основного орудия — снаряд из НИИ.
  run("grid.fill(EMPTY);bullets=[];rails=[];parts=[];player.rail=2;player.cd=0;");

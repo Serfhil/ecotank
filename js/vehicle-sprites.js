@@ -1,7 +1,10 @@
 'use strict';
 // Explicit physical pivots; PNGs are prepared layers with transparent backgrounds, not full-image sizing.
 const VEHICLE_FILES={player0:'t34-player',player1:'is2-player',player2:'is2-ii-player',scout:'pzkpfw-iii-scout',soldier:'panther-soldier',heavy:'tiger-heavy',artillery:'ferdinand-artillery'};
-let vehicleLayers=null;
+// Листы кадров на одном корпусе: Panzerwerfer 42 — четыре положения пусковой установки
+// (вперёд, вправо, назад, влево относительно корпуса), каждый кадр смотрит вверх, как слои танков.
+const VEHICLE_SHEETS={rocket:{src:'assets/vehicles/panzerwerfer-42.png',frames:4,fw:64,fh:158,w:21,h:52}};
+let vehicleLayers=null,vehicleSheets=null;
 function initVehicleSprites(){
   if(vehicleLayers||typeof Image!=='function')return;
   vehicleLayers={};
@@ -13,6 +16,22 @@ function initVehicleSprites(){
       entry.image.src='assets/vehicles/'+name+'-'+part+'.png';
     }
   }
+  vehicleSheets={};
+  for(const [key,sheet]of Object.entries(VEHICLE_SHEETS)){
+    const entry=vehicleSheets[key]={image:new Image(),loaded:false};
+    entry.image.onload=()=>{entry.loaded=entry.image.naturalWidth>0;};entry.image.onerror=()=>{entry.loaded=false;};
+    entry.image.src=sheet.src;
+  }
+}
+// Кадр выбирается по направлению пусковой относительно корпуса; корпус повёрнут по движению. false — нет атласа.
+function drawVehicleSheet(t,c){
+  const sheet=VEHICLE_SHEETS[t.kind],entry=vehicleSheets&&vehicleSheets[t.kind];
+  if(!sheet||!entry||!entry.loaded)return false;
+  const rel=angDiff(t.angle,t.turret??t.angle),frame=((Math.round(rel/(Math.PI/2))%4)+4)%4,s=tankScale(t);
+  c.save();if(t.flash>0)c.filter='brightness(0) invert(1)';
+  c.translate(t.x,t.y);c.rotate(t.angle+Math.PI/2);c.scale(s,s);
+  c.drawImage(entry.image,frame*sheet.fw,0,sheet.fw,sheet.fh,-sheet.w/2,-sheet.h/2,sheet.w,sheet.h);
+  c.restore();return true;
 }
 function vehicleKey(t){return t.kind==='player'||t.kind==='ally'?'player'+Math.max(0,Math.min(2,t.upgrade||0)):t.kind;}
 function vehicleMount(t){

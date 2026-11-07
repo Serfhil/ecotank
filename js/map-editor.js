@@ -11,7 +11,7 @@ let mapEdOpen = false, mapEd = null, mapBrush = 'B', mapPaint = null, mapMirror 
 let mapStamp = null, mapHover = null;
 let mapEditorEl = null, mapEditorPanel = null;
 const MAP_BRUSHES = BRUSHES.filter(([ch]) => ch !== ' ').map(([ch, label]) => [ch, ch === '.' ? UI_TEXT.pusto : label]);
-const MAP_COLORS = { '.': '#56693f', B: '#b3633a', b: '#b3633a', F: '#56693f', S: '#9aa6af', W: '#2c6d96', T: '#56693f', t: '#56693f', P: '#b59e64' };
+const MAP_COLORS = { '.': '#56693f', B: '#b3633a', b: '#b3633a', D: '#56693f', F: '#56693f', S: '#9aa6af', W: '#2c6d96', T: '#56693f', t: '#56693f', L: '#56693f', P: '#b59e64', R: '#7d7f7a' };
 const blankMapRows = cols => Array.from({ length: cols * 2 / 3 }, () => '.'.repeat(cols));
 // рисует карту по клеткам размером cs; marks — показать базу, точки появления врагов и запретные зоны
 // alpha < 1 — полупрозрачное превью штампа; пробел («не трогать») не рисуется
@@ -24,6 +24,10 @@ function drawMapCells(g, rows, cs, marks, alpha = 1) {
     g.fillStyle = MAP_COLORS[ch]; g.fillRect(x, y, cs, cs);
     g.globalAlpha = (ch === 'b' || ch === 't' ? .5 : 1) * alpha;
     if (ch === 'B' || ch === 'b') { g.fillStyle = '#402b21'; g.fillRect(x, y + cs / 2, cs, Math.max(1, cs / 12)); g.fillRect(x, y, cs, Math.max(1, cs / 12)); }
+    // разрушенный на 75% кирпич: остаётся нижний левый угол кладки, как маска DAMAGED_BRICK_MASK в игре
+    else if (ch === 'D') { g.fillStyle = '#b3633a'; g.fillRect(x, y + cs / 2, cs / 2, cs / 4); g.fillRect(x, y + cs * .75, cs * .75, cs / 4); g.fillStyle = '#402b21'; g.fillRect(x, y + cs / 2, cs / 2, Math.max(1, cs / 12)); g.fillRect(x + cs / 4, y + cs * .75, Math.max(1, cs / 12), cs / 4); }
+    else if (ch === 'R') { g.fillStyle = '#5a5c58'; const n = cs >= 12 ? 4 : 2, st = cs / n; for (let k = 0; k < n; k++) { g.fillRect(x, y + k * st, cs, Math.max(1, cs / 16)); g.fillRect(x + (k % 2 ? st / 2 : 0) + st / 2, y + k * st, Math.max(1, cs / 16), st); } }
+    else if (ch === 'L') { g.fillStyle = '#3f8a3a'; g.beginPath(); g.arc(x + cs / 2, y + cs / 2, cs * .2, 0, Math.PI * 2); g.fill(); }
     else if (ch === 'S') { g.fillStyle = '#6f7b85'; g.fillRect(x, y, cs, cs); g.fillStyle = '#b9c3ca'; g.fillRect(x + cs * .18, y + cs * .18, cs * .64, cs * .64); }
     else if (ch === 'T' || ch === 't') { g.fillStyle = '#3f8a3a'; g.beginPath(); g.arc(x + cs / 2, y + cs / 2, cs * .42, 0, Math.PI * 2); g.fill(); }
     else if (ch === 'F') {

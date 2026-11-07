@@ -9,6 +9,7 @@ require('./check-allies.cjs')(__dirname);
 require('./check-gameplay.cjs')(__dirname);
 require('./check-support.cjs')(__dirname);
 require('./check-sappers.cjs')(__dirname);
+require('./check-features.cjs')(__dirname);
 const html=fs.readFileSync(__dirname+'/index.html','utf8');
 const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].map(([,attrs,inline])=>({src:attrs.match(/\bsrc="([^"]+)"/)?.[1],inline}));
 const code=scripts.map(s=>s.src?fs.readFileSync(__dirname+'/'+s.src,'utf8'):s.inline).join('\n');
@@ -39,7 +40,7 @@ buildDev();draw();saveDev();if(!localStorage.getItem('ecotank-dev-v2'))throw Err
 grid.fill(EMPTY);player=makeTank(400,400,'player');player.angle=Math.PI/2;keys.KeyW=true;
 updatePlayer(.1);if(Math.abs(player.x-400)>1e-6||player.y<=400)throw Error('Body-relative forward');
 keys.KeyW=false;keys.KeyS=true;const fy=player.y;updatePlayer(.1);if(player.y>=fy)throw Error('Reverse');
-keys.KeyS=false;keys.ArrowRight=true;const a=player.angle,x=player.x,y=player.y;updatePlayer(.1);
+keys.KeyS=false;keys.ArrowRight=true;player.speedCur=0;const a=player.angle,x=player.x,y=player.y;updatePlayer(.1);
 if(player.angle<=a||player.x!==x||player.y!==y)throw Error('Turn in place');keys.ArrowRight=false;
 if(new Set([0,1,2].map(v=>JSON.stringify(masonry(v)))).size!==3)throw Error('Masonry variants');
 for(let v=0;v<3;v++){grid[100]=BRICK;brickHp[100]=4;brickMask[100]=1023;brickVariant[100]=v;
@@ -85,7 +86,7 @@ const piercing={x:150,y:176,vx:1200,vy:0,life:2,r:3,dmg:2,armor:true,trail:[],ow
 bullets=[piercing];updateBullets(.06);
 if(grid[5*COLS+5]!==EMPTY||brickHp[5*COLS+6]!==3||!piercing.dead)throw Error('AP one block penetration');
 startGame();if(base.hp!==5||grid[18*COLS+15]!==BRICK||Math.hypot(player.x-base.x,player.y-base.y)<50)throw Error('Base layout');
-hitBase(1);nextWave();if(base.hp!==4)throw Error('Base wave persistence');
+hitBase(1);nextWave();if(base.hp!==5)throw Error('Base restored on a new wave');base.hp=4;
 grid.fill(EMPTY);player.x=100;player.y=100;enemies=[];
 bullets=[{x:base.x,y:base.y-25,vx:0,vy:300,life:1,r:3,dmg:1,owner:'e'}];updateBullets(.1);
 if(base.hp!==3||bullets.length)throw Error('Base projectile collision');
@@ -104,13 +105,13 @@ if(!ambusher.cover||los(ambusher.cover.x,ambusher.cover.y,player.x,player.y)||!l
 ambusher.retreat=true;ambusher.cd=2;updateCover(ambusher,player,.1);if(ambusher.tx!==ambusher.cover.x||ambusher.ty!==ambusher.cover.y)throw Error('Cover retreat');
 updateEnemy(ambusher,.1);drawTank(player);
 // Boost timing, release-to-rearm, and sand apply to both sides.
-grid.fill(EMPTY);sand.fill(0);base=null;enemies=[];player=makeTank(400,400,'player');player.angle=0;keys.KeyW=true;keys.ShiftLeft=true;updatePlayer(.1);
+grid.fill(EMPTY);sand.fill(0);base=null;enemies=[];player=makeTank(400,400,'player');player.angle=0;player.speedCur=KINDS.player.speed*2;keys.KeyW=true;keys.ShiftLeft=true;updatePlayer(.1);
 if(Math.abs(player.x-412)>1e-6||player.boostLeft!==2)throw Error('Boost x2');
 keys.KeyW=false;updatePlayer(2);if(player.boostLeft!==0||player.boostCooldown!==10)throw Error('Boost duration/cooldown');
 updatePlayer(10);if(player.boostLeft)throw Error('Boost hold retrigger');keys.ShiftLeft=false;updatePlayer(.01);keys.ShiftLeft=true;updatePlayer(.01);if(player.boostLeft!==2)throw Error('Boost rearm');
 keys.ShiftLeft=false;keys.KeyW=false;player.boostLeft=0;player.boostCooldown=0;
-player.x=400;player.y=400;sand[12*COLS+12]=1;moveTank(player,10,0,.1);if(player.x!==405)throw Error('Sand player');
-const sandyEnemy=makeTank(400,400,'soldier');moveTank(sandyEnemy,10,0,.1);if(sandyEnemy.x!==405)throw Error('Sand enemy');
+player.x=400;player.y=400;sand[12*COLS+12]=1;player.terrainK=player.terrainTarget=.5;moveTank(player,10,0,.1);if(player.x!==405)throw Error('Sand player');
+const sandyEnemy=makeTank(400,400,'soldier');sandyEnemy.terrainK=sandyEnemy.terrainTarget=.5;moveTank(sandyEnemy,10,0,.1);if(sandyEnemy.x!==405)throw Error('Sand enemy');
 // Surviving masonry defines bullet and tank collision, not the old tile rectangle.
 sand.fill(0);grid.fill(EMPTY);const wall=5*COLS+5;grid[wall]=BRICK;brickHp[wall]=3;brickMask[wall]=1<<9;
 if(bulletBlocked(164,164,1)||!bulletBlocked(188,188,1))throw Error('Masonry holes');
@@ -291,11 +292,11 @@ nextWave();if(player.upgrade!==1||player.hp!==5)throw Error('IS-2 persists');
 items=[{x:player.x,y:player.y,type:'upgrade',life:10}];updateItems(.01);if(player.upgrade!==2||player.hp!==7||Math.abs(tankScale(player)-1.15)>1e-8||Math.abs(player.r-14.95)>1e-8)throw Error('IS-2-II upgrade');
 bullets=[];fire(player);if(bullets.length!==2||bullets.some(b=>!b.armor||b.dmg!==2)||Math.hypot(bullets[0].x-bullets[1].x,bullets[0].y-bullets[1].y)<7)throw Error('Double AP fire');
 nextWave();if(player.upgrade!==2||player.maxHp!==7)throw Error('IS-2-II persists');
-for(const tier of [0,1,2]){startGame();grid.fill(EMPTY);base=null;enemies=[];setPlayerUpgrade(player,tier);player.hp=1;player.inv=0;player.pw.shield=0;parts=[];hitPlayer({x:player.x,y:player.y,dmg:1});const w=wrecks[0];updateWrecks(w.detonateAt+4);if(w.blastCount!==3+tier*2||parts.filter(p=>p.kind==='flash').length!==3+tier*2)throw Error('Tier death explosions');}
+for(const tier of [0,1,2]){startGame();grid.fill(EMPTY);base=null;enemies=[];setPlayerUpgrade(player,tier);player.hp=1;player.inv=0;player.pw.shield=0;parts=[];hitPlayer({x:player.x,y:player.y,dmg:1});const w=wrecks[0];updateWrecks(w.detonateAt+4);if(w.blastCount!==3+tier||parts.filter(p=>p.kind==='flash').length!==3+tier)throw Error('Tier death explosions: T-34 3, IS-2 4, IS-2-II 5');}
 startGame();grid.fill(EMPTY);base=null;enemies=[];parts=[];
 grid[5*COLS+8]=TREE;foliageMask[5*COLS+8]=31;grid[6*COLS+8]=BRICK;brickHp[6*COLS+8]=4;brickMask[6*COLS+8]=1023;
 blastDamage(176,176,30);if(foliageMask[5*COLS+8]===31||brickHp[6*COLS+8]!==4)throw Error('Double foliage-only blast radius');
-const list=waveList(5);if(list.filter(k=>k==='artillery').length!==Math.floor(list.filter(k=>k!=='artillery').length/5))throw Error('Artillery one per five tanks');
+const list=waveList(5);if(list.filter(k=>k==='artillery').length!==Math.floor(list.filter(k=>k!=='artillery'&&k!=='rocket').length/5))throw Error('Artillery one per five tanks (rocket launchers are extra)');
 const lead=makeTank(400,150,'heavy'),follower=makeTank(400,185,'soldier'),gun=makeTank(400,220,'artillery');enemies=[lead,follower,gun];formColumns();if(gun.leader!==lead||gun.columnSlot<=follower.columnSlot)throw Error('Artillery last in column');
 grid.fill(EMPTY);artilleryShells=[];base={x:450,y:220,hp:5,r:16,dead:false};player=makeTank(700,220,'player');gun.cd=0;gun.turret=0;grid[6*COLS+16]=STEEL;updateEnemy(gun,.01);
 if(artilleryShells.length!==1||artilleryShells[0].tx!==player.x||artilleryShells[0].ty!==player.y||Math.abs(artilleryShells[0].duration-Math.hypot(player.x-artilleryShells[0].sx,player.y-artilleryShells[0].sy)/KINDS.artillery.bulletSpeed)>1e-6)throw Error('Artillery sees player through walls and prioritizes player');

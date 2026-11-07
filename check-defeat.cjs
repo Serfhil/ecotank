@@ -14,7 +14,7 @@ module.exports=function checkDefeat(root){
   return {run,send,elements,draws,loaded,saved};
  }
  for(const tier of [0,1,2])for(const cause of ['player','base']){
-  const b=boot();assert.equal(b.loaded.length,35,'Preload defeat, vehicle and sapper images');b.run(`muted=true;CFG.bomberChance=0;CFG.mapMode='original';startGame();grid.fill(EMPTY);enemies=[];toSpawn=['soldier'];setPlayerUpgrade(player,${tier});score=5555;player.inv=0;player.pw.shield=0;keys.Enter=true;mouse.down=true;${cause==='player'?"hitPlayer({x:player.x,y:player.y,dmg:99});":"hitBase(99);"}`);
+  const b=boot();assert.equal(b.loaded.length,36,'Preload defeat, vehicle (layers and sheets) and sapper images');b.run(`muted=true;CFG.bomberChance=0;CFG.mapMode='original';startGame();grid.fill(EMPTY);enemies=[];toSpawn=['soldier'];setPlayerUpgrade(player,${tier});score=5555;player.inv=0;player.pw.shield=0;keys.Enter=true;mouse.down=true;${cause==='player'?"hitPlayer({x:player.x,y:player.y,dmg:99});":"hitBase(99);"}`);
   assert.equal(b.run('defeatTier'),tier);
   assert.notEqual(b.run('state'),'over','Let blasts finish before the illustration');
   for(let i=0;i<900&&b.run('state')!=='over';i++){
@@ -64,7 +64,7 @@ module.exports=function checkDefeat(root){
  layout.run('editorOpen=false;mapEdOpen=true;fit()');assert.equal(layout.run('gameLayout.hud'),null);
  layout.run('mapEdOpen=false;innerWidth=1280;innerHeight=720;startGame();setPlayerUpgrade(player,2);player.rail=2;player.pw.shield=6;player.pw.rapid=4;score=123;scrap=45;');
  layout.draws.length=0;layout.run('draw()');
- for(const label of ['★ ИС-2-II','Очки 123','Металлолом: 45']){
+ for(const label of ['★ ИС-2-II · ДШК','Очки 123','Металлолом: 45']){
   assert(layout.draws.some(d=>d[0]==='hudCanvas'&&d[1]==='text'&&d[2]===label),'HUD value/label '+label);
   assert(!layout.draws.some(d=>d[0]==='c'&&d[1]==='text'&&d[2]===label),'HUD must not paint on battlefield');
  }

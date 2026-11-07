@@ -130,9 +130,13 @@ function driveMoto(e,dt,speed=motoSpeed()){
   if(md<=.5){e.vx=e.vy=0;return;}
   const step=Math.min(md,speed*dt);
   e.angle=turnTo(e.angle,Math.atan2(my,mx),dt*8);
-  const moved=moveTank(e,mx/md*step,my/md*step,dt);
+  const moved=moveTank(e,mx/md*step,my/md*step,dt,md);
   if(step>.5&&moved<step*.3)e.stuck+=dt;else e.stuck=Math.max(0,e.stuck-dt);
 }
+
+// Собственное поле маршрута мотобригады: забор для неё — препятствие (стоимость 2, минирование),
+// а общий flow танков, где забор проходим, остаётся нетронутым.
+function motoFlow(e){if(!e.flow||e.flow.length!==COLS*ROWS)e.flow=new Int32Array(COLS*ROWS);return e.flow;}
 
 // Точка для мины: свободная достижимая клетка в середине поля, не у базы и не рядом с другими минами.
 function pickMineSpot(e){
@@ -141,8 +145,8 @@ function pickMineSpot(e){
     if(tileAt(c,r)!==EMPTY||reservedCell(COLS,c,r))continue;
     if(base&&Math.hypot(base.x-x,base.y-y)<4*T)continue;
     if(mines.some(m=>Math.hypot(m.x-x,m.y-y)<3*T))continue;
-    buildFlow(c,r);
-    if(flow[Math.floor(e.y/T)*COLS+Math.floor(e.x/T)]>=1e9)continue;
+    const f=motoFlow(e);buildFlow(c,r,2,f);
+    if(f[Math.floor(e.y/T)*COLS+Math.floor(e.x/T)]>=1e9)continue;
     return {c,r,x,y};
   }
   return null;
@@ -201,9 +205,9 @@ function updateMoto(e,dt){
 
 // Движение по полю расстояний; стена на пути минируется вместо обстрела.
 function routeMoto(e,dt,tc,tr){
-  buildFlow(clamp(tc,0,COLS-1),clamp(tr,0,ROWS-1));
-  if(e.stuck>.7){e.stuck=0;decide(e,true);e.decideT=.5;}
-  else if(Math.hypot(e.tx-e.x,e.ty-e.y)<1.5&&e.decideT<=0){decide(e,false);e.decideT=0;}
+  const f=motoFlow(e);buildFlow(clamp(tc,0,COLS-1),clamp(tr,0,ROWS-1),2,f);
+  if(e.stuck>.7){e.stuck=0;decide(e,true,f);e.decideT=.5;}
+  else if(Math.hypot(e.tx-e.x,e.ty-e.y)<1.5&&e.decideT<=0){decide(e,false,f);e.decideT=0;}
   e.decideT-=dt;
   if(e.brick){
     const c=Math.floor(e.brick.x/T),r=Math.floor(e.brick.y/T),a=Math.atan2(e.brick.y-e.y,e.brick.x-e.x);

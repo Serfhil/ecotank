@@ -5,7 +5,9 @@
 // Порядок вызовов задаёт игровой цикл; ИИ артиллерии и отрисовка остаются в игре.
 
 let supportClock=0,supportLaunch=-Infinity,supportImpact=-Infinity,supportSoundAt=0;
-function resetArtillery(){supportClock=0;supportLaunch=supportImpact=-Infinity;supportSoundAt=0;artilleryShells=[];barrageMarkers=[];barrageTrajectories=[];barrageSoundShots=0;barrageFrame=0;}
+// Ракеты РСЗО в полёте и следы уже разорвавшихся ракет; rocketClock — время их собственной анимации.
+let rockets=[],rocketTrails=[],rocketClock=0;
+function resetArtillery(){supportClock=0;supportLaunch=supportImpact=-Infinity;supportSoundAt=0;artilleryShells=[];barrageMarkers=[];barrageTrajectories=[];barrageSoundShots=0;barrageFrame=0;rockets=[];rocketTrails=[];rocketClock=0;}
 
 function hasPendingBarrage(){return barrageMarkers.length||barrageTrajectories.length||barrageSoundShots;}
 
@@ -27,14 +29,21 @@ function fire(t) {
   sfx(isP?'shoot':t.kind==='heavy'?'heavyShoot':'eshoot');
 }
 
+// Пулемёт по ступени танка: Т-34 — ДТ-29, ИС-2 — спаренные ДТ-29, ИС-2-II — ДШК.
+function machineGun(p){return MG_TIERS[clamp(p&&p.upgrade||0,0,MG_TIERS.length-1)];}
+// Урон пули по цели — maxHp/hits ступени, поэтому число попаданий по целой цели точное; null — рикошет.
+function mgDamage(b,e){const hits=MG_TIERS[b.mgTier||0].hits[e.kind];return hits?e.maxHp/hits:null;}
+
 // Курсовой пулемёт стреляет из лобового листа сразу в сторону цели: башня и её поворот не участвуют.
 function fireMachineGun(p,tx,ty) {
   if(!p||p.dead||p.upgradeT>0)return;
-  const s=tankScale(p),fx=Math.cos(p.angle),fy=Math.sin(p.angle);
-  const x=p.x+fx*15*s-fy*6*s,y=p.y+fy*15*s+fx*6*s,a=Math.atan2(ty-y,tx-x)+rnd(-MG_CONFIG.spread,MG_CONFIG.spread);
-  bullets.push({x,y,vx:Math.cos(a)*MG_CONFIG.speed,vy:Math.sin(a)*MG_CONFIG.speed,owner:'p',mg:true,armor:false,trail:[],dmg:MG_CONFIG.damage,r:1.5,life:MG_CONFIG.life});
-  for(let i=0;i<2;i++){const d=a+rnd(-.4,.4),v=rnd(40,110);parts.push({x,y,vx:Math.cos(d)*v,vy:Math.sin(d)*v,life:.08,max:.08,size:rnd(1.5,2.5),color:'#ffe08a'});}
-  sfx('mg');
+  const gun=machineGun(p),s=tankScale(p),fx=Math.cos(p.angle),fy=Math.sin(p.angle);
+  // спаренные стволы ДТ-29 стреляют поочерёдно
+  const side=6+(gun.twin?((p.mgSide=!p.mgSide)?-3:3):0);
+  const x=p.x+fx*15*s-fy*side*s,y=p.y+fy*15*s+fx*side*s,a=Math.atan2(ty-y,tx-x)+rnd(-MG_CONFIG.spread,MG_CONFIG.spread);
+  bullets.push({x,y,vx:Math.cos(a)*MG_CONFIG.speed,vy:Math.sin(a)*MG_CONFIG.speed,owner:'p',mg:true,mgTier:clamp(p.upgrade||0,0,MG_TIERS.length-1),heavyMg:!!gun.heavy,armor:false,trail:[],dmg:0,r:gun.heavy?2:1.5,life:MG_CONFIG.life});
+  for(let i=0;i<(gun.heavy?4:2);i++){const d=a+rnd(-.4,.4),v=rnd(40,110);parts.push({x,y,vx:Math.cos(d)*v,vy:Math.sin(d)*v,life:.08,max:.08,size:rnd(1.5,gun.heavy?3.5:2.5),color:'#ffe08a'});}
+  sfx(gun.sound);
 }
 
 // «С» заряжает снаряд из НИИ: следующий выстрел основного орудия уходит рельсотроном.
@@ -96,7 +105,8 @@ function updateBullets(dt) {
       const nx=b.x+b.vx*dt/steps,ny=b.y+b.vy*dt/steps,c=Math.floor(nx/T),r=Math.floor(ny/T),t=tileAt(c,r);
       if(t===TREE&&!b.mg)hitFoliage(c,r,nx,ny,b);
       const impact=bulletBlockingCell(nx,ny,b.r);
-      if(impact&&b.mg){burst(nx,ny,3,['#ffe9a0','#e8eef2'],90,.15,1.5,'spark');b.dead=true;continue;}
+      // Любой пулемёт ломает забор, попав в его фактическую геометрию (bulletBlockingCell учитывает fenceRects).
+      if(impact&&b.mg){if(impact.type===FENCE)hitFence(impact.c,impact.r,nx,ny);else burst(nx,ny,3,['#ffe9a0','#e8eef2'],90,.15,1.5,'spark');b.dead=true;continue;}
       if(impact) {
         const {c,r,type:t}=impact;
         // бронебойный пролетает забор насквозь, не тратя пробитие кирпича
@@ -109,8 +119,9 @@ function updateBullets(dt) {
       if(base&&!base.dead&&Math.hypot(b.x-base.x,b.y-base.y)<base.r+b.r){if(!b.mg)hitBase(b.dmg);b.dead=true;continue;}
       if(b.owner==='p'&&(shootBomber(b.x,b.y,b.r)||shootMine(b.x,b.y,b.r))){b.dead=true;continue;}
       if(b.owner==='p'){for(const e of enemies){if(!e.dead&&e.spawnT<=0&&Math.hypot(e.x-b.x,e.y-b.y)<e.r+b.r){
-        // Пули пулемёта отскакивают от брони танков; урон получает только мотоцикл.
-        if(b.mg&&e.kind!=='moto'){burst(b.x,b.y,4,['#fff4bd','#e8eef2'],140,.18,1.5,'spark');sfx('deflect');}else hitEnemy(e,b);
+        // Пуля пулемёта рикошетит от брони, которую не берёт его ступень (MG_TIERS.hits).
+        const mgDmg=b.mg?mgDamage(b,e):null;
+        if(b.mg&&mgDmg===null){burst(b.x,b.y,4,['#fff4bd','#e8eef2'],140,.18,1.5,'spark');sfx('deflect');}else hitEnemy(e,b.mg?{x:b.x,y:b.y,dmg:mgDmg}:b);
         b.dead=true;break;}}}
       else if(player&&!player.dead&&Math.hypot(player.x-b.x,player.y-b.y)<player.r+b.r){hitPlayer(b);b.dead=true;}
       else for(const a of allies){if(!a.dead&&Math.hypot(a.x-b.x,a.y-b.y)<a.r+b.r){hitAlly(a,b);b.dead=true;break;}}
@@ -154,6 +165,54 @@ function processBarrageFrame(dt=1/60){
     const launch=Math.max(supportClock,shell.createdAt+SUPPORT_CONFIG.warning,supportLaunch+gap,supportImpact+gap-shell.duration);
     shell.delay=launch-shell.createdAt;supportLaunch=launch;supportImpact=launch+shell.duration;
   }
+}
+
+// ---------- ракеты РСЗО ----------
+// Траектория — кубическая кривая Безье к отмеченной точке; часть кривых петляет (контрольные точки
+// перекрещены). Кривая заранее разбита на отрезки: время полёта = длина кривой / скорость.
+const ROCKET_SAMPLES=40;
+function rocketPath(sx,sy,tx,ty,loop,side) {
+  const dx=tx-sx,dy=ty-sy,dist=Math.hypot(dx,dy)||1,ux=dx/dist,uy=dy/dist,nx=-uy,ny=ux,L=Math.max(dist,160);
+  const a=loop?{u:1.15,n:.55*side}:{u:.35,n:rnd(.15,.6)*side},b=loop?{u:1.15,n:.55*side}:{u:.35,n:rnd(-.4,.4)};
+  const p1x=sx+(ux*a.u+nx*a.n)*L,p1y=sy+(uy*a.u+ny*a.n)*L,p2x=tx+(-ux*b.u+nx*b.n)*L,p2y=ty+(-uy*b.u+ny*b.n)*L;
+  const pts=[],cum=[0];
+  for(let k=0;k<=ROCKET_SAMPLES;k++){
+    const t=k/ROCKET_SAMPLES,m=1-t,w0=m*m*m,w1=3*m*m*t,w2=3*m*t*t,w3=t*t*t;
+    pts.push({x:w0*sx+w1*p1x+w2*p2x+w3*tx,y:w0*sy+w1*p1y+w2*p2y+w3*ty});
+    if(k)cum.push(cum[k-1]+Math.hypot(pts[k].x-pts[k-1].x,pts[k].y-pts[k-1].y));
+  }
+  pts[ROCKET_SAMPLES]={x:tx,y:ty};
+  return {pts,cum,length:cum[ROCKET_SAMPLES]};
+}
+// point — объект зоны {x,y}; ракета держит ссылку, поэтому зона видна, пока ракета летит, даже без пусковой.
+function launchRocket(sx,sy,point,index=0) {
+  const loop=index%3===1||Math.random()<.2,side=(index%2?-1:1)*(Math.random()<.5?-1:1);
+  const path=rocketPath(sx,sy,point.x,point.y,loop,side);
+  rockets.push({...path,point,age:0,speed:Math.max(1,KINDS.rocket.bulletSpeed),x:sx,y:sy,angle:Math.atan2(point.y-sy,point.x-sx),trail:[],trailT:0});
+  sfx('rocket');
+}
+function rocketPosition(r) {
+  const s=Math.min(r.length,r.age*r.speed);let k=1;
+  while(k<ROCKET_SAMPLES&&r.cum[k]<s)k++;
+  const a=r.pts[k-1],b=r.pts[k],seg=(r.cum[k]-r.cum[k-1])||1,f=clamp((s-r.cum[k-1])/seg,0,1);
+  return {x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f,angle:Math.atan2(b.y-a.y,b.x-a.x)};
+}
+function rocketImpact(r) {
+  const {x,y}=r.point;
+  explosion(x,y,false,'#c9773a',.7,false);
+  blastDamage(x,y,ROCKET_CONFIG.radius/1.5,{damage:ROCKET_CONFIG.damage});
+  if(base&&!base.dead&&Math.hypot(base.x-x,base.y-y)<=ROCKET_CONFIG.radius+base.r)hitBase(ROCKET_CONFIG.damage);
+}
+function updateRockets(dt) {
+  rocketClock+=dt;
+  for(const r of rockets){
+    r.age+=dt;Object.assign(r,rocketPosition(r));
+    r.trailT-=dt;
+    if(r.trailT<=0){r.trailT=.012;r.trail.push({x:r.x,y:r.y,t:rocketClock});if(r.trail.length>ROCKET_CONFIG.trail)r.trail.shift();}
+    if(r.age*r.speed>=r.length){r.done=true;r.trail.push({x:r.point.x,y:r.point.y,t:rocketClock});rocketTrails.push(r.trail);rocketImpact(r);}
+  }
+  rockets=rockets.filter(r=>!r.done);
+  rocketTrails=rocketTrails.filter(trail=>rocketClock-trail[trail.length-1].t<ROCKET_CONFIG.trailLife);
 }
 
 function updateArtilleryShells(dt){

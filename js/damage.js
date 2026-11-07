@@ -17,6 +17,8 @@ function blastDamage(x,y,diameter=30,options={}) {
 function hitEnemy(e, b) {
   if(e.dead || e.spawnT > 0) return;
   e.hp -= b.dmg; e.flash = .13;shake=Math.max(shake,2);
+  // Дробный урон пулемёта (maxHp/hits) не должен требовать лишней пули из-за погрешности сложения.
+  if (e.hp < 1e-6) e.hp = 0;
   burst(b.x,b.y,18,['#fff4bd','#ffb650','#d7e6ed'],260,.35,4,'spark');
   if (e.hp > 0) { burst(b.x, b.y, 10, ['#fff', '#ffd76a'], 180, .3, 4); sfx('hit'); return; }
   e.dead = true; recordStatistic('enemies', e.kind);
@@ -24,12 +26,15 @@ function hitEnemy(e, b) {
   score += K.score;
   floatText(e.x, e.y - 10, '+' + K.score, '#ffe08a');
 
+  // Мотобригада при любой гибели даёт три отдельных небольших взрыва — только визуально:
+  // без blastDamage, подрыва мин и стоп-кадра. Уже поставленные мины живут по своим правилам.
+  if (e.kind === 'moto') { wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret, tread:e.tread, recoil:0, flash:0, age: 0, smokeT: 0, detonateAt:0, exploded:false, blastTotal:3, blastGap:.15, blastScale:.3, harmless:true }); return; }
+  // Бонусы с убитых врагов больше не выпадают: они появляются только по таймеру updateRandomItems.
   wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret, tread:e.tread, recoil:e.recoil, flash:0, age: 0, smokeT: 0, detonateAt:rnd(.5,1.5)*(b.blast?.5:1), exploded:false });
-  if (Math.random() < CFG.dropChance + (e.kind === 'heavy' ? CFG.heavyDropBonus : 0)) {
-    const types = availableItemTypes();
-    items.push({ x: e.x, y: e.y, type: types[ri(0, types.length - 1)], life: 12 });
-  }
 }
+
+// Взрывы при гибели игрока: Т-34 — 3, ИС-2 — 4, ИС-2-II — 5; интервал между ними 0,5 с.
+const PLAYER_DEATH_BLASTS = Object.freeze([3, 4, 5]), DEATH_BLAST_GAP = .5;
 
 function hitPlayer(b) {
   const p = player;
@@ -39,7 +44,13 @@ function hitPlayer(b) {
   p.hp -= b.dmg; p.inv = CFG.invulnTime; p.flash = .15;
   shake = Math.max(shake, 10);
   sfx('hurt');
-  if (p.hp <= 0) { rememberDefeatTier(); recordStatistic('deaths'); p.hp = 0; p.dead = true; p.armor=false; const delay=rnd(.5,1.5)*(b.blast?.5:1); wrecks.push({x:p.x,y:p.y,kind:'player',angle:p.angle,turret:p.turret,tread:p.tread,recoil:p.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:delay,exploded:false,blastTotal:3+2*(p.upgrade||0),upgrade:p.upgrade||0}); deadT = delay+2+(p.upgrade||0); }
+  if (p.hp <= 0) {
+    rememberDefeatTier(); recordStatistic('deaths'); p.hp = 0; p.dead = true; p.armor=false;
+    const delay=rnd(.5,1.5)*(b.blast?.5:1),blasts=PLAYER_DEATH_BLASTS[clamp(p.upgrade||0,0,2)];
+    wrecks.push({x:p.x,y:p.y,kind:'player',angle:p.angle,turret:p.turret,tread:p.tread,recoil:p.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:delay,exploded:false,blastTotal:blasts,upgrade:p.upgrade||0});
+    // экран поражения ждёт последний фактический взрыв и ещё секунду
+    deadT = delay+(blasts-1)*DEATH_BLAST_GAP+1;
+  }
 }
 
 function hitBase(dmg) {
@@ -63,12 +74,13 @@ function updateWrecks(dt) {
   for (const w of wrecks) {
     w.age += dt; w.smokeT -= dt;
     if(w.exploded===false && w.age>=w.detonateAt) {
-      if(w.kind==='player'||w.kind==='heavy') {
+      if(w.kind==='player'||w.kind==='heavy'||w.blastTotal) {
         w.blastCount=w.blastCount||0;
-        const offsets=[[-9,-5],[9,-3],[0,8],[-11,5],[8,-8],[-4,-11],[11,7]],total=w.blastTotal||3;
-        while(w.blastCount<total&&w.age>=w.detonateAt+w.blastCount*.5) {
-          const [dx,dy]=offsets[w.blastCount++];
-          explosion(w.x+dx,w.y+dy,false,KINDS[w.kind].color);blastDamage(w.x+dx,w.y+dy,30);
+        const offsets=[[-9,-5],[9,-3],[0,8],[-11,5],[8,-8],[-4,-11],[11,7]],total=w.blastTotal||3,gap=w.blastGap||DEATH_BLAST_GAP;
+        while(w.blastCount<total&&w.age>=w.detonateAt+w.blastCount*gap) {
+          const [dx,dy]=offsets[w.blastCount++],s=w.blastScale||1;
+          if(w.harmless)explosion(w.x+dx*s,w.y+dy*s,false,KINDS[w.kind].color,s,false);
+          else {explosion(w.x+dx,w.y+dy,false,KINDS[w.kind].color);blastDamage(w.x+dx,w.y+dy,30);}
         }
         if(w.blastCount===total){w.exploded=true;w.blastAge=w.age;}
       } else {

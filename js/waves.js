@@ -11,6 +11,8 @@ function waveList(w) {
     const r = Math.random();
     list.push(r < pH ? 'heavy' : r < pH + .38 ? 'scout' : r < pH + .38 + pM ? 'moto' : 'soldier');
     if((i+1)%5===0)list.push('artillery');
+    // РСЗО добавляется сверх обычного состава со второй волны и никого не вытесняет
+    if(w>=2&&Math.random()<CFG.rocketChance)list.push('rocket');
   }
   return list;
 }
