@@ -23,8 +23,9 @@ body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#mu
 .storyTitle h1,.storyTitle .storySubtitle,.storyTitleLosses{opacity:clamp(0,calc((var(--title-age,0) - var(--title-start,0))/var(--title-fade)),1)}
 .storyTitle .storySubtitle{--title-start:var(--title-step)}
 .storyTitleLosses{--title-start:calc(2 * var(--title-step));background:#12090bb0;border-radius:8px;padding:8px clamp(8px,2vw,24px) 12px}
-.storyTitleContinue{margin:.75em 0 0;font-weight:700}
-.storyTitleContinue[hidden]{display:block;visibility:hidden}
+.storyTitleContinue{margin:.75em 0 0;font-weight:700;visibility:hidden}
+.storyTitleContinue.is-ready{visibility:visible;animation:storyContinuePulse 1.45s ease-in-out infinite}
+@keyframes storyContinuePulse{0%,100%{opacity:1}50%{opacity:.38}}
 .storyLosses{border-collapse:collapse;margin:.3em auto;line-height:1.45;text-align:left}
 .storyLosses th,.storyLosses td{padding:3px clamp(7px,2vw,18px);font-weight:400}
 .storyLosses td{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -68,6 +69,7 @@ body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#mu
   .storyFarewellCharacter{width:min(85%,390px);max-height:42dvh}
 }
 @media(prefers-reduced-motion:reduce){
+  .storyTitleContinue.is-ready{animation:none}
   .storyTitle h1,.storyTitle .storySubtitle,.storyTitleLosses{opacity:1}
   .storyRevision,.storyStrike::after,.storySpeechLines [data-story-translation]:not([hidden]){animation:none}
   .storySpeechOriginal{transition:none}

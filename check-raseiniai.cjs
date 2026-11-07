@@ -187,9 +187,15 @@ module.exports = function checkRaseiniai(box) {
       check(killedMoto.dead&&!killedMoto.escaped&&raseiniai.breaches===[...spawned].filter(e=>e.escaped&&e.y>=H+e.r).length,'only fully exited crews count');
       check(!items.length&&!allies.length&&mines.length,'scripted army and working mines');
       check(raseiniai.dialogue.lines[0][0]==='Мы закончили эвакуацию! Противников слишком много! Приказываю отступать!!!','final Soviet message');
+      check(raseiniaiCameraScale()===1,'final radio starts at normal scale');
+      updateRaseiniaiStory(RASEINIAI_CAMERA.approach/2);
+      const finalZoom=raseiniaiCameraScale();
+      check(finalZoom>1&&finalZoom<RASEINIAI_CAMERA.zoom,'final radio smoothly zooms in');
       dismiss();
       check(state==='story'&&raseiniai.phase==='victory','victory follows radio with no playable retreat');
+      check(raseiniaiCameraScale()===finalZoom,'victory keeps the radio framing');
       until(()=>raseiniai.phase==='newspaper');
+      check(raseiniaiCameraScale()===finalZoom,'newspaper keeps the victory framing');
       advanceRaseiniai();
       check(raseiniai.phase==='timeline'&&raseiniaiResults(1).join('|')==='3126–5126|4143–6143|213','newspaper and revised timeline');
       raseiniai.breaches=0;

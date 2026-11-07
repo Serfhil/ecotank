@@ -244,6 +244,7 @@ function updateRaseiniaiStory(dt) {
   if (s.phase === 'evacuation' && !s.evac.length) {
     raseiniaiPhase('retreat');
     raseiniaiDialogue('soviet', [[RASEINIAI_RADIO.retreat]], () => {
+      s.victoryZoom=raseiniaiCameraScale();
       raseiniaiPhase('victory'); sfx('wave');
     });
   }
@@ -265,10 +266,12 @@ function startRaseiniaiOrders() {
 function raseiniaiCameraScale() {
   if (!raseiniai || !player) return 1;
   const {phase,age,returnZoom}=raseiniai;
-  if (phase!=='orders' && phase!=='ordersOut') return 1;
-  const progress=clamp(age/(phase==='orders'?RASEINIAI_CAMERA.approach:RASEINIAI_CAMERA.return),0,1);
+  if (phase==='victory' || phase==='newspaper') return raseiniai.victoryZoom ?? 1;
+  if (phase!=='orders' && phase!=='ordersOut' && phase!=='retreat') return 1;
+  const returning=phase==='ordersOut';
+  const progress=clamp(age/(returning?RASEINIAI_CAMERA.return:RASEINIAI_CAMERA.approach),0,1);
   const eased=progress*progress*(3-2*progress);
-  return phase==='orders' ? 1+(RASEINIAI_CAMERA.zoom-1)*eased : 1+(returnZoom-1)*(1-eased);
+  return returning ? 1+(returnZoom-1)*(1-eased) : 1+(RASEINIAI_CAMERA.zoom-1)*eased;
 }
 
 function resumeRaseiniaiBattle() {
