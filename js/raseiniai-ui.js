@@ -40,18 +40,18 @@ function drawRaseiniaiEvacuation() {
   }
 }
 
-function raseiniaiLossTable(values, strike = false) {
+function raseiniaiLossTable(revised = null) {
   const labels=['Убитыми','Пропавшими без вести','Потеряно танков'];
-  return `<table class="storyLosses"><tbody>${values.map((value,i)=>{
-    const cell=strike?`<span class="storyOld" style="--strike:${1+i*.45}s">${value}</span>`:value;
-    return `<tr><th scope="row">${labels[i]}</th><td>${cell}</td></tr>`;
-  }).join('')}</tbody></table>`;
+  const head=revised?`<thead><tr><th scope="col">Категория</th><th scope="col">Исходные оценки</th><th scope="col" class="storyRevision">Изменённая хронология</th></tr></thead>`:'';
+  return `<table class="storyLosses">${head}<tbody>${RASEINIAI_ESTIMATES.map((value,i)=>
+    `<tr><th scope="row">${labels[i]}</th><td>${value}</td>${revised?`<td class="storyRevision">${revised[i]}</td>`:''}</tr>`
+  ).join('')}</tbody></table>`;
 }
 
-function raseiniaiSummary() {
+function raseiniaiSummary(revised = null) {
   return `<h1>${RASEINIAI_TITLE}</h1><p class="storySubtitle">${RASEINIAI_SUBTITLE}</p>
-    <h2>Потери СССР <span class="storyOld">(исторические данные, приблизительные)</span></h2>
-    ${raseiniaiLossTable(RASEINIAI_ESTIMATES,true)}
+    <h2>Потери СССР <span>(исторические данные, приблизительные)</span></h2>
+    ${raseiniaiLossTable(revised)}
     <p class="storyCaveat">Рабочие оценки для игры. Диапазоны людских потерь для этого сражения не проверены.</p>`;
 }
 
@@ -69,13 +69,34 @@ function raseiniaiNewspaper() {
 }
 
 function raseiniaiTimeline() {
-  const n = raseiniai.breaches;
-  return `<div class="storyFull storyTimeline"><div class="storySheet">${raseiniaiSummary()}
-    <div class="storyRevised"><h2>Потери СССР (изменённая хронология)</h2>
-      ${raseiniaiLossTable(raseiniaiResults(n))}
-      <p>Пропущено машин — ${n}. Потери могли быть меньше.</p>
-      <p>Пока всё, но ждите продолжения</p><button data-raseiniai="home">${UI_TEXT.menuHome}</button>
-    </div></div></div>`;
+  const n=raseiniai.breaches, stats=snapshotStatistics();
+  const destroyed=[
+    ['scout','Танки',stats.enemies.scout+stats.enemies.soldier+stats.enemies.heavy],
+    ['moto','Мотобригады',stats.enemies.moto], ['brick','Кирпичные блоки',stats.bricks], ['fence','Заборы',stats.fences],
+  ];
+  return `<div class="storyFull storyTimeline"><div class="storySheet">${raseiniaiSummary(raseiniaiResults(n))}
+    <h2>Уничтожено</h2>
+    <ul class="storyDestroyed">${destroyed.map(([kind,label,count])=>
+      `<li><canvas data-story-model="${kind}" width="64" height="64" aria-hidden="true"></canvas><span>${label}</span><strong>${count}</strong></li>`
+    ).join('')}</ul>
+    <p>Пропущено машин — ${n}. Потери могли быть меньше.</p>
+    <button data-raseiniai="continue" aria-label="Продолжить, пробел">Пробел</button>
+  </div></div>`;
+}
+
+function drawRaseiniaiStatModels() {
+  for (const canvas of raseiniaiScreen.querySelectorAll('[data-story-model]')) {
+    const c=canvas.getContext('2d'), kind=canvas.dataset.storyModel;
+    c.save(); c.translate(32,32);
+    if (kind==='brick') {
+      for(const b of MASONRY) detailBrick(c,b.x-16,b.y-16,b.w,0,4);
+    } else if (kind==='fence') {
+      paintFence(c,-16,-16,FENCE_H,[{x:-16,y:-3,w:32,h:6}]);
+    } else {
+      drawPlayerModel({kind,x:0,y:4,angle:-Math.PI/2,turret:-Math.PI/2,tread:0,recoil:0,flash:0,dead:true},c);
+    }
+    c.restore();
+  }
 }
 
 function syncRaseiniaiUI() {
@@ -94,13 +115,20 @@ function syncRaseiniaiUI() {
     } else if (s.phase==='title') raseiniaiScreen.innerHTML = '<div class="storyFull storyTitle"><div class="storySheet">'+raseiniaiSummary()+'</div></div>';
     else if (s.phase==='victory') raseiniaiScreen.innerHTML = '<div class="storyFull storyVictory"><h1>ПОБЕДА</h1></div>';
     else if (s.phase==='newspaper') raseiniaiScreen.innerHTML = raseiniaiNewspaper();
-    else if (s.phase==='timeline') raseiniaiScreen.innerHTML = raseiniaiTimeline();
+    else if (s.phase==='timeline') {
+      raseiniaiScreen.innerHTML = raseiniaiTimeline();
+      drawRaseiniaiStatModels();
+    } else if (s.phase==='farewell') {
+      raseiniaiScreen.innerHTML = `<div class="storyFull storyFarewell"><div class="storySheet">
+        <h1>Пока все, ребятки! ТАРИ ДОБАВЬ УЖЕ ОВЕРКУКЕД</h1>
+        <button data-raseiniai="home">${UI_TEXT.menuHome}</button></div></div>`;
+    }
     else raseiniaiScreen.innerHTML = '';
   }
   if (d) {
     const [line,translation] = d.lines[d.index];
     const target = raseiniaiScreen.querySelector('[data-story-line]');
-    const visible = d.complete ? translation || line : line.slice(0,d.shown);
+    const visible = d.complete ? (d.translationWait>0 ? line : translation || line) : line.slice(0,d.shown);
     if (target && target.textContent!==visible) target.textContent=visible;
   }
 }

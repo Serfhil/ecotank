@@ -4,7 +4,7 @@
 
 const T=32;
 // Курсовой пулемёт: общие параметры пули. Скорострельность, звук и цели зависят от ступени танка (MG_TIERS).
-const MG_CONFIG=Object.freeze({speed:900,life:.6,spread:.03});
+const MG_CONFIG=Object.freeze({speed:900,rangeTiles:30,spread:.03});
 // hits — сколько попаданий нужно по цели с полным здоровьем; урон пули = maxHp/hits. Остальную технику пулемёт не берёт.
 // Смертника любой пулемёт убивает с одного попадания (shootBomber), забор ломает с одного попадания.
 const MG_TIERS=Object.freeze([
@@ -62,7 +62,8 @@ const MENU_TRACK='assets/red-steel-menu.mp3',LEVEL_TRACKS=['assets/mehvod.mp3','
 const MAP_SIZES = [30, 45, 60];
 
 const UPGRADE_DURATION=1.5;
-const DEFEAT_FADE_DURATION = 1;
+const DEFEAT_DARKEN_DURATION = .65;
+const DEFEAT_FADE_DURATION = 1.8;
 const DEFEAT_RESTART_DELAY = 2;
 const HUD_LAYOUT = Object.freeze({ breakpoint: 900, width: 240, gap: 12, padding: 12, toolbarHeight: 52, compactHeight: 220 });
 const DEFEAT_IMAGES = Object.freeze(['assets/defeat-t34.png', 'assets/defeat-is2.png', 'assets/defeat-is2-ii.png']);

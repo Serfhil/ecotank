@@ -32,17 +32,19 @@ module.exports=function checkDefeat(root){
   assert.equal(b.run('defeatOpacity()'),0);
   assert.equal(b.draws.find(d=>d[0]==='defeatCanvas'&&d[1]==='image'&&d[2]===b.run('defeatArtworkCanvas')).alpha,0);
   const frozen=b.run('defeatFrame');b.draws.length=0;
-  b.run('update(.5);draw();syncUI()');assert.equal(b.run('defeatOpacity()'),.5);
-  assert.equal(b.draws.find(d=>d[0]==='defeatCanvas'&&d[1]==='image'&&d[2]===b.run('defeatArtworkCanvas')).alpha,.5);
+  b.run('overT=DEFEAT_DARKEN_DURATION/2;draw();syncUI()');assert.equal(b.run('defeatDarkness()'),.5);assert.equal(b.run('defeatOpacity()'),0);
+  b.draws.length=0;
+  b.run('overT=(DEFEAT_DARKEN_DURATION+DEFEAT_FADE_DURATION)/2;draw();syncUI()');assert(Math.abs(b.run('defeatOpacity()')-.5)<1e-9);
+  assert.equal(b.draws.find(d=>d[0]==='defeatCanvas'&&d[1]==='image'&&d[2]===b.run('defeatArtworkCanvas')).alpha.toFixed(3),'0.500');
   assert.equal(b.draws.find(d=>d[1]==='image'&&d[2].source).alpha,1,'Artwork is composed opaquely before group fade');
   assert.equal(b.run('defeatFrame'),frozen,'Reuse one frozen frame');
   b.run('innerWidth=390;innerHeight=844;draw()');assert.equal(b.run('defeatFrame'),frozen,'Resize must not capture a new battlefield');
   assert(!b.draws.some(d=>d[0]==='c'||d[0]==='hudCanvas'),'Do not redraw battle or HUD beneath the transition');
-  b.run('update(.5);draw();syncUI()');assert.equal(b.run('defeatOpacity()'),1);
+  b.run('overT=DEFEAT_FADE_DURATION;draw();syncUI()');assert.equal(b.run('defeatOpacity()'),1);
   assert.equal(b.elements.get('defeatRestart').hidden,true,'Delay begins AFTER fade');
   b.run('update(1.99);syncUI()');assert.equal(b.elements.get('defeatRestart').hidden,true);
   b.send('global','keydown',{code:'Enter'});assert.equal(b.run('state'),'over');
-  b.run('update(.01);syncUI()');assert.equal(b.elements.get('defeatRestart').hidden,false);
+  b.run('overT=DEFEAT_FADE_DURATION+DEFEAT_RESTART_DELAY;syncUI()');assert.equal(b.elements.get('defeatRestart').hidden,false);
   b.send('global','keydown',{code:'Enter',repeat:true});assert.equal(b.run('state'),'over','Held Enter must not restart');
   b.send('defeatRestart','click',{detail:0});assert.equal(b.run('state'),'over','Native repeat click cannot bypass key gate');
   b.send('global','keyup',{code:'Enter'});b.send('global','keydown',{code:'Enter'});assert.equal(b.run('state'),'play');assert.equal(b.run('player.upgrade'),0);assert.equal(b.run('score'),0);assert.equal(b.run('best'),5555);assert.equal(b.run('mouse.down||keys.Space||keys.Enter'),false);
@@ -68,14 +70,24 @@ module.exports=function checkDefeat(root){
   assert(layout.draws.some(d=>d[0]==='hudCanvas'&&d[1]==='text'&&d[2]===label),'HUD value/label '+label);
   assert(!layout.draws.some(d=>d[0]==='c'&&d[1]==='text'&&d[2]===label),'HUD must not paint on battlefield');
  }
- const pointer=boot();pointer.run("muted=true;CFG.bomberChance=0;startGame();rememberDefeatTier();enterDefeat();overT=2.99;syncUI();");
+ const pointer=boot();pointer.run("muted=true;CFG.bomberChance=0;startGame();rememberDefeatTier();enterDefeat();overT=DEFEAT_FADE_DURATION+DEFEAT_RESTART_DELAY-.01;syncUI();");
  pointer.send('defeatScreen','mousedown',{button:0});assert.equal(pointer.run('state'),'over');pointer.run('update(.02)');pointer.send('defeatScreen','mousedown',{button:0});assert.equal(pointer.run('state'),'over','Held pointer cannot start after timeout');pointer.send('global','mouseup');
  pointer.send('defeatScreen','mousedown',{button:0,target:pointer.elements.get('defeatRestart')});pointer.send('global','mouseup');pointer.send('defeatRestart','click',{detail:1});assert.equal(pointer.run('state'),'play','Actual button restarts');
- pointer.run('rememberDefeatTier();enterDefeat();overT=3;mouse.down=false');pointer.send('defeatScreen','mousedown',{button:0});assert.equal(pointer.run('state'),'play','Fresh background click restarts');
- const camp=boot();camp.run("muted=true;CFG.bomberChance=0;CFG.mapMode='campaign';unlockCampaign(2);CFG.campaignStart=1;startGame();const failedId=activeMap.id;const failedWave=wave;hitBase(99);for(let i=0;i<900&&state!=='over';i++){hitstop=0;update(.025);}overT=3;requestDefeatRestart(false);");
+ pointer.run('rememberDefeatTier();enterDefeat();overT=DEFEAT_FADE_DURATION+DEFEAT_RESTART_DELAY;mouse.down=false');pointer.send('defeatScreen','mousedown',{button:0});assert.equal(pointer.run('state'),'play','Fresh background click restarts');
+ const camp=boot();camp.run("muted=true;CFG.bomberChance=0;CFG.mapMode='campaign';unlockCampaign(2);CFG.campaignStart=1;startGame();const failedId=activeMap.id;const failedWave=wave;hitBase(99);for(let i=0;i<900&&state!=='over';i++){hitstop=0;update(.025);}overT=DEFEAT_FADE_DURATION+DEFEAT_RESTART_DELAY;requestDefeatRestart(false);");
  assert.equal(camp.run("state==='play'&&wave===failedWave&&activeMap.id===failedId&&!victory"),true,'Retry the failed campaign level');
  camp.run('winCampaign();update(2);syncUI()');assert.equal(camp.elements.get('defeatScreen').hidden,true);assert.equal(camp.elements.get('victoryScreen').hidden,false,'Campaign victory uses new screen');
- const failed=boot(true);failed.run('muted=true;CFG.bomberChance=0;startGame();enterDefeat();overT=3;syncUI()');failed.draws.length=0;failed.run('draw()');assert(!failed.draws.some(d=>d[1]==='image'&&d[2].source),'Missing image uses fallback');assert(failed.draws.some(d=>d[2]==='ПОРАЖЕНИЕ'));assert.equal(failed.elements.get('defeatRestart').hidden,false);
- console.log('PASS: defeat art tiers, fatal snapshots, frozen frame, 1-second fade, 2-second post-fade gate, held inputs, button/canvas restart, campaign retry, victory, image fallback, HUD geometry/values/pointer');
+ const failed=boot(true);failed.run('muted=true;CFG.bomberChance=0;startGame();enterDefeat();overT=DEFEAT_FADE_DURATION+DEFEAT_RESTART_DELAY;syncUI()');failed.draws.length=0;failed.run('draw()');assert(!failed.draws.some(d=>d[1]==='image'&&d[2].source),'Missing image uses fallback');assert(failed.draws.some(d=>d[2]==='ПОРАЖЕНИЕ'));assert.equal(failed.elements.get('defeatRestart').hidden,false);
+ for(const cause of ['shell','mine',null]) {
+  const b=boot();b.run(`muted=true;startGame();grid.fill(EMPTY);player.inv=0;player.hp=1;
+   if (${cause==='mine'}) detonateMine({x:player.x,y:player.y,kind:'mine'});
+   else if (${cause==='shell'}) { bullets=[{x:player.x,y:player.y,vx:0,vy:0,owner:'e',dmg:1,r:2,life:1}];updateBullets(.02); }
+   else hitBase(99);
+   enterDefeat();overT=DEFEAT_FADE_DURATION;syncUI();`);
+  assert.equal(b.elements.get('defeatTip').hidden,!cause);
+  if (cause) assert(b.run('DEFEAT_TIPS.'+cause+'.includes(defeatTip)'));
+  const tip=b.run('defeatTip');b.run('update(.1);syncUI()');assert.equal(b.run('defeatTip'),tip);
+ }
+ console.log('PASS: defeat art tiers, fatal snapshots, frozen frame, darken and reveal, cause-specific tips, 2-second post-fade gate, held inputs, button/canvas restart, campaign retry, victory, image fallback, HUD geometry/values/pointer');
 };
 if(require.main===module)module.exports(__dirname);

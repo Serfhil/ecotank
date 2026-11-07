@@ -6,7 +6,7 @@
 // Обычный script без import/fetch сохраняет запуск через file://.
 
 // ---------- звук ----------
-let actx = null, noiseBuf = null, muted = false, cannonNoiseLayers=null,heavyImpulse=null,dshkEcho=null;
+let actx = null, noiseBuf = null, muted = false, cannonNoiseLayers=null,heavyImpulse=null,heavyEcho=null,dshkEcho=null;
 
 let music = null;
 let musicOff=false,musicWanted=false,musicLevel=.22,musicScene='',musicTrack=MENU_TRACK,musicBlocked=false,audioUnlocked=false;
@@ -24,15 +24,24 @@ function syncMusic(){
   }
   document.getElementById('musicToggle').textContent=musicOff?UI_TEXT.radiotochka_vyklyuchena:musicBlocked?UI_TEXT.vklyuchit_radiotochku:UI_TEXT.musicToggle;
 }
-function unlockAudio(){audioUnlocked=true;musicBlocked=false;syncMusic();}
+function effectsContext() {
+  const Context=window.AudioContext||window.webkitAudioContext;
+  if (!actx && Context) actx=new Context();
+  if (actx?.state==='suspended') actx.resume().catch(()=>{});
+  return actx;
+}
+function unlockAudio(){
+  audioUnlocked=true; musicBlocked=false; syncMusic();
+  // Unlock effects under the same user gesture as music, before the delayed barrage.
+  try { effectsContext(); } catch (e) {}
+}
 
 let treadTimer=0;
 function updateTreadSound(dt) {
   treadTimer-=dt;
   if(muted || !player || player.dead || !['play','between'].includes(state) || Math.hypot(player.vx,player.vy)<1 || treadTimer>0)return;
   treadTimer=.085;
-  try { if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();
-    if(actx.state==='suspended')actx.resume();
+  try { if(!effectsContext())return;
     noise(.10,.045,1100);tone(95,55,.08,'triangle',.035);
   } catch(e){}
 }
@@ -77,8 +86,7 @@ function cannonShot(volume) {
 function sfx(n) {
   if (muted) return;
   try {
-    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-    if (actx.state === 'suspended') actx.resume();
+    if (!effectsContext())return;
     switch (n) {
       case 'shoot': cannonShot(1); break;
       case 'heavyShoot':heavyGunSound();break;
@@ -103,29 +111,39 @@ function sfx(n) {
   } catch (e) { /* звук недоступен — не страшно */ }
 }
 
-// Layered heavy-gun echo and a diffuse reverberant tail, separate from the ordinary cannon sound.
-function heavyGunSound(){
-  cannonShot(1.5);
-  const t=actx.currentTime,source=actx.createBufferSource(),filter=actx.createBiquadFilter(),dry=actx.createGain(),delay=actx.createDelay(2),feedback=actx.createGain(),wet=actx.createGain(),reverb=actx.createConvolver();
-  if(!noiseBuf)noise(.01,.001,100);
-  source.buffer=noiseBuf;filter.type='lowpass';filter.frequency.value=800;dry.gain.setValueAtTime(.5,t);dry.gain.exponentialRampToValueAtTime(.0001,t+.6);
-  source.connect(filter).connect(dry).connect(soundBus());dry.connect(delay);delay.delayTime.value=.34;feedback.gain.value=.57;delay.connect(feedback).connect(delay);wet.gain.value=.65;delay.connect(wet).connect(soundBus());
-  if(!heavyImpulse){heavyImpulse=actx.createBuffer(2,Math.floor(actx.sampleRate*1.8),actx.sampleRate);for(let channel=0;channel<2;channel++){const data=heavyImpulse.getChannelData(channel);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,3);}}
-  reverb.buffer=heavyImpulse;dry.connect(reverb);const revGain=actx.createGain();revGain.gain.value=.35;reverb.connect(revGain).connect(soundBus());source.start(t);source.stop(t+.65);
-  setTimeout(()=>{delay.disconnect();feedback.disconnect();reverb.disconnect();wet.disconnect();revGain.disconnect();dry.disconnect();filter.disconnect();},5200);
+// Persistent effects bus per gun. Overlapping reports share one convolver and feedback loop.
+function gunEcho(delayTime,feedbackLevel,wetLevel,reverbLevel) {
+  if (!heavyImpulse) {
+    heavyImpulse=actx.createBuffer(2,Math.floor(actx.sampleRate*1.8),actx.sampleRate);
+    for(let channel=0;channel<2;channel++){
+      const data=heavyImpulse.getChannelData(channel);
+      for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,3);
+    }
+  }
+  const input=actx.createGain(),delay=actx.createDelay(2),feedback=actx.createGain(),
+    wet=actx.createGain(),reverb=actx.createConvolver(),revGain=actx.createGain();
+  delay.delayTime.value=delayTime;feedback.gain.value=feedbackLevel;wet.gain.value=wetLevel;
+  reverb.buffer=heavyImpulse;revGain.gain.value=reverbLevel;
+  input.connect(delay);delay.connect(feedback).connect(delay);delay.connect(wet).connect(soundBus());
+  input.connect(reverb).connect(revGain).connect(soundBus());
+  return input;
 }
 
-// ДШК: громче и ниже ДТ-29, с плотным эхом. Шина эха (задержка с обратной связью и свёртка с
-// уже созданным heavyImpulse) строится один раз; каждый выстрел только подключается к ней.
+function heavyGunSound(){
+  cannonShot(1.5);
+  if(!noiseBuf)noise(.01,.001,100);
+  if(!heavyEcho)heavyEcho=gunEcho(.34,.57,.65,.35);
+  const t=actx.currentTime,source=actx.createBufferSource(),filter=actx.createBiquadFilter(),dry=actx.createGain();
+  source.buffer=noiseBuf;filter.type='lowpass';filter.frequency.value=800;
+  dry.gain.setValueAtTime(.5,t);dry.gain.exponentialRampToValueAtTime(.0001,t+.6);
+  source.connect(filter).connect(dry);dry.connect(soundBus());dry.connect(heavyEcho);
+  source.onended=()=>{source.disconnect();filter.disconnect();dry.disconnect();};
+  source.start(t);source.stop(t+.65);
+}
+
 function dshkSound(){
   if(!noiseBuf)noise(.01,.001,100);
-  if(!heavyImpulse){heavyImpulse=actx.createBuffer(2,Math.floor(actx.sampleRate*1.8),actx.sampleRate);for(let channel=0;channel<2;channel++){const data=heavyImpulse.getChannelData(channel);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,3);}}
-  if(!dshkEcho){
-    const input=actx.createGain(),delay=actx.createDelay(1),feedback=actx.createGain(),wet=actx.createGain(),reverb=actx.createConvolver(),revGain=actx.createGain();
-    delay.delayTime.value=.19;feedback.gain.value=.45;wet.gain.value=.55;reverb.buffer=heavyImpulse;revGain.gain.value=.4;
-    input.connect(delay);delay.connect(feedback).connect(delay);delay.connect(wet).connect(soundBus());input.connect(reverb).connect(revGain).connect(soundBus());
-    dshkEcho=input;
-  }
+  if(!dshkEcho)dshkEcho=gunEcho(.19,.45,.55,.4);
   const t=actx.currentTime,src=actx.createBufferSource(),filter=actx.createBiquadFilter(),g=actx.createGain();
   src.buffer=noiseBuf;filter.type='lowpass';filter.frequency.value=1500;
   g.gain.setValueAtTime(.42,t);g.gain.exponentialRampToValueAtTime(.0001,t+.11);

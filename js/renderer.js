@@ -81,6 +81,16 @@ function draw() {
     drawDefeatScreen();
     return;
   }
+  if (state==='story' && raseiniai && ['victory','newspaper'].includes(raseiniai.phase)) {
+    if (!raseiniai.finalFrame) {
+      drawBattleFrame();
+      const frame=document.createElement('canvas');
+      frame.width=cv.width; frame.height=cv.height;
+      frame.getContext('2d').drawImage(cv,0,0);
+      raseiniai.finalFrame=frame;
+    } else ctx.drawImage(raseiniai.finalFrame,0,0);
+    return;
+  }
   drawBattleFrame();
   drawHud();
 }

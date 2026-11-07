@@ -226,7 +226,7 @@ function detonateMine(m){
   explosion(m.x,m.y,false,'#6b5a36',m.kind==='charge'?1:.8,false);
   if(m.target==='wall'){const t=tileAt(m.c,m.r);if(t===BRICK)hitBrick(m.c,m.r,99,m.x,m.y);else if(t===FENCE)hitFence(m.c,m.r,m.x,m.y);}
   if(m.target==='base'&&base&&!base.dead)hitBase(MINE_DAMAGE);
-  blastDamage(m.x,m.y,20,{damage:MINE_DAMAGE});
+  blastDamage(m.x,m.y,20,{damage:MINE_DAMAGE,cause:m.kind==='mine'?'mine':null});
 }
 
 // Снаряд игрока или союзника подрывает мину, в которую попал.

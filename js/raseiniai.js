@@ -2,6 +2,9 @@
 // The story mission owns its phases, reinforcement queues and evacuation.
 const RASEINIAI_ASSETS = 'assets/raseiniai/';
 const RASEINIAI_EXITS = [8, 21];
+const RASEINIAI_FIRST_SPAWN = [1.4, 2];
+const RASEINIAI_TRANSLATION_DELAY = .5;
+const RASEINIAI_REPAIR_COST = 2;
 const RASEINIAI_TITLE = 'Расейняй, Литва';
 const RASEINIAI_SUBTITLE = 'Приграничные танковые бои — июнь 1941';
 const RASEINIAI_ESTIMATES = ['9–12 тыс. солдат', '10–14 тыс. человек', '746'];
@@ -12,7 +15,7 @@ const RASEINIAI_RADIO = {
   german: [
     ['Oberst, melden Sie sich!', 'Полковник, доложите!'],
     ['Was ist mit Ihrer Truppe los?!', 'Что у вас там с войсками?!'],
-    ['WAS HEISST HIER, EIN EINZIGER PANZER?!', 'ЧТО ЗНАЧИТ „ОДИН ТАНК“?!'],
+    ['WAS HEISST DAS, EIN EINZIGER PANZER HAT IHRE BRIGADE ZERSCHLAGEN?!', 'ЧТО ЗНАЧИТ ОДИН ТАНК РАЗБИЛ ВАШУ БРИГАДУ?!'],
     ['ICH HABE DEN ANGRIFF BEFOHLEN!', 'Я ПРИКАЗАЛ АТАКОВАТЬ!'],
   ],
 };
@@ -49,12 +52,20 @@ function startRaseiniai() {
   buildMillContour();
   devOpen = false;
   enemies = []; allies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; toSpawn = [];
-  bombers = []; mines = []; mineFx = []; score = scrap = wave = shake = hitstop = flowTimer = 0;
+  bombers = []; mines = []; mineFx = []; score = wave = shake = hitstop = flowTimer = 0;
+  scrap = 4;
   banner.t = 0; hudOpacity = {left:1,right:1,score:1};
   mouse.down = mouse.right = false;
   evacuateRaseiniai(7);
   raseiniaiDialogue('civilian', [['НЕМЦЫ! Немецкие танки наступают!!!']], () => {});
   syncMusic();
+}
+
+function repairRaseiniaiTank() {
+  if (!player || player.dead || player.hp>=player.maxHp || scrap<RASEINIAI_REPAIR_COST) return;
+  scrap-=RASEINIAI_REPAIR_COST;
+  player.hp=Math.min(player.maxHp,player.hp+1);
+  sfx('pick');
 }
 
 function raseiniaiPhase(phase) {
@@ -80,27 +91,30 @@ function evacuateRaseiniai(count, trucks = false) {
 }
 
 function raseiniaiDialogue(kind, lines, done) {
-  raseiniai.dialogue = {kind, lines, done, index:0, elapsed:0, shown:0, complete:false};
+  raseiniai.dialogue = {kind, lines, done, index:0, elapsed:0, shown:0, complete:false, translationWait:0};
   raseiniai.dirty = true;
 }
 
 function advanceRaseiniai() {
   const d = raseiniai.dialogue;
   if (d) {
-    if (!d.complete) d.complete = true;
-    else if (++d.index < d.lines.length) { d.elapsed = d.shown = 0; d.complete = false; }
+    if (!d.complete) finishRaseiniaiLine(d);
+    else if (d.translationWait>0) return;
+    else if (++d.index < d.lines.length) { d.elapsed = d.shown = d.translationWait = 0; d.complete = false; }
     else { raseiniai.dialogue = null; d.done(); }
     raseiniai.dirty = true;
   } else if (raseiniai.phase === 'newspaper') raseiniaiPhase('timeline');
+  else if (raseiniai.phase === 'timeline') raseiniaiPhase('farewell');
 }
 
 function raseiniaiStoryInput(e) {
   if (!raseiniai || state !== 'story') return false;
-  if (e.code === 'Space' && (raseiniai.dialogue || raseiniai.phase !== 'newspaper' && raseiniai.phase !== 'timeline')) {
+  if (e.code === 'Space' && raseiniai.phase !== 'newspaper') {
     e.preventDefault();
     const fresh = !e.repeat && !keys.Space;
     keys.Space = true;
-    if (fresh) advanceRaseiniai();
+    if (fresh && raseiniai.phase==='farewell' && e.target?.dataset?.raseiniai==='home') toMenu();
+    else if (fresh) advanceRaseiniai();
     return true;
   }
   return e.code !== 'Tab' && e.code !== 'Enter' && e.code !== 'Space' && e.code !== 'KeyM';
@@ -135,6 +149,11 @@ function updateRaseiniaiEvacuation(dt) {
   s.evac = s.evac.filter(unit => unit.y < H + 22);
 }
 
+function finishRaseiniaiLine(d) {
+  d.complete=true;
+  d.translationWait=d.lines[d.index][1] ? RASEINIAI_TRANSLATION_DELAY : 0;
+}
+
 function updateRaseiniaiStory(dt) {
   const s = raseiniai;
   s.age += dt;
@@ -144,8 +163,8 @@ function updateRaseiniaiStory(dt) {
     d.elapsed += dt;
     const pause = d.kind==='civilian' && d.elapsed>.2 ? Math.min(.38,d.elapsed-.2) : 0;
     d.shown = Math.floor((d.elapsed-pause)*35);
-    if (d.shown >= d.lines[d.index][0].length) d.complete = true;
-  }
+    if (d.shown >= d.lines[d.index][0].length) finishRaseiniaiLine(d);
+  } else if (d) d.translationWait=d.translationWait-dt>1e-9 ? d.translationWait-dt : 0;
   if (s.phase === 'civilians' && !s.evac.length && !s.dialogue) {
     raseiniaiPhase('fireOrder');
     raseiniaiDialogue('german',[RASEINIAI_RADIO.fire],raseiniaiBombardment);
@@ -165,7 +184,8 @@ function updateRaseiniaiStory(dt) {
     raseiniaiPhase('arrival');
   }
   if (s.phase === 'arrival') {
-    player.y = Math.max(H-2.5*T,player.y-dt*105);
+    const step=Math.min(player.y-(H-2.5*T),dt*KINDS.player.speed);
+    player.y-=step; player.tread=(player.tread+step)%6;
     if (player.y === H-2.5*T) {
       raseiniaiPhase('orders');
       raseiniaiDialogue('soviet', [[RASEINIAI_RADIO.order]], () => {
@@ -185,8 +205,6 @@ function updateRaseiniaiStory(dt) {
       raseiniaiDialogue('soviet', [[RASEINIAI_RADIO.retreat]], () => {
         raseiniaiPhase('victory'); sfx('wave');
       });
-    } else {
-      startRaseiniaiWave(s.nextWave); resumeRaseiniaiBattle();
     }
   }
   if (s.phase === 'victory' && s.age >= 2.5) raseiniaiPhase('newspaper');
@@ -205,7 +223,7 @@ function startRaseiniaiWave(number) {
   const batches = RASEINIAI_WAVES[number-1].map(batch=>[].concat(batch).map(group=>({...group,slot:0,entered:[],timer:.65})));
   const pending = batches.flat().reduce((total,group)=>total+group.lanes.length,0);
   raseiniai.tracks.push({number,batches,pending});
-  banner = {text:number===4?'4-я волна. Штурм':number+'-я волна',sub:'',t:2.2};
+  banner = {text:number===4?'4-я волна. Штурм':number+'-я волна',sub:number===1?'R · ремонт 1 HP за 2 металлолома':'',t:2.2};
   sfx('wave');
 }
 
@@ -246,7 +264,7 @@ function updateRaseiniaiSpawns(dt) {
       if (group.kind==='scout') e.storyExit = raseiniaiRoadPath({x:e.x,y:spawn.r*T+T/2}).exit;
       if (group.column) e.storyColumn = group.entered;
       group.entered.push(e); enemies.push(e); group.slot++; track.pending--;
-      group.timer = group.column ? .55 : rnd(.6,1.1);
+      group.timer = group.column ? .55 : track.number===1 ? rnd(...RASEINIAI_FIRST_SPAWN) : rnd(.6,1.1);
     }
   }
 }
@@ -262,8 +280,17 @@ function raseiniaiFormColumns() {
 }
 
 function finishRaseiniaiBattle() {
+  if (raseiniai.nextWave===3) {
+    if (!raseiniai.evac.length) { raseiniai.nextWave=null; startRaseiniaiWave(3); }
+    return;
+  }
   if (wave<2 || raseiniaiEnemyCount() || raseiniai.tracks.some(t=>t.batches.length) || wrecks.some(w=>w.exploded===false)) return;
   collectRemainingScrap();
+  if (wave===2) {
+    evacuateRaseiniai(2,true);
+    raseiniai.nextWave=3;
+    return;
+  }
   bullets = [];
   raseiniai.nextWave = wave===4 ? 0 : wave+1;
   if (wave===4 && score>best) {

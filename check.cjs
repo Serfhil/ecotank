@@ -356,7 +356,29 @@ let createdAudioBuffers=0;
 const audioNode=()=>({gain:{value:0,setValueAtTime(){},exponentialRampToValueAtTime(){}},frequency:{value:0,setValueAtTime(){},exponentialRampToValueAtTime(){}},threshold:{value:0},ratio:{value:0},delayTime:{value:0},connect(other){return other;},disconnect(){},start(){},stop(){}});
 actx={sampleRate:2000,currentTime:0,destination:audioNode(),createGain:audioNode,createOscillator:audioNode,createDynamicsCompressor:audioNode,createBiquadFilter:audioNode,createBufferSource:audioNode,createDelay:audioNode,createConvolver:audioNode,createBuffer(channels,length){createdAudioBuffers++;const data=Array.from({length:channels},()=>new Float32Array(length));return {getChannelData:c=>data[c]};}};
 cannonNoiseLayers=heavyImpulse=noiseBuf=masterGain=null;heavyGunSound();const initialAudioBuffers=createdAudioBuffers;for(let i=0;i<4;i++)heavyGunSound();if(createdAudioBuffers!==initialAudioBuffers||!heavyImpulse||cannonNoiseLayers.length!==4)throw Error('Artillery reports reuse audio buffers');
-actx=noiseBuf=masterGain=cannonNoiseLayers=heavyImpulse=null;
+actx=noiseBuf=masterGain=cannonNoiseLayers=heavyImpulse=heavyEcho=null;
+
+{ // Check the exact travel limit on a field wide enough to contain 30 cells.
+CFG.mapSize=60;startGame();grid.fill(EMPTY);player.x=90;player.y=200;player.angle=0;bullets=[];
+fireMachineGun(player,W-100,200);
+const mgRound=bullets[0], muzzleX=mgRound.x;
+mgRound.vx=MG_CONFIG.speed;mgRound.vy=0;
+updateBullets((30*T-1)/MG_CONFIG.speed);
+if(bullets.length!==1||Math.abs(mgRound.x-muzzleX-(30*T-1))>1e-6)throw Error('Machine gun reaches just short of 30 cells');
+updateBullets(.025);
+if(bullets.length||Math.abs(mgRound.x-muzzleX-30*T)>1e-6)throw Error('Machine gun cannot travel beyond 30 cells');
+
+const chainMotos=[makeTank(300,300,'moto'),makeTank(306,300,'moto')], safeTank=makeTank(301,300,'scout');
+const safeMine={kind:'mine',x:300,y:300}, bomber={x:303,y:300,state:'hidden'};
+enemies=[...chainMotos,safeTank];bombers=[bomber];mines=[safeMine];wrecks=[];
+player.x=300;player.y=300;const safeHp=player.hp;
+const initialMotoKills=operationStats.enemies.moto;
+hitEnemy(chainMotos[0],{x:300,y:300,dmg:99});
+updateWrecks(.5);updateWrecks(.5);
+if(!chainMotos[1].dead||bomber.state!=='down'||operationStats.enemies.moto!==initialMotoKills+2||operationStats.enemies.bomber!==1)throw Error('Motorcycle blast only kills and counts its eligible targets once');
+if(safeTank.dead||safeMine.done||player.hp!==safeHp)throw Error('Motorcycle blast cannot damage tanks, player or mines');
+}
+
 `,box);
 require('./check-raseiniai.cjs')(box);
 assert(!code.includes("tone(420, 110"));

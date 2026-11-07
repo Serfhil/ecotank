@@ -184,7 +184,7 @@ function hitFence(c, r, hx = c*T+16, hy = r*T+16) {
     parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life, max: life, w: rnd(5, 9), h: 2, size: 6, rot: rnd(0, 6), vr: rnd(-10, 10), color: ['#8a6338', '#a57a46', '#6f4d2b'][k % 3], kind: 'debris' });
   }
   burst(hx, hy, 8, ['#c49a62', '#8a6338'], 110, .35, 3);
-  grid[i] = EMPTY; fenceArms[i] = 0; flowTimer = 0;
+  grid[i] = EMPTY; fenceArms[i] = 0; flowTimer = 0; recordStatistic('fences');
   sfx('fence');
 }
 

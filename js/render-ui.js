@@ -109,6 +109,7 @@ function drawDefeatScreen() {
     const w = defeatFrame.width * scale, h = defeatFrame.height * scale;
     c.drawImage(defeatFrame, (width - w) / 2, (height - h) / 2, w, h);
   }
+  c.globalAlpha=defeatDarkness(); c.fillStyle='#000'; c.fillRect(0,0,width,height);
   if (!defeatArtworkCanvas) defeatArtworkCanvas = document.createElement('canvas');
   if (defeatArtworkCanvas.width !== pixelWidth || defeatArtworkCanvas.height !== pixelHeight) {
     defeatArtworkCanvas.width = pixelWidth; defeatArtworkCanvas.height = pixelHeight;

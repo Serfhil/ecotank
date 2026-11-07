@@ -46,7 +46,10 @@ function drawBrick(x,y,hp,mask,variant) {
 }
 
 function drawFence(c, r) {
-  const rects = fenceRects(c, r), x = c * T, y = r * T, arms = fenceArms[r * COLS + c];
+  paintFence(ctx,c*T,r*T,fenceArms[r*COLS+c],fenceRects(c,r));
+}
+
+function paintFence(ctx,x,y,arms,rects) {
   ctx.fillStyle = 'rgba(0,0,0,.25)';
   for (const b of rects) ctx.fillRect(b.x + 2, b.y + 3, b.w, b.h);
   for (const b of rects) {

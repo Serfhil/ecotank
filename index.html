@@ -89,6 +89,7 @@
   #defeatScreen[hidden], #defeatRestart[hidden] { display:none; }
   #defeatCanvas { width:100%; height:100%; display:block; border-radius:0; box-shadow:none; cursor:default; }
   #defeatRestart { position:absolute; left:0; right:0; margin:0 auto; bottom:max(28px,7vh); box-sizing:border-box; width:max-content; max-width:calc(100vw - 32px); padding:16px 38px; min-width:min(270px,calc(100vw - 32px)); border:1px solid #edc668; border-radius:6px; color:#ffe7a3; background:linear-gradient(#a63138,#681320); font-size:clamp(17px,2.4vw,23px); font-weight:700; box-shadow:0 6px 28px #0008; }
+  #defeatTip { position:absolute; bottom:calc(max(28px,7vh) + 76px); left:50%; transform:translateX(-50%); width:max-content; max-width:min(90vw,46rem); box-sizing:border-box; margin:0; padding:10px 16px; border-radius:6px; background:#18090ddd; color:#ffe7a3; text-align:center; }
   #defeatRestart:hover, #defeatRestart:focus-visible { background:#b73e42; outline:2px solid #edc668; outline-offset:4px; }
 </style>
 <!-- «Карты Клода»: готовые карты в текстовом виде, формат описан в самом файле -->
@@ -142,7 +143,7 @@
 <div class="modeButtons"><button id="mode-story" data-ui-leading="modeStory"><small data-ui-text="raseiniaiMission"></small></button><button id="mode-campaign" data-ui-leading="modeCampaign"><small data-ui-text="posledovatelnye_urovni"></small></button><button id="mode-preset01" data-ui-leading="modePresets"><small data-ui-text="gotovye_uchastki"></small></button><button id="mode-map" data-ui-leading="modeMap"><small data-ui-text="vybor_i_redaktor"></small></button></div>
 <div class="menuActions"><button id="menuStart" class="startButton" data-ui-text="startBattle"></button><button id="menuSettings" class="ghost" data-ui-text="settings"></button><span data-ui-text="wasd_tank_mysh_bashnya_probel_ogon_shift_uskorenie"></span></div>
 <div id="mapControl" style="position:fixed;top:8px;left:10px;z-index:2;background:#14181cdd;padding:7px;color:#d5dfcc;font-size:12px;border-radius:6px" data-ui-leading="mapControl"><select id="mapSize" aria-label="" data-ui-aria-label="razmer_karty_dlya_novoy_igry" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="30">30×20</option><option value="45">45×30</option><option value="60">60×40</option></select>
-<select id="mapMode" aria-label="" data-ui-aria-label="rezhim_rasstanovki_dekoratsiy_dlya_novoy_igry" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="original" data-ui-text="modeOriginal"></option><option value="preset01" data-ui-text="modePresets"></option><option value="map" data-ui-text="modeMap"></option><option value="campaign" data-ui-text="modeCampaign"></option></select>
+<select id="mapMode" aria-label="" data-ui-aria-label="rezhim_rasstanovki_dekoratsiy_dlya_novoy_igry" style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px"><option value="story" data-ui-text="modeStory"></option><option value="original" data-ui-text="modeOriginal"></option><option value="preset01" data-ui-text="modePresets"></option><option value="map" data-ui-text="modeMap"></option><option value="campaign" data-ui-text="modeCampaign"></option></select>
 <select id="campaignPick" aria-label="" data-ui-aria-label="uroven_s_kotorogo_nachat_kampaniyu" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:220px"></select>
 <select id="mapPick" aria-label="" data-ui-aria-label="gotovaya_karta_dlya_novoy_igry" hidden style="background:#27332b;color:#eef5e8;border:1px solid #5d7250;padding:4px;max-width:200px"></select>
 <button id="btnEditor" class="ghost" style="font-size:12px;padding:4px 10px" data-ui-text="btnEditor"></button>
@@ -153,6 +154,7 @@
 <section id="raseiniaiScreen" hidden aria-label="Расейняй, Литва"></section>
 <section id="defeatScreen" hidden tabindex="-1" role="region" aria-label="" data-ui-aria-label="defeatScreen">
   <canvas id="defeatCanvas" aria-hidden="true"></canvas>
+  <p id="defeatTip" hidden></p>
   <button id="defeatRestart" hidden data-ui-text="newGame"></button>
 </section>
 <section id="victoryScreen" hidden tabindex="-1" role="region" data-ui-aria-label="victoryScreen">
@@ -224,8 +226,9 @@ let shake = 0, time = 0, banner = { text: '', sub: '', t: 0 };
 let best = 0;
 try { best = +localStorage.getItem('ecotank-best') || 0; } catch (e) {}
 
+let storySelected = false;
 function startGame(retry = false) {
-  if (retry && raseiniai) { startRaseiniai(); return; }
+  if ((retry && raseiniai) || (state==='menu' && storySelected)) { startRaseiniai(); return; }
   raseiniai = null;
   if (!retry) resetStatistics();
   hudOpacity = {left:1,right:1,score:1};
@@ -297,7 +300,10 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   if (e.code === 'Enter' && state === 'over' && !victory) requestDefeatRestart(e.repeat || held);
-  else if (e.code === 'Enter' && state === 'menu') startGame();
+  else if (e.code === 'Enter' && state === 'menu' && !e.repeat && !held) {
+    if (e.target.tagName!=='BUTTON' || e.target.id==='menuStart') { e.preventDefault(); startGame(); }
+  }
+  else if (e.code === 'KeyR' && !e.repeat && !held && raseiniai && state==='play') repairRaseiniaiTank();
   else if ((e.code === 'KeyP' || e.code === 'Escape') && (state === 'play' || state === 'pause')) { state = state === 'play' ? 'pause' : 'play'; devOpen = false; }
   else if (e.code === 'KeyM') { muted = !muted; syncMusic(); }
   else if (e.code === 'KeyC' && (state === 'play' || state === 'between')) armRail(player);
@@ -314,7 +320,7 @@ cv.addEventListener('mousedown', e => {
   const held = mouse.down;
   mouse.down = true;
   if (state === 'over' && !victory) { requestDefeatRestart(held); return; }
-  if (state === 'menu') startGame();
+  if (state === 'menu' && !storySelected) startGame();
   else if (state === 'pause' && !devOpen) state = 'play';
 });
 addEventListener('mouseup', e => { if (e && e.button === 2) mouse.right = false; else mouse.down = false; });
@@ -513,6 +519,8 @@ document.getElementById('mapSize').addEventListener('change', e=>{
   if(state==='menu')toMenu();
 });
 document.getElementById('mapMode').addEventListener('change', e=>{
+  storySelected=e.target.value==='story';
+  if (storySelected) { e.target.blur(); return; }
   CFG.mapMode=['preset01','map','campaign'].includes(e.target.value)?e.target.value:'original';saveDev();e.target.blur();
   if(state==='menu')toMenu();
 });
@@ -522,10 +530,10 @@ function syncUI() {
   syncVictoryUI();
   syncRaseiniaiUI();
   const mapPick=document.getElementById('mapPick'),campaignPick=document.getElementById('campaignPick');
-  const fixed=CFG.mapMode==='map',camp=CFG.mapMode==='campaign';
+  const fixed=!storySelected&&CFG.mapMode==='map',camp=!storySelected&&CFG.mapMode==='campaign';
   document.getElementById('mapSize').value=String(CFG.mapSize||30);
-  document.getElementById('mapSize').hidden=fixed||camp;
-  document.getElementById('mapMode').value=['preset01','map','campaign'].includes(CFG.mapMode)?CFG.mapMode:'original';
+  document.getElementById('mapSize').hidden=storySelected||fixed||camp;
+  document.getElementById('mapMode').value=storySelected?'story':(['preset01','map','campaign'].includes(CFG.mapMode)?CFG.mapMode:'original');
   if(mapPick.hidden===fixed)mapPick.hidden=!fixed;
   if(fixed&&mapPick.value!==CFG.mapPick)mapPick.value=CFG.mapPick;
   if(campaignPick.hidden===camp)campaignPick.hidden=!camp;
@@ -533,7 +541,10 @@ function syncUI() {
   document.getElementById('mapControl').hidden=editorOpen||mapEdOpen||state!=='menu';
   document.getElementById('mainMenu').hidden=state!=='menu'||editorOpen||mapEdOpen;
   document.getElementById('menuHome').hidden=state==='menu'||editorOpen||mapEdOpen;
-  for(const mode of ['preset01','map','campaign'])document.getElementById('mode-'+mode).classList.toggle('selected',CFG.mapMode===mode);
+  for(const mode of ['preset01','map','campaign'])document.getElementById('mode-'+mode).classList.toggle('selected',!storySelected&&CFG.mapMode===mode);
+  const storyButton=document.getElementById('mode-story');
+  storyButton.classList.toggle('selected',storySelected);
+  if (storyButton.setAttribute) storyButton.setAttribute('aria-pressed',String(storySelected));
   if (editorEl.hidden === editorOpen) editorEl.hidden = !editorOpen;
   if (mapEditorEl.hidden === mapEdOpen) mapEditorEl.hidden = !mapEdOpen;
   syncMusic();
@@ -545,9 +556,9 @@ function syncUI() {
 document.getElementById('menuStart').addEventListener('click',()=>startGame());
 document.getElementById('menuSettings').addEventListener('click',()=>{devOpen=true;buildDev();});
 document.getElementById('menuHome').addEventListener('click',()=>{devOpen=false;toMenu();syncMusic();});
-for(const mode of ['preset01','map','campaign'])document.getElementById('mode-'+mode).addEventListener('click',()=>{CFG.mapMode=mode;saveDev();toMenu();});
+for(const mode of ['preset01','map','campaign'])document.getElementById('mode-'+mode).addEventListener('click',()=>{storySelected=false;CFG.mapMode=mode;saveDev();toMenu();});
 
-document.getElementById('mode-story').addEventListener('click', e=>{ e.currentTarget.blur(); devOpen=false; startRaseiniai(); });
+document.getElementById('mode-story').addEventListener('click', e=>{ e.currentTarget.blur(); storySelected=true; });
 
 // ---------- запуск ----------
 initRaseiniai();

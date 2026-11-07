@@ -21,13 +21,19 @@ body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#mu
 .storyLosses th,.storyLosses td{padding:3px clamp(7px,2vw,18px);font-weight:400}
 .storyLosses td{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .storyCaveat{color:#cfbca4;font-size:13px;line-height:1.35}
-.storyVictory{background:#24090ded}.storyVictory h1{color:#ffe0a2;text-shadow:0 0 32px #c93a37}
-.storyTimeline{background:#000}.storyTimeline .storyOld{position:relative}
-.storyTimeline .storyOld::after{content:"";position:absolute;left:0;top:52%;width:100%;height:2px;background:#f45247;transform-origin:left;animation:storyStrike .32s var(--strike,.55s) both}
-.storyRevised{animation:storyReveal .55s 2.45s both}.storyRevised p{margin:.6em 0}
-@keyframes storyStrike{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+#raseiniaiScreen{--story-victory-shade:#24090ded}
+.storyVictory{background:var(--story-victory-shade)}.storyVictory h1{color:#ffe0a2;text-shadow:0 0 32px #c93a37}
+.storyTimeline{background:#000}
+.storyTimeline .storyLosses{font-size:clamp(12px,2.5vw,16px)}
+.storyTimeline .storyLosses :is(th,td){white-space:normal}
+.storyTimeline .storyLosses thead th:not(:first-child){text-align:right}
+.storyRevision{animation:storyReveal .55s .6s both}
+.storyDestroyed{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));list-style:none;margin:0;padding:0;gap:8px}
+.storyDestroyed li{display:grid;justify-items:center;gap:2px;font-size:clamp(11px,2vw,15px)}
+.storyDestroyed strong{font-size:1.2em}
+.storyFarewell h1{font-size:clamp(30px,6vw,68px);overflow-wrap:anywhere}
 @keyframes storyReveal{from{visibility:hidden;opacity:0}to{visibility:visible;opacity:1}}
-.storyNewspaper{padding:12px;background:#130b0b;text-align:center}
+.storyNewspaper{padding:12px;background:var(--story-victory-shade);text-align:center}
 .storyPaper{position:relative;width:min(100%,1100px);margin:0 auto 12px;container-type:inline-size;color:#181a22;text-align:left;font-family:Georgia,serif}
 .storyPaper img{display:block;width:100%;height:auto}
 .storyPaper article{position:absolute;left:4.2%;width:46%;top:39.5%;height:58%;columns:3;column-gap:2.7cqw;column-fill:balance;font-size:1.23cqw;line-height:1.23;text-align:justify;hyphens:auto}
@@ -42,4 +48,4 @@ body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#mu
   .storyPaper{display:flex;flex-direction:column}.storyPaper article{order:1}
 }
 @media(max-width:620px){.storyDialogue{width:min(92vw,450px)}.storyDialogue--civilian .storySpeech{width:min(100%,23rem)}}
-@media(prefers-reduced-motion:reduce){.storyTimeline .storyOld::after,.storyRevised{animation:none}}
+@media(prefers-reduced-motion:reduce){.storyRevision{animation:none}}

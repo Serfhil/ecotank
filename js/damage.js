@@ -10,7 +10,7 @@ function blastDamage(x,y,diameter=30,options={}) {
   sapperBlast(x,y,radius);
   // Marked-dead tanks are ignored, so chain explosions cannot award duplicate kills.
   for(const e of [...enemies]) if(!e.dead && e.spawnT<=0 && Math.hypot(e.x-x,e.y-y)<=radius)hitEnemy(e,{x,y,dmg:damage,blast:true});
-  if(!options.safePlayer&&player&&!player.dead&&Math.hypot(player.x-x,player.y-y)<=radius)hitPlayer({x,y,dmg:damage,blast:true});
+  if(!options.safePlayer&&player&&!player.dead&&Math.hypot(player.x-x,player.y-y)<=radius)hitPlayer({x,y,dmg:damage,blast:true,cause:options.cause});
   if(!options.safePlayer)for(const a of [...allies])if(!a.dead&&Math.hypot(a.x-x,a.y-y)<=radius)hitAlly(a,{x,y,dmg:damage,blast:true});
 }
 
@@ -28,9 +28,8 @@ function hitEnemy(e, b) {
   score += K.score;
   floatText(e.x, e.y - 10, '+' + K.score, '#ffe08a');
 
-  // Мотобригада при любой гибели даёт три отдельных небольших взрыва — только визуально:
-  // без blastDamage, подрыва мин и стоп-кадра. Уже поставленные мины живут по своим правилам.
-  if (e.kind === 'moto') { wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret, tread:e.tread, recoil:0, flash:0, age: 0, smokeT: 0, detonateAt:0, exploded:false, blastTotal:3, blastGap:.15, blastScale:.3, harmless:true }); return; }
+  // Три малых взрыва поражают только мотобригады и подрывников.
+  if (e.kind === 'moto') { wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret, tread:e.tread, recoil:0, flash:0, age: 0, smokeT: 0, detonateAt:0, exploded:false, blastTotal:3, blastGap:.15, blastScale:.3 }); return; }
   // Бонусы с убитых врагов больше не выпадают: они появляются только по таймеру updateRandomItems.
   wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret, tread:e.tread, recoil:e.recoil, flash:0, age: 0, smokeT: 0, detonateAt:rnd(.5,1.5)*(b.blast?.5:1), exploded:false });
 }
@@ -47,7 +46,7 @@ function hitPlayer(b) {
   shake = Math.max(shake, 10);
   sfx('hurt');
   if (p.hp <= 0) {
-    rememberDefeatTier(); recordStatistic('deaths'); p.hp = 0; p.dead = true; p.armor=false;
+    rememberDefeatTier(); if (!base?.dead) defeatCause=b.cause || null; recordStatistic('deaths'); p.hp = 0; p.dead = true; p.armor=false;
     const delay=rnd(.5,1.5)*(b.blast?.5:1),blasts=PLAYER_DEATH_BLASTS[clamp(p.upgrade||0,0,2)];
     wrecks.push({x:p.x,y:p.y,kind:'player',angle:p.angle,turret:p.turret,tread:p.tread,recoil:p.recoil,flash:0,age:0,smokeT:0,taken:true,detonateAt:delay,exploded:false,blastTotal:blasts,upgrade:p.upgrade||0});
     // экран поражения ждёт последний фактический взрыв и ещё секунду
@@ -81,7 +80,12 @@ function updateWrecks(dt) {
         const offsets=[[-9,-5],[9,-3],[0,8],[-11,5],[8,-8],[-4,-11],[11,7]],total=w.blastTotal||3,gap=w.blastGap||DEATH_BLAST_GAP;
         while(w.blastCount<total&&w.age>=w.detonateAt+w.blastCount*gap) {
           const [dx,dy]=offsets[w.blastCount++],s=w.blastScale||1;
-          if(w.harmless)explosion(w.x+dx*s,w.y+dy*s,false,KINDS[w.kind].color,s,false);
+          if(w.kind==='moto') {
+            const x=w.x+dx*s,y=w.y+dy*s,radius=45*s;
+            explosion(x,y,false,KINDS[w.kind].color,s,false);
+            for(const e of enemies)if(!e.dead&&e.kind==='moto'&&Math.hypot(e.x-x,e.y-y)<=radius)hitEnemy(e,{x,y,dmg:1,blast:true});
+            for(const b of bombers)if((b.state==='hidden'||b.state==='lit')&&Math.hypot(b.x-x,b.y-y)<=radius)killBomber(b);
+          }
           else {explosion(w.x+dx,w.y+dy,false,KINDS[w.kind].color);blastDamage(w.x+dx,w.y+dy,30);}
         }
         if(w.blastCount===total){w.exploded=true;w.blastAge=w.age;}

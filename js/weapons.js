@@ -41,7 +41,7 @@ function fireMachineGun(p,tx,ty) {
   // спаренные стволы ДТ-29 стреляют поочерёдно
   const side=6+(gun.twin?((p.mgSide=!p.mgSide)?-3:3):0);
   const x=p.x+fx*15*s-fy*side*s,y=p.y+fy*15*s+fx*side*s,a=Math.atan2(ty-y,tx-x)+rnd(-MG_CONFIG.spread,MG_CONFIG.spread);
-  bullets.push({x,y,vx:Math.cos(a)*MG_CONFIG.speed,vy:Math.sin(a)*MG_CONFIG.speed,owner:'p',mg:true,mgTier:clamp(p.upgrade||0,0,MG_TIERS.length-1),heavyMg:!!gun.heavy,armor:false,trail:[],dmg:0,r:gun.heavy?2:1.5,life:MG_CONFIG.life});
+  bullets.push({x,y,vx:Math.cos(a)*MG_CONFIG.speed,vy:Math.sin(a)*MG_CONFIG.speed,owner:'p',mg:true,mgTier:clamp(p.upgrade||0,0,MG_TIERS.length-1),heavyMg:!!gun.heavy,armor:false,trail:[],dmg:0,r:gun.heavy?2:1.5,life:Infinity,range:MG_CONFIG.rangeTiles*T});
   for(let i=0;i<(gun.heavy?4:2);i++){const d=a+rnd(-.4,.4),v=rnd(40,110);parts.push({x,y,vx:Math.cos(d)*v,vy:Math.sin(d)*v,life:.08,max:.08,size:rnd(1.5,gun.heavy?3.5:2.5),color:'#ffe08a'});}
   sfx(gun.sound);
 }
@@ -103,7 +103,10 @@ function updateBullets(dt) {
     collideShells();
     for(const b of bullets) {
       if(b.dead)continue;
-      const nx=b.x+b.vx*dt/steps,ny=b.y+b.vy*dt/steps,c=Math.floor(nx/T),r=Math.floor(ny/T),t=tileAt(c,r);
+      const distance=b.range===undefined?0:Math.hypot(b.vx,b.vy)*dt/steps;
+      const fraction=distance?Math.min(1,b.range/distance):1;
+      const nx=b.x+b.vx*dt/steps*fraction,ny=b.y+b.vy*dt/steps*fraction,c=Math.floor(nx/T),r=Math.floor(ny/T),t=tileAt(c,r);
+      if(b.range!==undefined)b.range=Math.max(0,b.range-distance);
       if(t===TREE&&!b.mg)hitFoliage(c,r,nx,ny,b);
       const impact=bulletBlockingCell(nx,ny,b.r);
       // Любой пулемёт ломает забор, попав в его фактическую геометрию (bulletBlockingCell учитывает fenceRects).
@@ -124,8 +127,9 @@ function updateBullets(dt) {
         const mgDmg=b.mg?mgDamage(b,e):null;
         if(b.mg&&mgDmg===null){burst(b.x,b.y,4,['#fff4bd','#e8eef2'],140,.18,1.5,'spark');sfx('deflect');}else hitEnemy(e,b.mg?{x:b.x,y:b.y,dmg:mgDmg}:b);
         b.dead=true;break;}}}
-      else if(player&&!player.dead&&Math.hypot(player.x-b.x,player.y-b.y)<player.r+b.r){hitPlayer(b);b.dead=true;}
+      else if(player&&!player.dead&&Math.hypot(player.x-b.x,player.y-b.y)<player.r+b.r){hitPlayer({...b,cause:'shell'});b.dead=true;}
       else for(const a of allies){if(!a.dead&&Math.hypot(a.x-b.x,a.y-b.y)<a.r+b.r){hitAlly(a,b);b.dead=true;break;}}
+      if(b.range===0)b.dead=true;
     }
     collideShells();
   }
@@ -201,7 +205,7 @@ function rocketPosition(r) {
 function rocketImpact(r) {
   const {x,y}=r.point;
   explosion(x,y,false,'#c9773a',.7,false);
-  blastDamage(x,y,ROCKET_CONFIG.radius/1.5,{damage:ROCKET_CONFIG.damage});
+  blastDamage(x,y,ROCKET_CONFIG.radius/1.5,{damage:ROCKET_CONFIG.damage,cause:'shell'});
   if(base&&!base.dead&&Math.hypot(base.x-x,base.y-y)<=ROCKET_CONFIG.radius+base.r)hitBase(ROCKET_CONFIG.damage);
 }
 function updateRockets(dt) {
@@ -219,7 +223,7 @@ function updateRockets(dt) {
 function updateArtilleryShells(dt){
   processBarrageFrame(dt);
   for(const shell of artilleryShells){shell.age=shell.friendly&&shell.createdAt!==undefined?supportClock-shell.createdAt:shell.age+dt;if(!shell.pending&&shell.age>=shell.delay+shell.duration){shell.done=true;explosion(shell.tx,shell.ty,false,'#d6b56c',1,!shell.friendly);
-    blastDamage(shell.tx,shell.ty,30,{safePlayer:shell.friendly,damage:shell.damage});
+    blastDamage(shell.tx,shell.ty,30,{safePlayer:shell.friendly,damage:shell.damage,cause:'shell'});
     if(!shell.friendly&&base&&!base.dead&&Math.hypot(base.x-shell.tx,base.y-shell.ty)<=shell.radius)hitBase(shell.damage);
   }}artilleryShells=artilleryShells.filter(s=>!s.done);
 }

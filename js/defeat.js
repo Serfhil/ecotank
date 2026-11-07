@@ -3,13 +3,14 @@
 // Like the other classic scripts, loading this file has no DOM or image side effects.
 let defeatTier = null, defeatScreen = null, defeatCanvas = null, defeatRestart = null;
 let defeatImages = [], defeatButtonArmed = false;
-let defeatFrame = null;
+let defeatFrame = null, defeatCause = null, defeatTip = '', defeatTipEl = null;
 
 function initDefeat() {
   if (defeatScreen) return;
   defeatScreen = document.getElementById('defeatScreen');
   defeatCanvas = document.getElementById('defeatCanvas');
   defeatRestart = document.getElementById('defeatRestart');
+  defeatTipEl = document.getElementById('defeatTip');
   if (typeof Image === 'function') {
     defeatImages = DEFEAT_IMAGES.map(src => {
       const entry = { image: new Image(), loaded: false };
@@ -40,6 +41,8 @@ function rememberDefeatTier() {
 
 function resetDefeat() {
   defeatTier = null;
+  defeatCause = null; defeatTip = '';
+  if (defeatTipEl) defeatTipEl.hidden = true;
   defeatFrame = null;
   defeatButtonArmed = false;
   if (defeatScreen) defeatScreen.hidden = true;
@@ -56,6 +59,9 @@ function defeatBlastsFinished() {
 
 function enterDefeat() {
   rememberDefeatTier();
+  const tips=DEFEAT_TIPS[defeatCause];
+  defeatTip=tips ? tips[ri(0,tips.length-1)] : '';
+  if (defeatTipEl) defeatTipEl.textContent=defeatTip;
   state = 'over'; overT = 0; banner.t = 0; devOpen = false;
   defeatFrame = null;
   defeatButtonArmed = false;
@@ -82,12 +88,14 @@ function syncDefeatUI() {
   document.getElementById('musicControls').inert = visible;
   document.getElementById('menuHome').inert = visible;
   if (defeatRestart) defeatRestart.hidden = !defeatReady();
+  if (defeatTipEl) defeatTipEl.hidden = !visible || !defeatTip || overT<DEFEAT_FADE_DURATION;
 }
 
 // Called only for defeat: victory keeps its existing timer/effects behaviour.
 function updateDefeat(dt) { overT += dt; }
 
-function defeatOpacity() { return Math.max(0, Math.min(1, overT / DEFEAT_FADE_DURATION)); }
+function defeatDarkness() { return clamp(overT/DEFEAT_DARKEN_DURATION,0,1); }
+function defeatOpacity() { return clamp((overT-DEFEAT_DARKEN_DURATION)/(DEFEAT_FADE_DURATION-DEFEAT_DARKEN_DURATION),0,1); }
 
 // Snapshot the final battlefield and the separate HUD after their last render.
 // The stored image is independent of later resize/layout changes.

@@ -28,7 +28,7 @@ module.exports=function checkVictory(root){
  const before=run('operationStats.flocks');run("{const i=5*COLS+5;grid[i]=TREE;foliageMask[i]=31;const random=Math.random;Math.random=()=>0;hitFoliage(5,5,176,176,{});Math.random=random;}");assert.equal(run('operationStats.flocks'),before+1,'Count a flock once, not each bird');
  run("{const a=makeTank(100,100,'ally');a.inv=0;hitAlly(a,{x:100,y:100,dmg:9});hitAlly(a,{x:100,y:100,dmg:9});}player.inv=0;player.pw.shield=0;hitPlayer({x:player.x,y:player.y,dmg:99});hitPlayer({x:0,y:0,dmg:99});");
  assert.equal(run('operationStats.allies'),1);assert.equal(run('operationStats.deaths'),1);
- run("for(let i=0;i<900&&state!=='over';i++){hitstop=0;update(.025);}overT=3;requestDefeatRestart(false);");
+ run("for(let i=0;i<900&&state!=='over';i++){hitstop=0;update(.025);}overT=DEFEAT_FADE_DURATION+DEFEAT_RESTART_DELAY;requestDefeatRestart(false);");
  assert.equal(run('operationStats.deaths'),1,'Retry preserves deaths');assert.equal(run('operationStats.enemies.heavy'),1,'Retry preserves kills');
  run('nextWave()');assert.equal(run('operationStats.bricks'),1,'Next level preserves counters');
  run('keys.Enter=true;mouse.down=true;score=9876;winCampaign();syncUI();draw()');

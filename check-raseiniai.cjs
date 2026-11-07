@@ -7,7 +7,7 @@ module.exports = function checkRaseiniai(box) {
       const pressSpace = (repeat=false) => {
         check(raseiniaiStoryInput({code:'Space',repeat,preventDefault(){}}),'dialogue consumes Space');
       };
-      const dismiss = () => { pressSpace(); keys.Space=false; pressSpace(); keys.Space=false; };
+      const dismiss = () => { pressSpace(); keys.Space=false; if(raseiniai.dialogue.translationWait)updateRaseiniaiStory(.5); pressSpace(); keys.Space=false; };
       const until = (predicate,limit=1400) => {
         for(let i=0;i<limit&&!predicate();i++) update(.025);
         check(predicate(),'stalled at '+raseiniai.phase+' / '+wave);
@@ -33,7 +33,14 @@ module.exports = function checkRaseiniai(box) {
       keys.Space=false;pressSpace();keys.Space=false;
       until(()=>raseiniai.phase==='fireOrder');
       check(raseiniai.dialogue.lines[0].join('|')==='Feuer frei!|Огонь!'&&!artilleryShells.length,'German fire order precedes bombardment');
-      dismiss();
+      pressSpace();keys.Space=false;
+      check(raseiniai.dialogue.translationWait===.5,'German line holds for half a second');
+      pressSpace();keys.Space=false;
+      check(raseiniai.phase==='fireOrder','Space cannot skip translation delay');
+      updateRaseiniaiStory(.49);
+      check(raseiniai.dialogue.translationWait>0,'German still visible');
+      updateRaseiniaiStory(.01);
+      pressSpace();keys.Space=false;
       check(raseiniai.bombardment.length===15,'three volleys of five');
       check(raseiniai.bombardment.every(([x,y])=>y<15*T&&!raseiniaiMillCell(Math.floor(x/T),Math.floor(y/T))),'upper and middle target pool');
       const reported=[];
@@ -59,6 +66,9 @@ module.exports = function checkRaseiniai(box) {
       dismiss();
       check(state==='play'&&wave===1&&raseiniai.blockSpace,'orders release control and suppress closing press');
       raseiniai.blockSpace=false;
+      check(scrap===4,'mission starts with four scrap');
+      repairRaseiniaiTank();check(scrap===4,'no charge at full health');
+      player.hp--;repairRaseiniaiTank();check(scrap===2&&player.hp===player.maxHp,'repair spends two scrap for one HP');
       fit();
       check(dialogueLayout===JSON.stringify(gameLayout.field),'combat and dialogue share field geometry');
       player.x=H-160;player.y=H-25;player.pw.shield=1e6;
@@ -80,7 +90,7 @@ module.exports = function checkRaseiniai(box) {
       check(e.engaged&&bullets.length===1,'scout sees and shoots at player');
       player.dead=true;updateEnemy(e,.025);player.dead=false;bullets=[];
       check(!e.engaged&&flow[(ROWS-1)*COLS+8]===0,'scout returns to exit route');
-      let threshold=0, killedMoto=null;
+      let threshold=0, killedMoto=null, controlBetween=false;
       for (let i=0;i<18000 && raseiniai.phase!=='retreat';i++) {
         if (raseiniai.phase==='german') {
           for(let j=0;j<4;j++){
@@ -88,7 +98,7 @@ module.exports = function checkRaseiniai(box) {
             if(j===0)check(raseiniai.dialogue.lines[j].join('|')==='Oberst, melden Sie sich!|Полковник, доложите!','colonel replaces captain');
             pressSpace();keys.Space=false;
             check(raseiniai.dialogue.complete&&raseiniai.dialogue.lines[j][1],'phrase has translation');
-            pressSpace();keys.Space=false;
+            updateRaseiniaiStory(.5);pressSpace();keys.Space=false;
           }
         }
         update(.025);
@@ -104,10 +114,11 @@ module.exports = function checkRaseiniai(box) {
             killedMoto=e;hitEnemy(e,{x:e.x,y:e.y,dmg:99});
           }
         }
+        if(raseiniai.nextWave===3) {check(state==='play','wave 3 staging keeps controls');controlBetween=true;}
         if(wave===2&&!threshold)threshold=raseiniai.firstKills;
         for(const e of spawned)if(e.escaped)reachedExits.add(e.storyRoute.exit);
       }
-      check(raseiniai.phase==='retreat','all four waves finish');
+      check(raseiniai.phase==='retreat'&&controlBetween,'all four waves finish with live interlude');
       check(JSON.stringify(count)===JSON.stringify({'1-scout':10,'2-scout':10,'2-moto':5,'3-scout':6,'3-moto':10,'4-scout':20,'4-moto':6}),'46 tanks and 21 motorcycles');
       const starts=[...columnStarts.values()];
       check(starts.length===5&&starts[0]===starts[1]&&starts[2]===starts[3]&&starts[2]>starts[0]&&starts[4]>starts[3],'wave 4 paired entries');
@@ -119,6 +130,8 @@ module.exports = function checkRaseiniai(box) {
       until(()=>raseiniai.phase==='newspaper');
       advanceRaseiniai();
       check(raseiniai.phase==='timeline'&&raseiniaiResults(1).join('|')==='3126–5126|4143–6143|213','newspaper and revised timeline');
+      pressSpace();pressSpace(true);keys.Space=false;
+      check(raseiniai.phase==='farewell','fresh Space advances the timeline once');
       startRaseiniai();
       check(!raseiniai.breaches,'new launch resets breaches');
       player=makeTank(480,610,'player');raseiniai.evac=[];
