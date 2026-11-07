@@ -11,6 +11,8 @@ const DEFEAT_TIPS = Object.freeze({
 });
 
 const UI_TEXT = Object.freeze({
+  raseiniaiRepair: 'R — ремонт',
+  raseiniaiNoScrap: 'Нет металлолома',
   "victoryTitle": "ПОБЕДА",
   "victoryScreen": "Итоги операции",
   "victoryAwardButton": "К награждению",

@@ -9,6 +9,10 @@ body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#mu
 .storySpeech{min-height:5.5em;width:100%;box-sizing:border-box;padding:12px 16px;background:#2b1018f5;border:1px solid #d5a960;border-radius:8px;box-shadow:0 4px 24px #0008}
 .storyDialogue--civilian .storySpeech{position:absolute;top:-4em;width:100%}
 .storySpeech p{font-size:clamp(15px,2vw,22px);line-height:1.35;margin:0 0 4px}
+.storySpeechLines{display:grid}
+.storySpeechLines p{grid-area:1/1}
+.storySpeechOriginal{opacity:.26;transition:opacity .25s}
+.storySpeechLines [data-story-translation]:not([hidden]){position:relative;color:#fff0c8;font-weight:750;text-shadow:0 0 4px #2b1018,0 0 7px #2b1018,0 1px 2px #2b1018;animation:storyReveal .25s both}
 .storySpeech button{display:block;margin-left:auto;color:#f8e3b1;pointer-events:auto;font-size:12px;padding:4px 9px}
 .storyFull,.storyNewspaper{position:absolute;inset:0;overflow:auto;pointer-events:auto;box-sizing:border-box}
 .storyFull{display:grid;place-items:center;padding:20px;background:#080506;text-align:center}
@@ -20,17 +24,21 @@ body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#mu
 .storyLosses{border-collapse:collapse;margin:.3em auto;line-height:1.45;text-align:left}
 .storyLosses th,.storyLosses td{padding:3px clamp(7px,2vw,18px);font-weight:400}
 .storyLosses td{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-.storyCaveat{color:#cfbca4;font-size:13px;line-height:1.35}
 #raseiniaiScreen{--story-victory-shade:#24090ded}
 .storyVictory{background:var(--story-victory-shade)}.storyVictory h1{color:#ffe0a2;text-shadow:0 0 32px #c93a37}
 .storyTimeline{background:#000}
 .storyTimeline .storyLosses{font-size:clamp(12px,2.5vw,16px)}
 .storyTimeline .storyLosses :is(th,td){white-space:normal}
 .storyTimeline .storyLosses thead th:not(:first-child){text-align:right}
-.storyRevision{animation:storyReveal .55s .6s both}
+.storyRevision{animation:storyReveal .55s 2.2s both}
+.storyStrike{background:linear-gradient(#f45247,#f45247) left center/100% 2px no-repeat;box-decoration-break:clone;-webkit-box-decoration-break:clone;animation:storyStrike .32s var(--strike-delay,.4s) both}
+@keyframes storyStrike{from{background-size:0 2px}to{background-size:100% 2px}}
 .storyDestroyed{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));list-style:none;margin:0;padding:0;gap:8px}
 .storyDestroyed li{display:grid;justify-items:center;gap:2px;font-size:clamp(11px,2vw,15px)}
 .storyDestroyed strong{font-size:1.2em}
+.storyFarewell{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);align-items:center;gap:14px;padding:clamp(12px,3vw,48px) 0 0 clamp(12px,3vw,48px)}
+.storyFarewell .storySheet{padding:0 0 16px}
+.storyFarewellCharacter{display:block;align-self:end;justify-self:end;width:100%;max-height:88dvh;object-fit:contain;object-position:right bottom;pointer-events:none}
 .storyFarewell h1{font-size:clamp(30px,6vw,68px);overflow-wrap:anywhere}
 @keyframes storyReveal{from{visibility:hidden;opacity:0}to{visibility:visible;opacity:1}}
 .storyNewspaper{padding:12px;background:var(--story-victory-shade);text-align:center}
@@ -48,4 +56,12 @@ body:has(#raseiniaiScreen:not([hidden]) :is(.storyFull,.storyNewspaper)) :is(#mu
   .storyPaper{display:flex;flex-direction:column}.storyPaper article{order:1}
 }
 @media(max-width:620px){.storyDialogue{width:min(92vw,450px)}.storyDialogue--civilian .storySpeech{width:min(100%,23rem)}}
-@media(prefers-reduced-motion:reduce){.storyRevision{animation:none}}
+@media(max-width:620px){
+  .storyFarewell{grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto;padding:16px 0 0;gap:8px}
+  .storyFarewell .storySheet{padding:0 16px}
+  .storyFarewellCharacter{width:min(85%,390px);max-height:42dvh}
+}
+@media(prefers-reduced-motion:reduce){
+  .storyRevision,.storyStrike,.storySpeechLines [data-story-translation]:not([hidden]){animation:none}
+  .storySpeechOriginal{transition:none}
+}

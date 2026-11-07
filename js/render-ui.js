@@ -29,6 +29,10 @@ function drawHud(force = false) {
     drawNiiIcon(c,10,8,30);if(player.railArmed){c.strokeStyle='#c58cff';c.lineWidth=2;c.strokeRect(7,5,36,36);}c.fillStyle='#53f6e8';c.font='700 19px "Segoe UI",sans-serif';c.fillText(String(player.rail),46,24);
     const gap=3,w=Math.min(19,(p.w-20-gap*(player.maxHp-1))/player.maxHp);
     for(let i=0;i<player.maxHp;i++){c.fillStyle=i<player.hp?'#ed3d43':'#58212c';c.fillRect(10+i*(w+gap),p.h-31,w,18);c.strokeStyle='#ee868255';c.strokeRect(10+i*(w+gap),p.h-31,w,18);}
+    if (raseiniai) {
+      c.fillStyle='#f6db9a'; c.font='600 10px "Segoe UI",sans-serif';
+      c.fillText(UI_TEXT.raseiniaiRepair,10,p.h-7);
+    }
   });
   panel('right',p=>{
     c.fillStyle='#f6db9a';c.font='600 '+(p.w<170?11:13)+'px "Segoe UI",sans-serif';

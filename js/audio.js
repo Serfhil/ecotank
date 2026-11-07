@@ -95,6 +95,7 @@ function sfx(n) {
       case 'hit': noise(.09,.23,5200);tone(1050,260,.13,'triangle',.11);noise(.18,.09,500);break;
       case 'brick': noise(.06, .08, 1300); break;
       case 'fence': noise(.07, .1, 2800); tone(260, 110, .08, 'square', .04); break;
+      case 'repairDenied': tone(270,135,.14,'triangle',.12); break;
       case 'deflect': tone(1500, 700, .07, 'triangle', .04); break;
       case 'boom': noise(.9, .5, 520); noise(.15, .3, 3500); tone(150, 25, .6, 'sawtooth', .1); break;
       case 'rail': tone(2200, 180, .4, 'sawtooth', .07); noise(.35, .3, 5000); break;

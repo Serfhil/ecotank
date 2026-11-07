@@ -58,6 +58,9 @@ module.exports = function checkRaseiniai(box) {
       sfx=originalSfx;
       check(shells.size===15&&reported.length===15&&[5,10].every(i=>Math.abs(reported[i]-reported[i-1]-.9)<.02),'report spacing and all 15 shells');
       check([...shells].every(shell=>shell.done)&&raseiniai.phase==='title','title waits for the last impact');
+      const arrivalY=player.y;
+      update(.1);
+      check(raseiniai.phase==='title'&&Math.abs(arrivalY-player.y-KINDS.player.speed*.1)<1e-7,'tank moves beneath title at gameplay speed');
       until(()=>raseiniai.phase==='orders');
       fit();
       const dialogueLayout=JSON.stringify(gameLayout.field);
@@ -69,6 +72,15 @@ module.exports = function checkRaseiniai(box) {
       check(scrap===4,'mission starts with four scrap');
       repairRaseiniaiTank();check(scrap===4,'no charge at full health');
       player.hp--;repairRaseiniaiTank();check(scrap===2&&player.hp===player.maxHp,'repair spends two scrap for one HP');
+      let denials=0;
+      sfx=name=>{if(name==='repairDenied')denials++;};
+      player.hp--;scrap=1;
+      repairRaseiniaiTank();
+      const notice=raseiniai.repairNotice;
+      notice.life=.1;
+      repairRaseiniaiTank();
+      check(denials===2&&scrap===1&&notice.life===notice.max&&parts.filter(p=>p.text===UI_TEXT.raseiniaiNoScrap).length===1,'repair signals each failure and reuses one message');
+      sfx=originalSfx;
       fit();
       check(dialogueLayout===JSON.stringify(gameLayout.field),'combat and dialogue share field geometry');
       player.x=H-160;player.y=H-25;player.pw.shield=1e6;
@@ -92,7 +104,8 @@ module.exports = function checkRaseiniai(box) {
       check(!e.engaged&&flow[(ROWS-1)*COLS+8]===0,'scout returns to exit route');
       let threshold=0, killedMoto=null, controlBetween=false;
       for (let i=0;i<18000 && raseiniai.phase!=='retreat';i++) {
-        if (raseiniai.phase==='german') {
+        if (raseiniai.phase==='german'&&raseiniai.dialogue) {
+          check(raseiniai.evac.some(unit=>unit.truck),'German radio starts alongside trucks');
           for(let j=0;j<4;j++){
             check(raseiniai.dialogue.index===j&&!raseiniai.dialogue.complete,'German phrase order');
             if(j===0)check(raseiniai.dialogue.lines[j].join('|')==='Oberst, melden Sie sich!|Полковник, доложите!','colonel replaces captain');
@@ -100,6 +113,7 @@ module.exports = function checkRaseiniai(box) {
             check(raseiniai.dialogue.complete&&raseiniai.dialogue.lines[j][1],'phrase has translation');
             updateRaseiniaiStory(.5);pressSpace();keys.Space=false;
           }
+          check(wave===3&&raseiniai.evac.length>0,'closing radio early waits for evacuation');
         }
         update(.025);
         for(const e of enemies){
@@ -114,7 +128,7 @@ module.exports = function checkRaseiniai(box) {
             killedMoto=e;hitEnemy(e,{x:e.x,y:e.y,dmg:99});
           }
         }
-        if(raseiniai.nextWave===3) {check(state==='play','wave 3 staging keeps controls');controlBetween=true;}
+        if(wave===3&&raseiniai.phase==='battle'&&raseiniai.evac.some(unit=>unit.truck)) {check(state==='play','wave 3 starts while trucks are active');controlBetween=true;}
         if(wave===2&&!threshold)threshold=raseiniai.firstKills;
         for(const e of spawned)if(e.escaped)reachedExits.add(e.storyRoute.exit);
       }

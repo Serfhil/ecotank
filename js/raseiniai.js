@@ -5,6 +5,7 @@ const RASEINIAI_EXITS = [8, 21];
 const RASEINIAI_FIRST_SPAWN = [1.4, 2];
 const RASEINIAI_TRANSLATION_DELAY = .5;
 const RASEINIAI_REPAIR_COST = 2;
+const RASEINIAI_TITLE_TIME = 6;
 const RASEINIAI_TITLE = 'Расейняй, Литва';
 const RASEINIAI_SUBTITLE = 'Приграничные танковые бои — июнь 1941';
 const RASEINIAI_ESTIMATES = ['9–12 тыс. солдат', '10–14 тыс. человек', '746'];
@@ -62,7 +63,15 @@ function startRaseiniai() {
 }
 
 function repairRaseiniaiTank() {
-  if (!player || player.dead || player.hp>=player.maxHp || scrap<RASEINIAI_REPAIR_COST) return;
+  if (!player || player.dead || player.hp>=player.maxHp) return;
+  if (scrap<RASEINIAI_REPAIR_COST) {
+    const x=player.x, y=player.y-player.r-16;
+    const notice=raseiniai.repairNotice;
+    if (parts.includes(notice)) Object.assign(notice,{x,y,life:notice.max});
+    else raseiniai.repairNotice=floatText(x,y,UI_TEXT.raseiniaiNoScrap,'#ffc37a');
+    sfx('repairDenied');
+    return;
+  }
   scrap-=RASEINIAI_REPAIR_COST;
   player.hp=Math.min(player.maxHp,player.hp+1);
   sfx('pick');
@@ -177,16 +186,15 @@ function updateRaseiniaiStory(dt) {
       launchArtillery(x+rnd(-36,36),-T,x,y,false,{delay:2,speed:3000});
       s.bombardmentAt = s.bombardment.length%5===0 ? .9 : .15;
     }
-    if (!s.bombardment.length && !artilleryShells.length) raseiniaiPhase('title');
+    if (!s.bombardment.length && !artilleryShells.length) {
+      player = makeTank(RASEINIAI_EXITS[0]*T+T/2,H+26,'player');
+      raseiniaiPhase('title');
+    }
   }
-  if (s.phase === 'title' && s.age >= 6) {
-    player = makeTank(RASEINIAI_EXITS[0]*T+T/2,H+26,'player');
-    raseiniaiPhase('arrival');
-  }
-  if (s.phase === 'arrival') {
+  if (s.phase === 'title') {
     const step=Math.min(player.y-(H-2.5*T),dt*KINDS.player.speed);
     player.y-=step; player.tread=(player.tread+step)%6;
-    if (player.y === H-2.5*T) {
+    if (player.y === H-2.5*T && s.age>=RASEINIAI_TITLE_TIME) {
       raseiniaiPhase('orders');
       raseiniaiDialogue('soviet', [[RASEINIAI_RADIO.order]], () => {
         startRaseiniaiWave(1);
@@ -194,18 +202,14 @@ function updateRaseiniaiStory(dt) {
       });
     }
   }
+  if (s.phase === 'german' && !s.evac.length && !s.dialogue) {
+    startRaseiniaiWave(4); resumeRaseiniaiBattle();
+  }
   if (s.phase === 'evacuation' && !s.evac.length) {
-    if (s.nextWave === 4) {
-      raseiniaiPhase('german');
-      raseiniaiDialogue('german', RASEINIAI_RADIO.german, () => {
-        startRaseiniaiWave(4); resumeRaseiniaiBattle();
-      });
-    } else if (s.nextWave === 0) {
-      raseiniaiPhase('retreat');
-      raseiniaiDialogue('soviet', [[RASEINIAI_RADIO.retreat]], () => {
-        raseiniaiPhase('victory'); sfx('wave');
-      });
-    }
+    raseiniaiPhase('retreat');
+    raseiniaiDialogue('soviet', [[RASEINIAI_RADIO.retreat]], () => {
+      raseiniaiPhase('victory'); sfx('wave');
+    });
   }
   if (s.phase === 'victory' && s.age >= 2.5) raseiniaiPhase('newspaper');
 }
@@ -223,7 +227,7 @@ function startRaseiniaiWave(number) {
   const batches = RASEINIAI_WAVES[number-1].map(batch=>[].concat(batch).map(group=>({...group,slot:0,entered:[],timer:.65})));
   const pending = batches.flat().reduce((total,group)=>total+group.lanes.length,0);
   raseiniai.tracks.push({number,batches,pending});
-  banner = {text:number===4?'4-я волна. Штурм':number+'-я волна',sub:number===1?'R · ремонт 1 HP за 2 металлолома':'',t:2.2};
+  banner = {text:number===4?'4-я волна. Штурм':number+'-я волна',sub:'',t:2.2};
   sfx('wave');
 }
 
@@ -280,26 +284,24 @@ function raseiniaiFormColumns() {
 }
 
 function finishRaseiniaiBattle() {
-  if (raseiniai.nextWave===3) {
-    if (!raseiniai.evac.length) { raseiniai.nextWave=null; startRaseiniaiWave(3); }
-    return;
-  }
   if (wave<2 || raseiniaiEnemyCount() || raseiniai.tracks.some(t=>t.batches.length) || wrecks.some(w=>w.exploded===false)) return;
   collectRemainingScrap();
   if (wave===2) {
     evacuateRaseiniai(2,true);
-    raseiniai.nextWave=3;
+    startRaseiniaiWave(3);
     return;
   }
   bullets = [];
-  raseiniai.nextWave = wave===4 ? 0 : wave+1;
   if (wave===4 && score>best) {
     best=score;
     try { localStorage.setItem('ecotank-best', best); } catch (e) {}
   }
   evacuateRaseiniai(wave===4?3:2,true);
-  raseiniaiPhase('evacuation');
   state = 'story';
+  if (wave===3) {
+    raseiniaiPhase('german');
+    raseiniaiDialogue('german',RASEINIAI_RADIO.german,()=>{});
+  } else raseiniaiPhase('evacuation');
 }
 
 function raseiniaiRoadPath(e) {

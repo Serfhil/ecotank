@@ -35,7 +35,9 @@ function explosion(x, y, big, color, sizeMultiplier=1,withHitstop=true) {
 }
 
 function floatText(x, y, text, color) {
-  parts.push({ x, y, vx: 0, vy: -40, life: 1, max: 1, text, color });
+  const part={ x, y, vx: 0, vy: -40, life: 1, max: 1, text, color };
+  parts.push(part);
+  return part;
 }
 
 function updateParts(dt) {

@@ -44,15 +44,14 @@ function raseiniaiLossTable(revised = null) {
   const labels=['Убитыми','Пропавшими без вести','Потеряно танков'];
   const head=revised?`<thead><tr><th scope="col">Категория</th><th scope="col">Исходные оценки</th><th scope="col" class="storyRevision">Изменённая хронология</th></tr></thead>`:'';
   return `<table class="storyLosses">${head}<tbody>${RASEINIAI_ESTIMATES.map((value,i)=>
-    `<tr><th scope="row">${labels[i]}</th><td>${value}</td>${revised?`<td class="storyRevision">${revised[i]}</td>`:''}</tr>`
+    `<tr><th scope="row">${labels[i]}</th><td>${revised?`<span class="storyStrike" style="--strike-delay:${.85+i*.45}s">${value}</span>`:value}</td>${revised?`<td class="storyRevision">${revised[i]}</td>`:''}</tr>`
   ).join('')}</tbody></table>`;
 }
 
 function raseiniaiSummary(revised = null) {
   return `<h1>${RASEINIAI_TITLE}</h1><p class="storySubtitle">${RASEINIAI_SUBTITLE}</p>
-    <h2>Потери СССР <span>(исторические данные, приблизительные)</span></h2>
-    ${raseiniaiLossTable(revised)}
-    <p class="storyCaveat">Рабочие оценки для игры. Диапазоны людских потерь для этого сражения не проверены.</p>`;
+    <h2>Потери СССР <span${revised?' class="storyStrike"':''}>(исторические данные, приближенные)</span></h2>
+    ${raseiniaiLossTable(revised)}`;
 }
 
 function raseiniaiNewspaper() {
@@ -111,7 +110,7 @@ function syncRaseiniaiUI() {
       const asset = d.kind==='civilian'?'civilian':d.kind==='german'?'german-radio':'soviet-radio';
       raseiniaiScreen.innerHTML = `<div class="storyDialogue storyDialogue--${side} storyDialogue--${d.kind}">
         <img src="${RASEINIAI_ASSETS}${asset}.png" alt="">
-        <div class="storySpeech"><p data-story-line></p><button data-raseiniai="continue" aria-label="Продолжить реплику">Пробел</button></div></div>`;
+        <div class="storySpeech"><div class="storySpeechLines"><p data-story-line${d.kind==='german'?' lang="de"':''}></p><p data-story-translation hidden></p></div><button data-raseiniai="continue" aria-label="Продолжить реплику">Пробел</button></div></div>`;
     } else if (s.phase==='title') raseiniaiScreen.innerHTML = '<div class="storyFull storyTitle"><div class="storySheet">'+raseiniaiSummary()+'</div></div>';
     else if (s.phase==='victory') raseiniaiScreen.innerHTML = '<div class="storyFull storyVictory"><h1>ПОБЕДА</h1></div>';
     else if (s.phase==='newspaper') raseiniaiScreen.innerHTML = raseiniaiNewspaper();
@@ -120,15 +119,23 @@ function syncRaseiniaiUI() {
       drawRaseiniaiStatModels();
     } else if (s.phase==='farewell') {
       raseiniaiScreen.innerHTML = `<div class="storyFull storyFarewell"><div class="storySheet">
-        <h1>Пока все, ребятки! ТАРИ ДОБАВЬ УЖЕ ОВЕРКУКЕД</h1>
-        <button data-raseiniai="home">${UI_TEXT.menuHome}</button></div></div>`;
+        <h1>Пока все, ребятки! ТАРИ ДОБАВЬ УЖЕ ОВЕРКУКЕД, БЛЕАТЬ!!!</h1>
+        <button data-raseiniai="home">${UI_TEXT.menuHome}</button></div>
+        <img class="storyFarewellCharacter" src="${RASEINIAI_ASSETS}farewell-character.png" alt=""></div>`;
     }
     else raseiniaiScreen.innerHTML = '';
   }
   if (d) {
     const [line,translation] = d.lines[d.index];
     const target = raseiniaiScreen.querySelector('[data-story-line]');
-    const visible = d.complete ? (d.translationWait>0 ? line : translation || line) : line.slice(0,d.shown);
+    const translated = raseiniaiScreen.querySelector('[data-story-translation]');
+    const visible = d.complete ? line : line.slice(0,d.shown);
     if (target && target.textContent!==visible) target.textContent=visible;
+    if (translated && translation && d.complete && !d.translationWait && translated.hidden) {
+      translated.textContent=translation;
+      translated.hidden=false;
+      target.classList.add('storySpeechOriginal');
+      target.setAttribute('aria-hidden','true');
+    }
   }
 }
