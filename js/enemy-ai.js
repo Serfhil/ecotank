@@ -1,5 +1,6 @@
 'use strict';
-// ИИ противников: поле расстояний, видимость, выбор целей, колонны, укрытия и артиллерия.
+// ИИ противников: поле расстояний, видимость, выбор целей, колонны, въезд, артиллерия и РСЗО.
+// Тактика обычных танков (марш, контакт, обход, перестрелка) — в enemy-tactics.js.
 // Использует геометрию world/destruction.js, движение tanks.js и оружие weapons.js.
 // Общее состояние enemies/player/base/wave и утилиты остаются в index.html;
 // массив flow принадлежит world.js. enemyInterval также используется отрисовкой.
@@ -96,31 +97,6 @@ function coverClear(x,y,r,crush=false) {
   });
 }
 
-function updateCover(e,goal,dt) {
-  e.coverSearch=(e.coverSearch||0)-dt;
-  if(e.cover && (Math.hypot(goal.x-e.cover.gx,goal.y-e.cover.gy)>96 || e.stuck>.6))e.cover=null;
-  if(!e.cover && e.coverSearch<=0 && !e.leader) {
-    e.coverSearch=1.5;
-    const c=Math.floor(e.x/T),r=Math.floor(e.y/T);
-    outer:for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++) {
-      const x=(c+dc)*T+16,y=(r+dr)*T+16;
-      if(!coverClear(x,y,e.r)||los(x,y,goal.x,goal.y)||Math.hypot(x-e.x,y-e.y)>100)continue;
-      for(const [dx,dy] of DIRS) {
-        const px=x+dx*64,py=y+dy*64;
-        // выглядывать имеет смысл только туда, откуда цель и видна, и в пределах обзора (база видна с любой дальности)
-        if(!coverClear(px,py,e.r)||!coverClear((x+px)/2,(y+py)/2,e.r)||!los(px,py,goal.x,goal.y)||
-           goal!==base&&Math.hypot(goal.x-px,goal.y-py)>=CFG.enemySight)continue;
-        e.cover={x,y,px,py,gx:goal.x,gy:goal.y};e.retreat=false;break outer;
-      }
-    }
-  }
-  if(e.cover) {
-    const q=e.cover;
-    if(e.retreat&&Math.hypot(e.x-q.x,e.y-q.y)<5&&e.cd<.5)e.retreat=false;
-    e.tx=e.retreat?q.x:q.px;e.ty=e.retreat?q.y:q.py;e.brick=null;
-  }
-}
-
 function blockingBrick(e,goal) {
   const n=Math.ceil(Math.hypot(goal.x-e.x,goal.y-e.y)/6);
   for(let j=1;j<n;j++) {const x=e.x+(goal.x-e.x)*j/n,y=e.y+(goal.y-e.y)*j/n,c=Math.floor(x/T),r=Math.floor(y/T),t=tileAt(c,r);
@@ -154,8 +130,9 @@ function updateEnemy(e, dt) {
       e.cd-=dt;
       const sightY=Math.max(0,e.y),foes=[player,...(typeof allies!=='undefined'?allies:[])].filter(t=>t&&!t.dead);
       let target=null,nearest=Infinity;
-      for(const t of foes){const d=Math.hypot(t.x-e.x,t.y-e.y),hidden=tileAt(Math.floor(t.x/T),Math.floor(t.y/T))===TREE&&d>CFG.treeStealth;
-        if(d<nearest&&d<CFG.enemySight&&!hidden&&los(e.x,sightY,t.x,t.y)){nearest=d;const lead=d/3000*.6;target={x:t.x+(t.vx||0)*lead,y:t.y+(t.vy||0)*lead};}}
+      // те же правила обзора, что у танков на поле (зелень — не дальше трёх клеток); стрельба на въезде — сценарная
+      for(const t of foes){const d=Math.hypot(t.x-e.x,t.y-e.y);
+        if(d<nearest&&enemySees({x:e.x,y:sightY},t,d)){nearest=d;const lead=d/3000*.6;target={x:t.x+(t.vx||0)*lead,y:t.y+(t.vy||0)*lead};}}
       if(!target&&base&&!base.dead&&los(e.x,sightY,base.x,base.y))target=base;
       const muzzle=vehicleMuzzle(e),mx=muzzle.x,my=muzzle.y;
       aimAndFireEnemy(e,target,dt,mx>=4&&mx<W-4&&my>=4&&my<H-4);
@@ -165,84 +142,17 @@ function updateEnemy(e, dt) {
   }
   if(e.kind==='moto'){updateMoto(e,dt);return;}
   e.cd -= dt; e.decideT -= dt;
-  const story = e.storyExit !== undefined;
-  if (!story) reconsiderRoute(e,dt);
+  // лёгкие, средние и тяжёлые танки — групповая тактика (enemy-tactics.js)
+  if (TACTIC_KINDS.has(e.kind)) { updateTacticalTank(e, dt); return; }
+  if (e.storyExit === undefined) reconsiderRoute(e,dt);
   if(e.kind==='artillery'){updateArtillery(e,dt);return;}
   if(e.kind==='rocket'){updateRocketLauncher(e,dt);return;}
-
-  // видимая цель: ближайший из игрока и союзников, не скрытый кронами
-  let foe = null, dp = 1e9;
-  for (const t of [player, ...allies]) {
-    if (!t || t.dead) continue;
-    const d = Math.hypot(t.x - e.x, t.y - e.y);
-    const hidden = tileAt(Math.floor(t.x / T), Math.floor(t.y / T)) === TREE && d > CFG.treeStealth;
-    if (d < dp && !hidden && d < CFG.enemySight && los(e.x, e.y, t.x, t.y)) { foe = t; dp = d; }
-  }
-  const sees = !!foe;
-  const speed = K.speed * (1 + Math.min(wave, 10) * CFG.enemySpeedPerWave);
-  if (story && (e.storyLeaving || !sees) && driveRaseiniaiExit(e,e.storyExit,speed,dt)) return;
-  const goal=story ? foe || {x:(e.storyExit+.5)*T,y:H-T/2} : enemyGoal(e);
-  if (story) {
-    if (sees!==e.engaged) {
-      e.tx=e.x; e.ty=e.y; e.brick=e.cover=null; e.retreat=false; e.detourTime=e.decideT=0;
-    }
-    reconsiderRoute(e,dt,goal);
-  }
-  e.engaged=sees;
-  if(story || !e.leader)buildFlow(Math.floor(goal.x/T),Math.floor(goal.y/T),1,flow,e.r);
-
-  // движение от клетки к клетке по полю расстояний
-  if (e.stuck > .7) { e.stuck = 0; decide(e, true); e.decideT = .5; }
-  else if (Math.hypot(e.tx - e.x, e.ty - e.y) < 1.5 && e.decideT <= 0) { decide(e, false); e.decideT = e.brick ? .35 : 0; }
-
-  if(e.detourTime<=0 && e.leader && !e.leader.dead && !e.leader.storyLeaving && !e.brick && !(story && sees)) {
-    const lead=e.leader, gap=48*e.columnSlot;
-    const gx=lead.x-Math.cos(lead.angle)*gap,gy=lead.y-Math.sin(lead.angle)*gap;
-    if((!story || Math.hypot(lead.x-e.x,lead.y-e.y)<130) && los(e.x,e.y,gx,gy)) {e.tx=clamp(gx,24,W-24);e.ty=clamp(gy,24,H-24);}
-  }
-  const pathWall=blockingBrick(e,goal);
-  if(pathWall && (e.kind==='heavy'||e.stuck>.25||e.brick)) {e.brick=pathWall;e.cover=null;e.retreat=false;}
-  else if(e.detourTime<=0 && (!story || sees))updateCover(e,goal,dt);
-  // Увидев цель, танк не лезет в упор: стоит на дистанции боя, а если цель подъехала вплотную — сдаёт назад.
-  const standoff = Math.max(K.hold, CFG.enemyStandoff);
-  const hold = e.detourTime<=0 && !e.cover && sees && dp < standoff;
-  e.holding = hold;
-  const md = Math.hypot(e.tx - e.x, e.ty - e.y);
-  if (hold && !e.brick && dp > 1) {
-    // на дистанции боя корпус разворачивается лбом к цели; вплотную — отходит задним ходом, не подставляя борт
-    const off = turnHull(e, Math.atan2(foe.y - e.y, foe.x - e.x), dt);
-    e.vx = e.vy = 0;
-    if (dp < standoff * .6 && off < HULL_ALIGN) {
-      const step = speed * HULL_REVERSE_SPEED * dt * Math.cos(off);
-      moveTank(e, -Math.cos(e.angle) * step, -Math.sin(e.angle) * step, dt);
-    }
-    e.tx = e.x; e.ty = e.y;
-  } else if (!hold && md > .5) {
-    const { step, moved } = driveHull(e, e.tx, e.ty, speed, dt);
-    if (step > .5 && moved < step * .3) e.stuck += dt; else e.stuck = Math.max(0, e.stuck - dt);
-  } else e.vx = e.vy = 0;
-
-  // башня и стрельба
-  let target = null;
-  if(e.brick && !(story && sees))target=e.brick;
-  else if (sees && goal!==base) {
-    const lead = dp / (e.kind==='heavy'?3000:K.bulletSpeed) * .6;
-    target = { x: foe.x + foe.vx * lead, y: foe.y + foe.vy * lead };
-  } else if(base && !base.dead && los(e.x,e.y,base.x,base.y)) target=base;
-  else if (e.brick) target = e.brick;
-  // выглянул из укрытия, а стрелять не по кому — укрытие бесполезно, едем дальше
-  if (e.cover && !e.retreat && !target && Math.hypot(e.x-e.cover.px,e.y-e.cover.py)<4) {
-    e.peekWait=(e.peekWait||0)+dt;
-    if (e.peekWait>1) { e.cover=null; e.coverSearch=3; e.peekWait=0; }
-  } else e.peekWait=0;
-  aimAndFireEnemy(e,target,dt);
 }
+// Стрельба тяжёлого танка на въезде (сценарный выезд из-за края): наводит башню и стреляет на ходу.
 function aimAndFireEnemy(e,target,dt,canShoot=true) {
   const aim=target?Math.atan2(target.y-e.y,target.x-e.x):e.angle;
   e.turret=turnTo(e.turret,aim,dt*KINDS[e.kind].turretSpeed);
-  if(target&&canShoot&&!e.retreat&&e.cd<=0&&Math.abs(angDiff(e.turret,aim))<.12){
-    fire(e);e.cd=enemyInterval(e.kind);if(e.cover)e.retreat=true;
-  }
+  if(target&&canShoot&&e.cd<=0&&Math.abs(angDiff(e.turret,aim))<.12){fire(e);e.cd=enemyInterval(e.kind);}
 }
 
 function updateArtillery(e,dt){

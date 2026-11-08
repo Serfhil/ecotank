@@ -10,6 +10,7 @@ require('./check-gameplay.cjs')(__dirname);
 require('./check-support.cjs')(__dirname);
 require('./check-sappers.cjs')(__dirname);
 require('./check-features.cjs')(__dirname);
+require('./check-tactics.cjs')(__dirname);
 const html=fs.readFileSync(__dirname+'/index.html','utf8');
 const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].map(([,attrs,inline])=>({src:attrs.match(/\bsrc="([^"]+)"/)?.[1],inline}));
 const code=scripts.map(s=>s.src?fs.readFileSync(__dirname+'/'+s.src,'utf8'):s.inline).join('\n');
@@ -103,10 +104,10 @@ if(enemyInterval('scout')!==1/.33||enemyInterval('soldier')!==2||enemyInterval('
 enemies=[];toSpawn=['scout'];spawnTimer=0;updateSpawns(.1);if(enemies.length!==1||enemies[0].y>=0||!enemies[0].entering)throw Error('Offscreen entrance');
 const entrant=enemies[0];updateEnemy(entrant,.2);if(entrant.y<=-32||entrant.spawnT)throw Error('Rolling entrance');
 grid.fill(EMPTY);enemies=[];base=null;player=makeTank(300,176,'player');grid[5*COLS+5]=STEEL;
-const ambusher=makeTank(144,176,'soldier');updateCover(ambusher,player,.1);
-if(!ambusher.cover||los(ambusher.cover.x,ambusher.cover.y,player.x,player.y)||!los(ambusher.cover.px,ambusher.cover.py,player.x,player.y))throw Error('Corner cover');
-ambusher.retreat=true;ambusher.cd=2;updateCover(ambusher,player,.1);if(ambusher.tx!==ambusher.cover.x||ambusher.ty!==ambusher.cover.y)throw Error('Cover retreat');
-updateEnemy(ambusher,.1);drawTank(player);
+// Укрытие сбоку от линии огня (подробно — check-tactics.cjs): сталь в клетке рядом закрывает от ответного выстрела.
+const ambusher=makeTank(144,208,'soldier');const coverSpot=findCover(ambusher,player);
+if(!coverSpot||los(player.x,player.y,coverSpot.x,coverSpot.y)||Math.hypot(coverSpot.x-ambusher.x,coverSpot.y-ambusher.y)>T+1e-9)throw Error('Side cover');
+enemies=[ambusher];updateEnemy(ambusher,.1);drawTank(player);enemies=[];
 // Boost timing, release-to-rearm, and sand apply to both sides.
 grid.fill(EMPTY);sand.fill(0);base=null;enemies=[];player=makeTank(400,400,'player');player.angle=0;player.speedCur=KINDS.player.speed*2;keys.KeyW=true;keys.ShiftLeft=true;updatePlayer(.1);
 if(Math.abs(player.x-412)>1e-6||player.boostLeft!==2)throw Error('Boost x2');
@@ -388,11 +389,9 @@ if(!importDevSettingsText(JSON.stringify(file))||KINDS.scout.hp!==7||KINDS.scout
 if(importDevSettingsText('{"KINDS":1}')||importDevSettingsText('nope')||importDevSettingsText('{"format":"other","KINDS":{},"CFG":{}}')||KINDS.scout.hp!==7)throw Error('Bad settings files are rejected');
 if(!importDevSettingsText(${JSON.stringify(fs.readFileSync(__dirname+'/settings/default.json','utf8'))})||KINDS.scout.hp!==1||CFG.tankBlastChance!==.25)throw Error('Bundled default settings import');
 applyDev(JSON.parse(before));saveDev();}
-{const e=makeTank(300,300,'scout');e.spawnT=0;e.decideT=9;e.tx=e.x;e.ty=e.y;const keepP={x:player.x,y:player.y,dead:player.dead};player.dead=false;player.x=360;player.y=300;
-enemies=[e];allies=[];const near=Math.hypot(player.x-e.x,player.y-e.y);for(let i=0;i<6;i++)updateEnemy(e,.05);
-if(Math.hypot(player.x-e.x,player.y-e.y)!==near)throw Error('Enemy turns its hull before backing off');
-for(let i=0;i<24;i++)updateEnemy(e,.05);
-if(Math.hypot(player.x-e.x,player.y-e.y)<=near||Math.abs(angDiff(e.angle,0))>HULL_ALIGN)throw Error('Enemy backs off in reverse, front to the target');
+{const e=makeTank(300,300,'scout');e.spawnT=0;e.tx=e.x;e.ty=e.y;const keepP={x:player.x,y:player.y,dead:player.dead};player.dead=false;player.x=360;player.y=300;
+enemies=[e];allies=[];e.cd=9;for(let i=0;i<40;i++){updateEnemyTactics(.05);updateEnemy(e,.05);}
+if(Math.abs(angDiff(e.angle,0))>.05||!hullStopped(e))throw Error('Enemy turns its hull to face the target and stops');
 Object.assign(player,keepP);enemies=[];}
 {const h=makeTank(200,200,'heavy');const x0=h.x,y0=h.y,a0=h.angle;
 let r=driveHull(h,300,200,KINDS.heavy.speed,.1);

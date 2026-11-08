@@ -38,6 +38,9 @@ let simTime = 0;
 const DAMAGED_BRICK_MASK = (1 << 5) | (1 << 7) | (1 << 8), DAMAGED_BRICK_HP = 1, DAMAGED_LEAF_MASK = 1 << 4;
 let steelDamage = new Map();
 let flow = new Int32Array(COLS * ROWS);
+// Номер версии проходимости: растёт при разрушении кирпича/забора и при установке стен базы.
+// По нему тактика врагов пересчитывает поля маршрутов, обходы и укрытия только после значимых изменений.
+let geoVersion = 0;
 const tileAt = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS) ? STEEL : grid[r * COLS + c];
 
 const spawnCols = cols => Array.from({length:5},(_,i)=>1+Math.round((cols-3)*i/4));
@@ -292,7 +295,7 @@ const pendingBaseWalls = new Map();
 function setBaseWall(i, material) {
   grid[i]=material;brickShake[i]=0;foliageMask[i]=31;fenceArms[i]=0;steelDamage.delete(i);
   if(material===BRICK){brickHp[i]=4;brickMask[i]=1023;brickVariant[i]=ri(0,2);}else{brickHp[i]=0;brickMask[i]=0;}
-  flowTimer=0;
+  flowTimer=0;geoVersion++;
 }
 const baseWallReady = (i, material) => grid[i] === material && (material !== BRICK || brickMask[i] === 1023 && brickHp[i] === 4) && (material !== STEEL || !steelDamage.has(i));
 // mode: 'level' — кирпич на старте уровня; 'brick' — Стройбат (уже стоящую сталь не трогает);

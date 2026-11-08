@@ -138,10 +138,11 @@ module.exports = function checkRaseiniai(box) {
       raseiniai.breaches=0;
       const e=makeTank(player.x-70,player.y,'scout');
       e.storyWave=1;e.storyExit=8;e.turret=0;e.cd=0;
-      updateEnemy(e,.025);
-      check(e.engaged&&bullets.length===1,'scout sees and shoots at player');
+      // стреляет, когда погашен ход и доворот корпуса лбом к цели
+      for(let i=0;i<80&&!bullets.length;i++)updateEnemy(e,.025);
+      check(e.engaged&&bullets.length===1&&hullStopped(e),'scout sees and shoots at player');
       player.dead=true;updateEnemy(e,.025);player.dead=false;bullets=[];
-      check(!e.engaged&&flow[(ROWS-1)*COLS+8]===0,'scout returns to exit route');
+      check(!e.engaged&&e.tac.role==='march'&&e.tac.group.goal.c===8&&e.tac.group.goal.r===ROWS-1,'scout returns to exit route');
       let threshold=0, killedMoto=null, controlBetween=false, wave3Entry=false;
       for (let i=0;i<18000 && raseiniai.phase!=='retreat';i++) {
         if (raseiniai.phase==='german'&&raseiniai.dialogue) {

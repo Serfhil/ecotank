@@ -17,6 +17,8 @@ function blastDamage(x,y,diameter=30,options={}) {
 function hitEnemy(e, b) {
   if(e.dead || e.spawnT > 0) return;
   e.hp -= b.dmg; e.flash = .13;shake=Math.max(shake,2);
+  // откуда пришёл снаряд — наблюдаемый признак угрозы для тактики врагов (без координат стрелка)
+  if (Number.isFinite(b.vx) && Number.isFinite(b.vy)) e.lastHit = { x: b.x, y: b.y, vx: b.vx, vy: b.vy };
   // Дробный урон пулемёта (maxHp/hits) не должен требовать лишней пули из-за погрешности сложения.
   if (e.hp < 1e-6) e.hp = 0;
   burst(b.x,b.y,18,['#fff4bd','#ffb650','#d7e6ed'],260,.35,4,'spark');

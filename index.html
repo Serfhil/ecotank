@@ -99,6 +99,7 @@
 <script src="js/statistics.js"></script>
 <script src="js/audio.js"></script>
 <script src="maps.js"></script>
+<script src="maps-ai.js"></script>
 <script src="js/world.js"></script>
 <script src="js/destruction.js"></script>
 <script src="js/tanks.js"></script>
@@ -106,6 +107,7 @@
 <script src="js/damage.js"></script>
 <script src="js/pickups.js"></script>
 <script src="js/enemy-ai.js"></script>
+<script src="js/enemy-tactics.js"></script>
 <script src="js/allies.js"></script>
 <script src="js/waves.js"></script>
 <script src="js/sappers.js"></script>
@@ -374,10 +376,13 @@ function update(dt) {
     updateRaseiniaiEvacuation(dt);
     if (!player.dead) updateRaseiniaiSpawns(dt);
     raseiniaiFormColumns();
+    updateEnemyTactics(dt);
   } else {
     updateRandomItems(dt); updateSappers(dt); updateReinforcements(dt); updateBaseWalls(cellOccupied);
     if (state === 'play' && !player.dead && !(base && base.dead)) updateSpawns(dt);
     formColumns();
+    // координация групп обычных танков: состав, контакты, роли, проверки опасных точек
+    updateEnemyTactics(dt);
   }
   for (const e of enemies) updateEnemy(e, dt);
   enemies = enemies.filter(e => !e.dead);

@@ -75,6 +75,30 @@ function moveTank(t, dx, dy, dt, limit = Infinity) {
   return m;
 }
 
+// ---------- общая физика корпуса ----------
+// Разгон, торможение и поворот с инерцией PLAYER_INERTIA — у игрока и у обычных вражеских танков.
+// У игрока башня сидит на корпусе: поворот шасси поворачивает и её, а наведение догоняет со своей скоростью.
+// Вражеские танки наводят башню независимо от корпуса (carry=false): разворот шасси не сбивает наводку.
+function hullTurnStep(t,wantRate,dt,carry=true) {
+  t.turnRate=(t.turnRate||0)+(wantRate-(t.turnRate||0))*(1-Math.exp(-dt/PLAYER_INERTIA.turn));
+  if(!wantRate&&Math.abs(t.turnRate)<1e-3)t.turnRate=0;
+  const turn=t.turnRate*dt;
+  t.angle+=turn;if(carry)t.turret+=turn;
+  return turn;
+}
+// Скорость вдоль оси корпуса догоняет wantSpeed; после столкновения остаётся только реально пройденная.
+function hullMoveStep(t,wantSpeed,dt,limit=Infinity) {
+  t.speedCur=(t.speedCur||0)+(wantSpeed-(t.speedCur||0))*(1-Math.exp(-dt/PLAYER_INERTIA.move));
+  if(!wantSpeed&&Math.abs(t.speedCur)<.05)t.speedCur=0;
+  t.vx=t.vy=0;
+  if(!t.speedCur)return 0;
+  const fx=Math.cos(t.angle),fy=Math.sin(t.angle),ox=t.x,oy=t.y;
+  const moved=moveTank(t,fx*t.speedCur*dt,fy*t.speedCur*dt,dt,limit);
+  const along=((t.x-ox)*fx+(t.y-oy)*fy)/((t.terrainK||1)*dt);
+  if(Math.sign(along)!==Math.sign(t.speedCur))t.speedCur=0;else if(Math.abs(along)<Math.abs(t.speedCur))t.speedCur=along;
+  return moved;
+}
+
 // ---------- привод корпуса вражеской техники ----------
 // Танк ездит только вдоль оси корпуса. Чтобы сменить направление, он разворачивается
 // со скоростью KINDS[kind].hullTurn (рад/с): при большом рассогласовании — на месте, при малом — плавно в движении.
@@ -102,6 +126,30 @@ function driveHull(t, tx, ty, speed, dt, allowReverse = true) {
   if (off > HULL_ALIGN) { t.vx = t.vy = 0; return { step: 0, moved: 0 }; }
   const dir = reverse ? -1 : 1, step = Math.min(d, speed * dt * (reverse ? HULL_REVERSE_SPEED : 1)) * Math.cos(off);
   return { step, moved: moveTank(t, Math.cos(t.angle) * dir * step, Math.sin(t.angle) * dir * step, dt, d) };
+}
+
+// Обычные вражеские танки ездят по физике игрока: корпус разворачивается и разгоняется с инерцией,
+// стоящим считается танк без поступательного хода и без поворота корпуса.
+const HULL_STOP_SPEED = .5, HULL_STOP_TURN = .02;
+const hullStopped = t => Math.abs(t.speedCur || 0) < HULL_STOP_SPEED && Math.abs(t.turnRate || 0) < HULL_STOP_TURN;
+// Желаемая угловая скорость пропорциональна рассогласованию (не больше hullTurn), чтобы корпус не раскачивался.
+function hullRateFor(t, want) { const err = angDiff(t.angle, want); return Math.abs(err) < .003 ? 0 : clamp(err * 2.5, -hullTurnRate(t), hullTurnRate(t)); }
+// Гасит ход и доворачивает корпус к углу want (null — без доворота). Возвращает рассогласование.
+function holdHull(t, want, dt) { hullTurnStep(t, want === null ? 0 : hullRateFor(t, want), dt, false); hullMoveStep(t, 0, dt); return want === null ? 0 : Math.abs(angDiff(t.angle, want)); }
+// Едет к (tx,ty): разворот с инерцией (на месте при большом рассогласовании), ход только вдоль корпуса,
+// к близкой точке позади — задним ходом. brake — плавно остановиться в точке; hold — стоять, только доворачивать.
+function driveHullInertial(t, tx, ty, speed, dt, brake = true, hold = false) {
+  const dx = tx - t.x, dy = ty - t.y, d = Math.hypot(dx, dy);
+  if (d <= 1.5 && brake) { holdHull(t, null, dt); return { step: 0, moved: 0, arrived: true }; }
+  const heading = Math.atan2(dy, dx);
+  const reverse = d < HULL_REVERSE_DIST && Math.abs(angDiff(t.angle, heading)) > HULL_REVERSE;
+  const want = reverse ? heading + Math.PI : heading;
+  hullTurnStep(t, hullRateFor(t, want), dt, false);
+  const off = Math.abs(angDiff(t.angle, want));
+  let v = off > HULL_ALIGN || hold ? 0 : speed * (reverse ? HULL_REVERSE_SPEED : 1) * Math.cos(off);
+  if (brake) v = Math.min(v, 6 + d * 3);
+  const moved = hullMoveStep(t, reverse ? -v : v, dt, brake ? d : Infinity);
+  return { step: v * dt, moved, arrived: false };
 }
 
 function trackMark(t) {
@@ -164,22 +212,9 @@ function updatePlayer(dt) {
   const steer = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
   const throttle = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
   // Корпус разгоняется, тормозит и поворачивается с лёгкой инерцией (PLAYER_INERTIA); башня наводится как прежде.
-  // Башня сидит на корпусе: поворот шасси поворачивает и её, а наведение догоняет со своей скоростью.
-  p.turnRate=(p.turnRate||0)+(steer*2.2-(p.turnRate||0))*(1-Math.exp(-dt/PLAYER_INERTIA.turn));
-  if(!steer&&Math.abs(p.turnRate)<1e-3)p.turnRate=0;
-  const hullTurn = p.turnRate * dt;
-  p.angle += hullTurn; p.turret += hullTurn;
-  const targetSpeed=throttle*KINDS.player.speed*(p.boostLeft>0?2:1);
-  p.speedCur=(p.speedCur||0)+(targetSpeed-(p.speedCur||0))*(1-Math.exp(-dt/PLAYER_INERTIA.move));
-  if(!throttle&&Math.abs(p.speedCur)<.05)p.speedCur=0;
-  p.vx = p.vy = 0;
-  if (p.speedCur) {
-    const fx=Math.cos(p.angle),fy=Math.sin(p.angle),ox=p.x,oy=p.y;
-    moveTank(p,fx*p.speedCur*dt,fy*p.speedCur*dt,dt);
-    // после столкновения остаётся только скорость, которую корпус реально прошёл вдоль своей оси
-    const along=((p.x-ox)*fx+(p.y-oy)*fy)/((p.terrainK||1)*dt);
-    if(Math.sign(along)!==Math.sign(p.speedCur))p.speedCur=0;else if(Math.abs(along)<Math.abs(p.speedCur))p.speedCur=along;
-  }
+  // Та же физика корпуса (hullTurnStep/hullMoveStep) у обычных вражеских танков.
+  hullTurnStep(p,steer*2.2,dt);
+  hullMoveStep(p,throttle*KINDS.player.speed*(p.boostLeft>0?2:1),dt);
   p.turret = turnTo(p.turret, Math.atan2(mouse.y - p.y, mouse.x - p.x), dt * KINDS.player.turretSpeed);
   p.cd -= dt; p.inv -= dt; p.recoil=(p.recoilMax||5)*(1-reloadProgress(p));
   for (const k in p.pw) p.pw[k] = Math.max(0, p.pw[k] - dt);

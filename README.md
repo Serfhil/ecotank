@@ -17,7 +17,8 @@ js/tanks.js         Создание и движение танков, упра�
 js/weapons.js       Снаряды, рельсотрон, артиллерия и очередь артподдержки
 js/damage.js        Урон, гибель, цепные взрывы и обломки танков
 js/pickups.js       Подбор бонусов, их появление и автоматический сбор металлолома
-js/enemy-ai.js      ИИ: маршруты, цели, колонны, укрытия и поведение артиллерии
+js/enemy-ai.js      ИИ: поле маршрутов, видимость, цели, колонны, въезд, артиллерия и РСЗО
+js/enemy-tactics.js Тактика обычных танков: марш группой, опасные точки, контакт, обходы, поиск, перестрелка
 js/waves.js         Состав волн, лимит врагов и появление в пяти верхних точках
 js/render-world.js  Отрисовка клеток, базы, воды, кладки и листвы
 js/render-detail.js Кэш деталей моделей, кладки, листвы и водной ряби; статичные берега
@@ -34,6 +35,7 @@ js/editor-common.js Общие функции редакторов: HTML, мин
 js/preset-editor.js Редактор типовых проектов, сборники, кисти и обработчики
 js/map-editor.js    Редактор карт, штампы, импорт/экспорт и выбор карты
 maps.js             Готовые карты и порядок кампании
+maps-ai.js          Тактическая разметка готовых карт (маршруты, опасные точки, зоны, проходы)
 assets/             Изображения, музыка и CSS
 check.cjs           Проверки симуляции; загружает скрипты в порядке index.html
 check-modules.cjs   Проверки загрузки модулей и заполнения текстов
@@ -41,14 +43,16 @@ check-audio.cjs     Проверки инициализации звука, пл
 check-editors.cjs   Проверки инициализации редакторов и их обработчиков
 check-defeat.cjs    Поражение, иллюстрации, завершение взрывов и безопасный перезапуск
 check-features.cjs  База, подкрепление, пулемёты, заборы, прожиги, покрытия, клетки редакторов и РСЗО
+check-tactics.cjs   Тактика обычных танков: роли, обходы, обзор в зелени, поиск, цикл перестрелки, разметка
 scripts/prepare-rocket-sprites.py  Нарезка атласа Panzerwerfer 42 из исходника
+scripts/prepare-ai-markup.cjs      Пересчёт тактической разметки готовых карт и Расейняя
 ```
 
 Чтобы изменить название кнопки, найдите его значение в `UI_TEXT` в `js/ui-text.js`. Например, `startBattle` содержит «В бой, товарищ!». Ключи менять не нужно: на них ссылаются HTML и логика. Пробелы в фрагментах динамических сообщений значимы.
 
 Баланс танков находится в `KINDS`, общие параметры — в `CFG` в `js/config.js`. Эти объекты остаются изменяемыми: настройки разработчика и сохранения браузера работают как прежде. Сохранённые настройки браузера могут перекрывать значения по умолчанию из файла.
 
-Файлы подключаются обычными относительными `<script src>` в порядке `ui-text.js`, `config.js`, `statistics.js`, `audio.js`, `maps.js`, `world.js`, `destruction.js`, `tanks.js`, `weapons.js`, `damage.js`, `pickups.js`, `enemy-ai.js`, `waves.js`, `render-world.js`, `render-detail.js`, `vehicle-sprites.js`, `render-tanks.js`, `effects.js`, `layout.js`, `defeat.js`, `victory.js`, `render-ui.js`, `renderer.js`, `editor-common.js`, `preset-editor.js`, `map-editor.js`, затем код игры. `import`, `fetch`, сборщик и HTTP-сервер для запуска не нужны. При переносе игры копируйте всю папку, включая `js` и `assets`.
+Файлы подключаются обычными относительными `<script src>` в порядке `ui-text.js`, `config.js`, `statistics.js`, `audio.js`, `maps.js`, `maps-ai.js`, `world.js`, `destruction.js`, `tanks.js`, `weapons.js`, `damage.js`, `pickups.js`, `enemy-ai.js`, `enemy-tactics.js`, `allies.js`, `waves.js`, `sappers.js`, `render-world.js`, `render-detail.js`, `vehicle-sprites.js`, `render-tanks.js`, `effects.js`, `layout.js`, `defeat.js`, `victory.js`, `render-ui.js`, `renderer.js`, `editor-common.js`, `preset-editor.js`, `map-editor.js`, затем код игры. `import`, `fetch`, сборщик и HTTP-сервер для запуска не нужны. При переносе игры копируйте всю папку, включая `js` и `assets`.
 
 Проверка: `node check.cjs` (включает `check-modules.cjs`, `check-audio.cjs` и `check-editors.cjs`). На первых семи этапах поведение игры не менялось; следующие подсистемы пока остаются в `index.html`.
 

@@ -36,8 +36,8 @@ module.exports=function checkAllies(root){
   run(`grid.fill(EMPTY);bullets=[];const g=allies[0];g.x=300;g.y=400;g.cd=0;g.turret=-Math.PI/2;
     const target=makeTank(300,200,'scout');target.spawnT=0;enemies=[target];for(let i=0;i<60&&!bullets.length;i++)updateAlly(g,1/30);`);
   assert(run("bullets.some(b=>b.owner==='p')"),'Ally engages a visible enemy');
-  // Враг видит союзника и стреляет в него, если тот ближе базы и игрока.
-  run(`bullets=[];const scout=enemies[0];scout.cd=0;scout.turret=Math.PI/2;player.x=60;player.y=60;for(let i=0;i<60&&!bullets.some(b=>b.owner==='e');i++)updateEnemy(scout,1/30);`);
+  // Враг видит союзника и стреляет в него, если тот ближе базы и игрока (после разворота корпуса лбом к цели).
+  run(`bullets=[];const scout=enemies[0];scout.cd=0;scout.turret=Math.PI/2;player.x=60;player.y=60;for(let i=0;i<120&&!bullets.some(b=>b.owner==='e');i++)updateEnemy(scout,1/30);`);
   assert(run("bullets.some(b=>b.owner==='e')"),'Enemies target allies');
 
   for(const size of [30,60]){
