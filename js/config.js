@@ -23,17 +23,17 @@ const VICTORY_CONFIG = Object.freeze({ image: 'assets/victory-marx-earth.png', d
 
 const KINDS = {
   player:  { hp: 3, speed: 60, turretSpeed: 1, fireRate: 1, color: '#6cc24a', dark: '#2e6b26', bulletSpeed: 1200, dmg: 1, scale: 1 },
-  scout:   { hp: 1, speed: 80,  fireRate: 1/.33, color: '#e9b949', dark: '#8c6a1a', bulletSpeed: 380, dmg: 1, scale: .8415, score: 100, scrap: 1, wander: .25, hold: 0,   turretSpeed: 1 },
-  soldier: { hp: 2, speed: 50,  fireRate: 2, color: '#e0603f', dark: '#7f2d1b', bulletSpeed: 420, dmg: 1, scale: 1,   score: 200, scrap: 2, wander: .12, hold: 150, turretSpeed: 1 },
-  heavy:   { hp: 3, speed: 35,  fireRate: 5, color: '#9483d6', dark: '#463b80', bulletSpeed: 600, dmg: 2, scale: 1.357, score: 500, scrap: 4, wander: .05, hold: 260, turretSpeed: 1 },
+  scout:   { hp: 1, speed: 80,  hullTurn: 2.4, fireRate: 1/.33, color: '#e9b949', dark: '#8c6a1a', bulletSpeed: 380, dmg: 1, scale: .8415, score: 100, scrap: 1, wander: .25, hold: 0,   turretSpeed: 1 },
+  soldier: { hp: 2, speed: 50,  hullTurn: 2, fireRate: 2, color: '#e0603f', dark: '#7f2d1b', bulletSpeed: 420, dmg: 1, scale: 1,   score: 200, scrap: 2, wander: .12, hold: 150, turretSpeed: 1 },
+  heavy:   { hp: 3, speed: 35,  hullTurn: 1.3, fireRate: 5, color: '#9483d6', dark: '#463b80', bulletSpeed: 600, dmg: 2, scale: 1.357, score: 500, scrap: 4, wander: .05, hold: 260, turretSpeed: 1 },
 };
 
-KINDS.artillery={hp:2,speed:35,fireRate:6,turretSpeed:1,color:'#d5be7d',dark:'#566048',bulletSpeed:182,dmg:2,scale:1.1,score:400,scrap:3,wander:0,hold:640};
+KINDS.artillery={hp:2,speed:35,hullTurn:1.2,fireRate:6,turretSpeed:1,color:'#d5be7d',dark:'#566048',bulletSpeed:182,dmg:2,scale:1.1,score:400,scrap:3,wander:0,hold:640};
 // Мотоцикл-минёр не стреляет: минирует стены и базу или ставит мины на поле (js/sappers.js).
 KINDS.moto={hp:1,speed:90,color:'#c9a96a',dark:'#6b5a36',scale:.85,score:250,scrap:1,wander:0,hold:0};
 // Союзник выдерживает ровно одно попадание врага: hp 1 при любом уроне снаряда.
 // Panzerwerfer 42 (РСЗО): bulletSpeed — скорость ракет, fireRate — пауза между циклами залпов, с.
-KINDS.rocket={hp:2,speed:40,fireRate:7,turretSpeed:1.6,color:'#b9a27a',dark:'#5d5038',bulletSpeed:1200,dmg:1,scale:1.1,score:450,scrap:3,wander:0,hold:0};
+KINDS.rocket={hp:2,speed:40,hullTurn:1.5,fireRate:7,turretSpeed:1.6,color:'#b9a27a',dark:'#5d5038',bulletSpeed:1200,dmg:1,scale:1.1,score:450,scrap:3,wander:0,hold:0};
 KINDS.ally={hp:1,speed:55,fireRate:1.6,turretSpeed:1.4,color:'#8fb45a',dark:'#3c5225',bulletSpeed:520,dmg:1,scale:1,hold:220};
 
 const ITEMS = {
@@ -55,6 +55,10 @@ const CFG = {
   allies: false, allyCount: 2,
   bomberChance: .1, bomberFuse: 2.5, bomberSpeed: 75,
   rocketChance: .06, rocketVolleyGap: .8,
+  // Подбитый танк взрывается (урон вокруг) только с этим шансом, иначе просто горит без урона.
+  tankBlastChance: .25,
+  // Увидев цель, враг не подъезжает ближе этой дистанции (берётся большее из неё и hold), а вплотную — сдаёт назад.
+  enemyStandoff: 170,
 };
 
 const MENU_TRACK='assets/red-steel-menu.mp3',LEVEL_TRACKS=['assets/mehvod.mp3','assets/red-steel-1.mp3','assets/red-steel-2.mp3'];
@@ -77,6 +81,7 @@ const TANK_FIELDS = [
   ['fireRate', UI_TEXT.perezaryadka_s, .05, 10, .05],
   ['dmg', UI_TEXT.uron_snaryada, 0, 20, 1],
   ['turretSpeed', UI_TEXT.skorost_povorota_bashni_rad_s, .1, 20, .1],
+  ['hullTurn', UI_TEXT.skorost_povorota_korpusa_rad_s, .2, 10, .1],
   ['hold', UI_TEXT.distantsiya_stoyanki, 0, 600, 10],
   ['wander', UI_TEXT.sluchaynost_puti, 0, 1, .05],
   ['score', UI_TEXT.ochki_za_unichtozhenie, 0, 5000, 50],
@@ -103,6 +108,8 @@ const CFG_FIELDS = [
     ['invulnTime', UI_TEXT.neuyazvimost_posle_urona_s, 0, 5, .1],
     ['enemySight', UI_TEXT.dalnost_obzora_vragov, 50, 1500, 10],
     ['treeStealth', UI_TEXT.vidyat_v_kronakh_blizhe_chem, 0, 500, 10],
+    ['enemyStandoff', UI_TEXT.distantsiya_boya_vragov, 0, 600, 10],
+    ['tankBlastChance', UI_TEXT.shans_vzryva_podbitogo_tanka, 0, 1, .05],
     ['shake', UI_TEXT.tryaska_ekrana, 0, 3, .1],
     ['hitstop', UI_TEXT.stop_kadr_pri_vzryve_s, 0, .3, .01],
     ['godMode', UI_TEXT.rezhim_boga, 'bool'],

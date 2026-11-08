@@ -61,11 +61,14 @@ const leafMask=foliageMask[leafIndex];hitFoliage(5,5,176,176,shot);if(foliageMas
 for(let i=0;i<4;i++)hitFoliage(5,5,176,176,{});if(grid[leafIndex]!==EMPTY)throw Error('Full foliage destruction');
 grid.fill(EMPTY);player=makeTank(700,500,'player');
 const a1=makeTank(300,300,'scout'),a2=makeTank(326,300,'scout'),a3=makeTank(352,300,'scout'),safeTank=makeTank(550,300,'heavy');
-for(const e of [a1,a2,a3,safeTank])e.spawnT=0;enemies=[a1,a2,a3,safeTank];wrecks=[];const oldScore=score;
+CFG.tankBlastChance=1;for(const e of [a1,a2,a3,safeTank])e.spawnT=0;enemies=[a1,a2,a3,safeTank];wrecks=[];const oldScore=score;
 hitEnemy(a1,{x:300,y:300,dmg:1});if(a2.dead||wrecks.length!==1||wrecks[0].detonateAt<.5||wrecks[0].detonateAt>1.5)throw Error('Delayed blast');
 if(wrecks[0].angle!==a1.angle||wrecks[0].turret!==a1.turret||wrecks[0].tread!==a1.tread)throw Error('Dying model pose');drawWrecks();
 updateWrecks(3.1);if(!a2.dead||!a3.dead||safeTank.hp!==KINDS.heavy.hp||wrecks.length!==3)throw Error('Chain blast');
 if(score!==oldScore+300)throw Error('Chain kill score');hitEnemy(a1,{x:0,y:0,dmg:1});if(wrecks.length!==3)throw Error('Duplicate kill');
+{const keep=CFG.tankBlastChance;CFG.tankBlastChance=0;const b1=makeTank(300,300,'scout'),b2=makeTank(330,300,'scout');b1.spawnT=b2.spawnT=0;enemies=[b1,b2];wrecks=[];
+hitEnemy(b1,{x:300,y:300,dmg:1});updateWrecks(3.1);if(b2.dead||b2.hp!==KINDS.scout.hp||wrecks[0].exploded!==true||!wrecks[0].burnTime)throw Error('Burning wreck must not damage neighbours');
+drawWrecks();updateWrecks(.1);if(!wrecks.length)throw Error('Burning wreck stays on the field');CFG.tankBlastChance=keep;wrecks=[];}
 state='play';musicOff=false;muted=false;syncMusic();if(!musicWanted||music.paused)throw Error('Music start');
 state='pause';syncMusic();if(!musicWanted||music.paused||Math.abs(music.volume-.066*gameVolume)>1e-6)throw Error('Music duck');state='play';musicOff=true;syncMusic();if(musicWanted)throw Error('Music disabled');
 drawPlayerModel(player);drawTank(player);drawTrees();
@@ -378,6 +381,26 @@ updateWrecks(.5);updateWrecks(.5);
 if(!chainMotos[1].dead||bomber.state!=='down'||operationStats.enemies.moto!==initialMotoKills+2||operationStats.enemies.bomber!==1)throw Error('Motorcycle blast only kills and counts its eligible targets once');
 if(safeTank.dead||safeMine.done||player.hp!==safeHp)throw Error('Motorcycle blast cannot damage tanks, player or mines');
 }
+{const before=JSON.stringify({KINDS,CFG});const file=JSON.parse(JSON.stringify(devSettingsFile()));
+if(file.format!=='ecotank-dev-settings'||!file.KINDS.scout||!('tankBlastChance' in file.CFG))throw Error('Settings export');
+file.KINDS.scout.hp=7;file.KINDS.scout.speed=9999;file.CFG.enemyStandoff=200;file.CFG.godMode='yes';file.CFG.unknown=1;
+if(!importDevSettingsText(JSON.stringify(file))||KINDS.scout.hp!==7||KINDS.scout.speed!==400||CFG.enemyStandoff!==200||CFG.godMode!==false||'unknown' in CFG)throw Error('Settings import is clamped and typed');
+if(importDevSettingsText('{"KINDS":1}')||importDevSettingsText('nope')||importDevSettingsText('{"format":"other","KINDS":{},"CFG":{}}')||KINDS.scout.hp!==7)throw Error('Bad settings files are rejected');
+if(!importDevSettingsText(${JSON.stringify(fs.readFileSync(__dirname+'/settings/default.json','utf8'))})||KINDS.scout.hp!==1||CFG.tankBlastChance!==.25)throw Error('Bundled default settings import');
+applyDev(JSON.parse(before));saveDev();}
+{const e=makeTank(300,300,'scout');e.spawnT=0;e.decideT=9;e.tx=e.x;e.ty=e.y;const keepP={x:player.x,y:player.y,dead:player.dead};player.dead=false;player.x=360;player.y=300;
+enemies=[e];allies=[];const near=Math.hypot(player.x-e.x,player.y-e.y);for(let i=0;i<6;i++)updateEnemy(e,.05);
+if(Math.hypot(player.x-e.x,player.y-e.y)!==near)throw Error('Enemy turns its hull before backing off');
+for(let i=0;i<24;i++)updateEnemy(e,.05);
+if(Math.hypot(player.x-e.x,player.y-e.y)<=near||Math.abs(angDiff(e.angle,0))>HULL_ALIGN)throw Error('Enemy backs off in reverse, front to the target');
+Object.assign(player,keepP);enemies=[];}
+{const h=makeTank(200,200,'heavy');const x0=h.x,y0=h.y,a0=h.angle;
+let r=driveHull(h,300,200,KINDS.heavy.speed,.1);
+if(r.step||h.x!==x0||h.y!==y0||Math.abs(angDiff(a0,h.angle)-KINDS.heavy.hullTurn*.1)>1e-9)throw Error('Hull pivots in place at its turn rate, no sideways motion');
+for(let i=0;i<20;i++)driveHull(h,300,200,KINDS.heavy.speed,.1);
+if(h.x<=x0||Math.abs(h.y-y0)>4)throw Error('Hull drives along its axis after turning');
+const s2=makeTank(200,200,'scout');s2.angle=0;driveHull(s2,170,200,KINDS.scout.speed,.1);
+if(s2.x>=200||Math.abs(angDiff(s2.angle,0))>1e-9)throw Error('Short move backwards uses reverse gear');}
 
 `,box);
 require('./check-raseiniai.cjs')(box);

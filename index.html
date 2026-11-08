@@ -34,6 +34,7 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 16px; }
   .grid label { display: grid; grid-template-columns: 1fr 86px; align-items: center; gap: 8px; color: #c9d4c4; }
   .note { margin: 16px 0 0; color: #7f8f88; font-size: 12px; }
+  #devMsg { margin: 6px 0 0; color: #b9d8a8; } #devMsg:empty { display: none; }
   #editor, #mapEditor { position: fixed; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; background: rgba(8,10,12,.7); }
   .epanel { width: min(860px, calc(100vw - 32px)); max-height: 92vh; overflow: auto; background: #161c1f; border: 1px solid #2f3a40; border-radius: 12px; box-shadow: 0 20px 60px #000c; color: #dde6d8; font: 13px "Segoe UI", system-ui, sans-serif; padding: 16px 20px 20px; box-sizing: border-box; }
   .epanel h3 { margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #9fb39a; }
@@ -192,7 +193,11 @@
       <button data-act="kill" class="ghost" data-ui-text="vopros_reshyon"></button>
       <button data-act="skip" class="ghost" data-ui-text="sleduyushchiy_eshelon"></button>
       <button data-act="reset" class="ghost" data-ui-text="vernut_shtatnye_normativy"></button>
+      <button data-act="export" class="ghost" data-ui-text="eksport_nastroek"></button>
+      <button data-act="import" class="ghost" data-ui-text="import_nastroek"></button>
     </div>
+    <input type="file" id="devImport" accept=".json,application/json" hidden>
+    <p id="devMsg" class="note" role="status"></p>
     <div id="devBody"></div>
     <p class="note" data-ui-text="izmeneniya_primenyayutsya_srazu_i_sokhranyayutsya_v_brauzere_khp_vragov_deystvuet_na_"></p>
   </div>
@@ -422,6 +427,60 @@ function applyDev(s) {
   Object.assign(CFG, cfg);
 }
 function saveDev() { try { localStorage.setItem('ecotank-dev-v2', JSON.stringify({ KINDS, CFG, balanceVersion:2,artilleryVersion:2,sapperVersion:2 })); } catch (e) {} }
+
+// ---------- выгрузка и загрузка нормативов (папка settings/ проекта) ----------
+const DEV_FILE_FORMAT = 'ecotank-dev-settings';
+function devSettingsFile() {
+  return { format: DEV_FILE_FORMAT, version: 1, savedAt: new Date().toISOString(), KINDS, CFG, balanceVersion:2,artilleryVersion:2,sapperVersion:2 };
+}
+// Числа из файла проходят те же пределы, что и поля панели; чужие типы отбрасываются.
+function sanitizeDevSettings(s) {
+  if (!s || typeof s !== 'object' || !s.KINDS || typeof s.KINDS !== 'object' || !s.CFG || typeof s.CFG !== 'object') return null;
+  if (s.format !== undefined && s.format !== DEV_FILE_FORMAT) return null;
+  const limits = Object.fromEntries(TANK_FIELDS.map(([key,,min,max]) => [key, [min, max]]));
+  const kinds = {};
+  for (const k in s.KINDS) {
+    if (!KINDS[k] || !s.KINDS[k] || typeof s.KINDS[k] !== 'object') continue;
+    kinds[k] = {};
+    for (const [key, value] of Object.entries(s.KINDS[k])) {
+      if (!(key in KINDS[k]) || typeof value !== typeof KINDS[k][key]) continue;
+      kinds[k][key] = limits[key] && typeof value === 'number' ? clamp(value, ...limits[key]) : value;
+      if (typeof value === 'number' && !Number.isFinite(value)) delete kinds[k][key];
+    }
+  }
+  const fields = Object.fromEntries(CFG_FIELDS.flatMap(([, list]) => list).map(([key,,min,max]) => [key, [min, max]]));
+  const cfg = {};
+  for (const [key, value] of Object.entries(s.CFG)) {
+    if (!(key in CFG) || typeof value !== typeof CFG[key]) continue;
+    if (typeof value === 'number' && !Number.isFinite(value)) continue;
+    cfg[key] = fields[key] && fields[key][0] !== 'bool' && typeof value === 'number' ? clamp(value, ...fields[key]) : value;
+  }
+  return { KINDS: kinds, CFG: cfg, balanceVersion: s.balanceVersion, artilleryVersion: s.artilleryVersion, sapperVersion: s.sapperVersion };
+}
+async function exportDevSettings() {
+  const text = JSON.stringify(devSettingsFile(), null, 2) + '\n';
+  const name = 'ecotank-settings-' + new Date().toISOString().slice(0, 10) + '.json';
+  // Chrome/Edge: системный диалог запоминает выбранную папку (например, settings/ проекта).
+  if (typeof showSaveFilePicker === 'function') {
+    try {
+      const handle = await showSaveFilePicker({ id: 'ecotank-settings', suggestedName: name, types: [{ description: 'EcoTank JSON', accept: { 'application/json': ['.json'] } }] });
+      const out = await handle.createWritable(); await out.write(text); await out.close();
+      return;
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function importDevSettingsText(text) {
+  let data = null;
+  try { data = sanitizeDevSettings(JSON.parse(text)); } catch (e) {}
+  if (!data) return false;
+  applyDev(data); saveDev();
+  if (player) setPlayerUpgrade(player, player.upgrade || 0, false);
+  return true;
+}
 try { const s = JSON.parse(localStorage.getItem('ecotank-dev-v2')); if (s) applyDev(s); } catch (e) {}
 
 function numInput(obj, key, min, max, step, value) {
@@ -466,12 +525,24 @@ devEl.querySelector('.devActions').addEventListener('click', e => {
   else if (act === 'powerups' && alive) {for (const k in player.pw) player.pw[k] = CFG.powerupTime;setPlayerUpgrade(player,2);}
   else if (act === 'kill') { for (const e of enemies) if (e.spawnT <= 0) hitEnemy(e, { x: e.x, y: e.y, dmg: 999 }); enemies = enemies.filter(e => !e.dead); }
   else if (act === 'skip' && alive && !raseiniai) { nextWave(); state = 'pause'; }
+  else if (act === 'export') exportDevSettings();
+  else if (act === 'import') document.getElementById('devImport').click();
   else if (act === 'reset') {
     applyDev(JSON.parse(DEV_DEFAULTS));
     try { localStorage.removeItem('ecotank-dev-v2'); } catch (e) {}
     if(player)setPlayerUpgrade(player,player.upgrade||0,false);
     buildDev();
   }
+});
+document.getElementById('devImport').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  file.text().then(text => {
+    const ok = importDevSettingsText(text);
+    if (ok) buildDev();
+    document.getElementById('devMsg').textContent = ok ? UI_TEXT.nastroyki_zagruzheny : UI_TEXT.nastroyki_ne_zagruzheny;
+  });
 });
 document.getElementById('btnResume').addEventListener('click', e => { e.currentTarget.blur(); state = 'play'; });
 document.getElementById('btnNewGame').addEventListener('click', e => {
@@ -510,7 +581,7 @@ function toMenu() {
   resetArtillery();resetReinforcements();itemSpawnTimer=10;state = 'menu'; player = null; base = null; enemies = []; allies = []; bullets = []; items = []; parts = []; wrecks = []; rails = []; banner.t = 0;
   applyMapChoice(); genMap(1);
 }
-document.getElementById('btnDev').addEventListener('click', e => { e.currentTarget.blur(); devOpen = true; buildDev(); });
+document.getElementById('btnDev').addEventListener('click', e => { e.currentTarget.blur(); devOpen = true; document.getElementById('devMsg').textContent = ''; buildDev(); });
 document.getElementById('btnDevClose').addEventListener('click', e => { e.currentTarget.blur(); devOpen = false; });
 
 document.getElementById('mapSize').value=String(CFG.mapSize||30);

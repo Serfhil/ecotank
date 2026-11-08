@@ -75,6 +75,35 @@ function moveTank(t, dx, dy, dt, limit = Infinity) {
   return m;
 }
 
+// ---------- привод корпуса вражеской техники ----------
+// Танк ездит только вдоль оси корпуса. Чтобы сменить направление, он разворачивается
+// со скоростью KINDS[kind].hullTurn (рад/с): при большом рассогласовании — на месте, при малом — плавно в движении.
+// Цель позади и близко (отход из укрытия, сдвиг на клетку назад) — задний ход вместо разворота.
+const HULL_ALIGN = .35, HULL_REVERSE = 2, HULL_REVERSE_DIST = 2.2 * T, HULL_REVERSE_SPEED = .6;
+const hullTurnRate = t => KINDS[t.kind].hullTurn || 2;
+
+// Поворачивает корпус к углу want; гусеницы проворачиваются и при развороте на месте.
+function turnHull(t, want, dt) {
+  const before = t.angle;
+  t.angle = turnTo(t.angle, want, dt * hullTurnRate(t));
+  t.tread = (t.tread + Math.abs(angDiff(before, t.angle)) * t.r) % 6;
+  return Math.abs(angDiff(t.angle, want));
+}
+
+// Едет к (tx,ty). Возвращает {step, moved}: step — сколько пытался проехать (0 при развороте на месте).
+function driveHull(t, tx, ty, speed, dt, allowReverse = true) {
+  const dx = tx - t.x, dy = ty - t.y, d = Math.hypot(dx, dy);
+  if (d <= .5) { t.vx = t.vy = 0; return { step: 0, moved: 0 }; }
+  // последние пиксели до центра клетки — без доворота, иначе танк крутится на месте из-за погрешности
+  if (d < 2) { const step = Math.min(d, speed * dt); return { step, moved: moveTank(t, dx / d * step, dy / d * step, dt, d) }; }
+  const heading = Math.atan2(dy, dx);
+  const reverse = allowReverse && d < HULL_REVERSE_DIST && Math.abs(angDiff(t.angle, heading)) > HULL_REVERSE;
+  const off = turnHull(t, reverse ? heading + Math.PI : heading, dt);
+  if (off > HULL_ALIGN) { t.vx = t.vy = 0; return { step: 0, moved: 0 }; }
+  const dir = reverse ? -1 : 1, step = Math.min(d, speed * dt * (reverse ? HULL_REVERSE_SPEED : 1)) * Math.cos(off);
+  return { step, moved: moveTank(t, Math.cos(t.angle) * dir * step, Math.sin(t.angle) * dir * step, dt, d) };
+}
+
 function trackMark(t) {
   const s = KINDS[t.kind].scale;
   gctx.save(); gctx.translate(t.x, t.y); gctx.rotate(t.angle);

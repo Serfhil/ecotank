@@ -110,11 +110,13 @@ function drawWrecks() {
     ctx.fillStyle = '#2a2624'; ctx.fillRect(2, -2.5, 12, 5);
     ctx.fillStyle = '#423b36'; ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
-    if (w.exploded!==false && w.age-(w.blastAge||0) < 2) {
-      const burnAge=Math.max(0,w.age-(w.blastAge||0));drawFlames(w.x,w.y,1-burnAge/2);
+    const burnTime=w.burnTime||2;
+    if (w.exploded!==false && w.age-(w.blastAge||0) < burnTime) {
+      // горящий без взрыва танк: пламя держится дольше и гаснет в последние две секунды
+      const burnAge=Math.max(0,w.age-(w.blastAge||0)),fade=clamp((burnTime-burnAge)/2,0,1);drawFlames(w.x,w.y,fade);
       for (let i = 0; i < 3; i++) {
         const f = Math.sin(time * 13 + i * 2.1 + w.x) * .5 + .5;
-        ctx.fillStyle = `rgba(255,${120 + f * 80 | 0},40,${clamp(1-burnAge/2,0,1)*f})`;
+        ctx.fillStyle = `rgba(255,${120 + f * 80 | 0},40,${fade*f})`;
         ctx.beginPath(); ctx.arc(w.x + (i - 1) * 6, w.y + Math.sin(i * 3) * 5, 2 + f * 2, 0, Math.PI * 2); ctx.fill();
       }
     }

@@ -31,7 +31,16 @@ function hitEnemy(e, b) {
   // Три малых взрыва поражают только мотобригады и подрывников.
   if (e.kind === 'moto') { wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret, tread:e.tread, recoil:0, flash:0, age: 0, smokeT: 0, detonateAt:0, exploded:false, blastTotal:3, blastGap:.15, blastScale:.3 }); return; }
   // Бонусы с убитых врагов больше не выпадают: они появляются только по таймеру updateRandomItems.
-  wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret, tread:e.tread, recoil:e.recoil, flash:0, age: 0, smokeT: 0, detonateAt:rnd(.5,1.5)*(b.blast?.5:1), exploded:false });
+  wrecks.push({ x: e.x, y: e.y, kind: e.kind, angle: e.angle, turret: e.turret, tread:e.tread, recoil:e.recoil, flash:0, age: 0, smokeT: 0, detonateAt:rnd(.5,1.5)*(b.blast?.5:1), exploded:false, burnOnly:tankBurnsOnly() });
+}
+
+// Подбитый танк взрывается лишь с шансом CFG.tankBlastChance; иначе он загорается и никому не наносит урона.
+const TANK_BURN_TIME = 6;
+function tankBurnsOnly() { return Math.random() >= CFG.tankBlastChance; }
+function igniteWreck(w) {
+  w.exploded=true; w.blastAge=w.age; w.burnTime=TANK_BURN_TIME;
+  burst(w.x,w.y,16,['#ffcf6a','#ff8a3a','#5a4a3a'],120,.6,4);
+  sfx('hit');
 }
 
 // Взрывы при гибели игрока: Т-34 — 3, ИС-2 — 4, ИС-2-II — 5; интервал между ними 0,5 с.
@@ -74,7 +83,8 @@ function updateBaseCollapse(dt) {
 function updateWrecks(dt) {
   for (const w of wrecks) {
     w.age += dt; w.smokeT -= dt;
-    if(w.exploded===false && w.age>=w.detonateAt) {
+    if(w.exploded===false && w.age>=w.detonateAt && w.burnOnly) igniteWreck(w);
+    else if(w.exploded===false && w.age>=w.detonateAt) {
       if(w.kind==='player'||w.kind==='heavy'||w.blastTotal) {
         w.blastCount=w.blastCount||0;
         const offsets=[[-9,-5],[9,-3],[0,8],[-11,5],[8,-8],[-4,-11],[11,7]],total=w.blastTotal||3,gap=w.blastGap||DEATH_BLAST_GAP;
@@ -94,7 +104,7 @@ function updateWrecks(dt) {
         explosion(w.x,w.y,w.kind==='heavy',KINDS[w.kind].color);blastDamage(w.x,w.y,30*KINDS[w.kind].scale);
       }
     }
-    if (w.smokeT <= 0 && w.age < 2) {
+    if (w.smokeT <= 0 && w.age < (w.burnTime ? w.blastAge+w.burnTime : 2)) {
       w.smokeT = .12 + w.age * .05;
       parts.push({ x: w.x + rnd(-6, 6), y: w.y + rnd(-6, 6), vx: rnd(-8, 8), vy: rnd(-30, -15), life: 1.4, max: 1.4, size: rnd(5, 9), color: '#3d3d3d', kind: 'smoke' });
     }
@@ -106,5 +116,5 @@ function updateWrecks(dt) {
       sfx('scrap');
     }
   }
-  wrecks = wrecks.filter(w => !w.taken || w.exploded===false || w.age < (w.blastAge||0)+2);
+  wrecks = wrecks.filter(w => !w.taken || w.exploded===false || w.age < (w.blastAge||0)+(w.burnTime||2));
 }

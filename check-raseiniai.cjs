@@ -130,7 +130,7 @@ module.exports = function checkRaseiniai(box) {
         e.storyWave=1;
         if(kind==='scout')e.storyExit=exit;
         else e.storyRoute={exit,path:[]};
-        for(let i=0;i<50&&!e.escaped;i++)updateEnemy(e,.025);
+        for(let i=0;i<150&&!e.escaped;i++)updateEnemy(e,.025);
         check(e.escaped&&e.y>=H+e.r,'exit '+exit+' for '+kind);
       };
       for(const kind of ['scout','moto'])for(const exit of RASEINIAI_EXITS)checkExit(kind,exit);
@@ -183,7 +183,7 @@ module.exports = function checkRaseiniai(box) {
       check(JSON.stringify(count)===JSON.stringify({'1-scout':10,'2-scout':10,'2-moto':5,'3-scout':6,'3-moto':10,'4-scout':20,'4-moto':6}),'46 tanks and 21 motorcycles');
       const starts=[...columnStarts.values()];
       check(starts.length===5&&starts[0]===starts[1]&&starts[2]===starts[3]&&starts[2]>starts[0]&&starts[4]>starts[3],'wave 4 paired entries');
-      check(threshold===6&&reachedExits.has(8)&&reachedExits.has(21),'six kills trigger wave 2 and both exits work');
+      check(threshold===8&&reachedExits.has(8)&&reachedExits.has(21),'wave 2 waits until at most two first-wave tanks remain; both exits work');
       check(killedMoto.dead&&!killedMoto.escaped&&raseiniai.breaches===[...spawned].filter(e=>e.escaped&&e.y>=H+e.r).length,'only fully exited crews count');
       check(!items.length&&!allies.length&&mines.length,'scripted army and working mines');
       check(raseiniai.dialogue.lines[0][0]==='Мы закончили эвакуацию! Противников слишком много! Приказываю отступать!!!','final Soviet message');
@@ -226,6 +226,13 @@ module.exports = function checkRaseiniai(box) {
       enemies.shift();
       updateRaseiniaiSpawns(.025);
       check(pair[0].slot===1&&pair[1].slot===1,'blocked column keeps its queued tank');
+      startRaseiniai();startRaseiniaiWave(1);
+      raseiniai.tracks[0].batches=[];raseiniai.tracks[0].pending=3;
+      updateRaseiniaiSpawns(.025);
+      check(wave===1,'wave 2 waits while three first-wave tanks remain');
+      raseiniai.tracks[0].pending=2;
+      updateRaseiniaiSpawns(.025);
+      check(wave===2,'wave 2 starts when two first-wave tanks remain');
       startRaseiniai();startRaseiniaiWave(1);
       raseiniai.tracks[0].pending=0;raseiniai.tracks[0].batches=[];
       raseiniai.breaches=10;

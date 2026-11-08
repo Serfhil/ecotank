@@ -5,6 +5,7 @@ const RASEINIAI_EXITS = [8, 21];
 const RASEINIAI_FIRST_SPAWN = [1.4, 2];
 const RASEINIAI_TRANSLATION_DELAY = .5;
 const RASEINIAI_REPAIR_COST = 2;
+const RASEINIAI_WAVE2_LEFT = 2;
 const RASEINIAI_TITLE_STEP = 1.3;
 const RASEINIAI_TITLE_FADE = .65;
 const RASEINIAI_TITLE_END = 2*RASEINIAI_TITLE_STEP+RASEINIAI_TITLE_FADE;
@@ -306,7 +307,8 @@ function raseiniaiBatchCleared(batch) {
 }
 
 function updateRaseiniaiSpawns(dt) {
-  if (wave === 1 && (raseiniai.firstKills >= 6 || !raseiniaiEnemyCount())) {
+  // Вторая волна — когда от первой (живые и ещё не въехавшие) осталось не больше двух танков.
+  if (wave === 1 && raseiniaiEnemyCount() <= RASEINIAI_WAVE2_LEFT) {
     evacuateRaseiniai(3,true);
     startRaseiniaiWave(2);
   }
@@ -420,8 +422,11 @@ function driveRaseiniaiExit(e,exit,speed,dt) {
   const x=exit*T+T/2;
   if (!e.storyLeaving && (Math.abs(e.x-x)>=2 || e.y<H-T/2-2)) return false;
   e.storyLeaving=true;
-  e.x=x; e.angle=turnTo(e.angle,Math.PI/2,dt*8);
-  const distance=speed*surfaceFactor(e,dt)*dt;
+  e.x=x;
+  // танк сначала разворачивается к выезду (у мотоцикла поворот быстрый), затем уходит вниз
+  const off=e.kind==='moto' ? (e.angle=turnTo(e.angle,Math.PI/2,dt*8),0) : turnHull(e,Math.PI/2,dt);
+  if (off>HULL_ALIGN) { e.vx=e.vy=0; return true; }
+  const distance=speed*surfaceFactor(e,dt)*dt*Math.cos(off);
   e.y+=distance; e.vx=0; e.vy=distance/dt;
   e.tread=(e.tread+distance)%6;
   // Wait for the full sprite, including a turret that may still point north.

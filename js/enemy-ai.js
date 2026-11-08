@@ -107,7 +107,9 @@ function updateCover(e,goal,dt) {
       if(!coverClear(x,y,e.r)||los(x,y,goal.x,goal.y)||Math.hypot(x-e.x,y-e.y)>100)continue;
       for(const [dx,dy] of DIRS) {
         const px=x+dx*64,py=y+dy*64;
-        if(!coverClear(px,py,e.r)||!coverClear((x+px)/2,(y+py)/2,e.r)||!los(px,py,goal.x,goal.y))continue;
+        // выглядывать имеет смысл только туда, откуда цель и видна, и в пределах обзора (база видна с любой дальности)
+        if(!coverClear(px,py,e.r)||!coverClear((x+px)/2,(y+py)/2,e.r)||!los(px,py,goal.x,goal.y)||
+           goal!==base&&Math.hypot(goal.x-px,goal.y-py)>=CFG.enemySight)continue;
         e.cover={x,y,px,py,gx:goal.x,gy:goal.y};e.retreat=false;break outer;
       }
     }
@@ -128,7 +130,8 @@ function blockingBrick(e,goal) {
 
 function reconsiderRoute(e,dt,goal) {
   if(e.watchX===undefined){e.watchX=e.x;e.watchY=e.y;e.idleTime=0;}
-  if(Math.hypot(e.x-e.watchX,e.y-e.watchY)>6){e.watchX=e.x;e.watchY=e.y;e.idleTime=0;}
+  // стоянка на дистанции боя — намеренная, а не застревание
+  if(e.holding||Math.hypot(e.x-e.watchX,e.y-e.watchY)>6){e.watchX=e.x;e.watchY=e.y;e.idleTime=0;}
   else e.idleTime+=dt;
   e.detourTime=Math.max(0,(e.detourTime||0)-dt);
   if(e.idleTime>=5) {
@@ -200,14 +203,24 @@ function updateEnemy(e, dt) {
   const pathWall=blockingBrick(e,goal);
   if(pathWall && (e.kind==='heavy'||e.stuck>.25||e.brick)) {e.brick=pathWall;e.cover=null;e.retreat=false;}
   else if(e.detourTime<=0 && (!story || sees))updateCover(e,goal,dt);
-  const hold = e.detourTime<=0 && !e.cover && sees && dp < K.hold;
-  const mx = e.tx - e.x, my = e.ty - e.y, md = Math.hypot(mx, my);
-  if (!hold && md > .5) {
-    const step = Math.min(md, speed * dt);
-    e.angle = turnTo(e.angle, Math.atan2(my, mx), dt * 8);
-    const moved = moveTank(e, mx / md * step, my / md * step, dt, md);
+  // Увидев цель, танк не лезет в упор: стоит на дистанции боя, а если цель подъехала вплотную — сдаёт назад.
+  const standoff = Math.max(K.hold, CFG.enemyStandoff);
+  const hold = e.detourTime<=0 && !e.cover && sees && dp < standoff;
+  e.holding = hold;
+  const md = Math.hypot(e.tx - e.x, e.ty - e.y);
+  if (hold && !e.brick && dp > 1) {
+    // на дистанции боя корпус разворачивается лбом к цели; вплотную — отходит задним ходом, не подставляя борт
+    const off = turnHull(e, Math.atan2(foe.y - e.y, foe.x - e.x), dt);
+    e.vx = e.vy = 0;
+    if (dp < standoff * .6 && off < HULL_ALIGN) {
+      const step = speed * HULL_REVERSE_SPEED * dt * Math.cos(off);
+      moveTank(e, -Math.cos(e.angle) * step, -Math.sin(e.angle) * step, dt);
+    }
+    e.tx = e.x; e.ty = e.y;
+  } else if (!hold && md > .5) {
+    const { step, moved } = driveHull(e, e.tx, e.ty, speed, dt);
     if (step > .5 && moved < step * .3) e.stuck += dt; else e.stuck = Math.max(0, e.stuck - dt);
-  }
+  } else e.vx = e.vy = 0;
 
   // башня и стрельба
   let target = null;
@@ -217,6 +230,11 @@ function updateEnemy(e, dt) {
     target = { x: foe.x + foe.vx * lead, y: foe.y + foe.vy * lead };
   } else if(base && !base.dead && los(e.x,e.y,base.x,base.y)) target=base;
   else if (e.brick) target = e.brick;
+  // выглянул из укрытия, а стрелять не по кому — укрытие бесполезно, едем дальше
+  if (e.cover && !e.retreat && !target && Math.hypot(e.x-e.cover.px,e.y-e.cover.py)<4) {
+    e.peekWait=(e.peekWait||0)+dt;
+    if (e.peekWait>1) { e.cover=null; e.coverSearch=3; e.peekWait=0; }
+  } else e.peekWait=0;
   aimAndFireEnemy(e,target,dt);
 }
 function aimAndFireEnemy(e,target,dt,canShoot=true) {
@@ -235,8 +253,7 @@ function updateArtillery(e,dt){
   if(!e.deployed||(!playerInRange&&!baseInRange)){
     if(e.leader&&!e.leader.dead){e.tx=e.leader.x-Math.cos(e.leader.angle)*48*e.columnSlot;e.ty=e.leader.y-Math.sin(e.leader.angle)*48*e.columnSlot;}
     else {buildFlow(Math.floor(goal.x/T),Math.floor(goal.y/T));if(Math.hypot(e.tx-e.x,e.ty-e.y)<5||e.stuck>.6){decide(e,false);e.stuck=0;}}
-    const dx=e.tx-e.x,dy=e.ty-e.y,d=Math.hypot(dx,dy),step=Math.min(d,KINDS.artillery.speed*dt);
-    if(d>1){e.angle=turnTo(e.angle,Math.atan2(dy,dx),dt*2);const moved=moveTank(e,dx/d*step,dy/d*step,dt,d);if(moved<step*.3)e.stuck+=dt;}
+    if(Math.hypot(e.tx-e.x,e.ty-e.y)>1){const {step,moved}=driveHull(e,e.tx,e.ty,KINDS.artillery.speed,dt,false);if(step>0&&moved<step*.3)e.stuck+=dt;}
   }else {e.vx=e.vy=0;const target=playerInRange?player:base;
     const aim=Math.atan2(target.y-e.y,target.x-e.x);e.turret=turnTo(e.turret,aim,dt*KINDS.artillery.turretSpeed);
     if(e.cd<=0&&Math.abs(angDiff(e.turret,aim))<.15){const muzzle=vehicleMuzzle(e);launchArtillery(muzzle.x,muzzle.y,target.x,target.y);e.cd=enemyInterval('artillery');e.recoilMax=e.recoil=8;}
@@ -276,12 +293,9 @@ function driveRocketLauncher(e,dt) {
   else if(Math.hypot(e.tx-e.x,e.ty-e.y)<1.5&&e.decideT<=0){decide(e,false);e.decideT=0;}
   // РСЗО не стреляет по стенам: вместо пролома выбирает соседнюю свободную клетку
   if(e.brick){e.brick=null;decide(e,true);e.decideT=.5;}
-  const mx=e.tx-e.x,my=e.ty-e.y,md=Math.hypot(mx,my);
   e.vx=e.vy=0;
-  if(md>.5){
-    const speed=K.speed*(1+Math.min(wave,10)*CFG.enemySpeedPerWave),step=Math.min(md,speed*dt);
-    e.angle=turnTo(e.angle,Math.atan2(my,mx),dt*3);
-    const moved=moveTank(e,mx/md*step,my/md*step,dt,md);
+  if(Math.hypot(e.tx-e.x,e.ty-e.y)>.5){
+    const speed=K.speed*(1+Math.min(wave,10)*CFG.enemySpeedPerWave),{step,moved}=driveHull(e,e.tx,e.ty,speed,dt);
     if(step>.5&&moved<step*.3)e.stuck+=dt;else e.stuck=Math.max(0,e.stuck-dt);
   }
 }
