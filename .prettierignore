@@ -1,0 +1,9 @@
+# Данные и разметка не переформатируются: карты читаются глазами построчно.
+maps.js
+maps-ai.js
+js/raseiniai-map.js
+index.html
+assets/
+docs/
+settings/
+*.md

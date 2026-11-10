@@ -1,7 +1,8 @@
 const vm = require('node:vm');
 
 module.exports = function checkRaseiniai(box) {
-  vm.runInContext(`
+  vm.runInContext(
+    `
     (() => {
       const check = (value,message) => { if (!value) throw Error('Расейняй: '+message); };
       const pressSpace = (repeat=false) => {
@@ -25,7 +26,7 @@ module.exports = function checkRaseiniai(box) {
       check(!routeBlocked(3,0,2,0,8)&&routeBlocked(4,1,3,1,8),'route clearance follows contour');
       carveSteelRay(0,16,8*T,16);
       damageTerrainFromBlast(5*T,T,60,99);
-      check(!steelDamage.size&&tileAt(5,1)===MILL&&millRayLimit(0,16,1,0,400)>3*T&&millRayLimit(0,16,1,0,400)<7*T,'mill cannot be destroyed or pierced');
+      check(!steelDamage.size&&tileAt(5,1)===SOLID&&solidRayLimit(0,16,1,0,400)>3*T&&solidRayLimit(0,16,1,0,400)<7*T,'mill cannot be destroyed or pierced');
       check(los(80,6,112,6)&&!los(80,64,200,64),'line of sight across transparent and opaque mill');
       const [westRunner,eastRunner]=raseiniai.evac;
       check(westRunner.x<0&&eastRunner.x>W&&raseiniai.evac.every(p=>road[Math.floor(p.y/T)*COLS]),'civilians spawn off both ends of the crossroad');
@@ -247,6 +248,9 @@ module.exports = function checkRaseiniai(box) {
       check(!raseiniai&&state==='menu','story state does not leak into other modes');
       Math.random=originalRandom;
     })();
-  `,box,{filename:'check-raseiniai.cjs'});
+  `,
+    box,
+    { filename: 'check-raseiniai.cjs' },
+  );
   console.log('PASS: Raseiniai intro, bombardment, Space, four waves, mines, both exits, defeat/retry and revised timeline');
 };

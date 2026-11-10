@@ -1,31 +1,84 @@
-const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
-require('./check-menu.cjs')(__dirname);
-require('./check-modules.cjs')(__dirname);
-require('./check-audio.cjs')(__dirname);
-require('./check-editors.cjs')(__dirname);
-require('./check-defeat.cjs')(__dirname);
-require('./check-victory.cjs')(__dirname);
-require('./check-allies.cjs')(__dirname);
-require('./check-gameplay.cjs')(__dirname);
-require('./check-support.cjs')(__dirname);
-require('./check-sappers.cjs')(__dirname);
-require('./check-features.cjs')(__dirname);
-require('./check-tactics.cjs')(__dirname);
-const html=fs.readFileSync(__dirname+'/index.html','utf8');
-const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].map(([,attrs,inline])=>({src:attrs.match(/\bsrc="([^"]+)"/)?.[1],inline}));
-const code=scripts.map(s=>s.src?fs.readFileSync(__dirname+'/'+s.src,'utf8'):s.inline).join('\n');
-const context=new Proxy({}, {get:(o,k)=>k in o?o[k]:(()=>context)});
-context.globalAlpha=1;
-context.arc=(x,y,r)=>{if(!Number.isFinite(r)||r<0)throw Error('Invalid Canvas arc radius '+r);};
-context.ellipse=(x,y,rx,ry)=>{if(!Number.isFinite(rx)||!Number.isFinite(ry)||rx<0||ry<0)throw Error('Invalid Canvas ellipse radius');};
-const element={style:{},classList:{toggle(){}},addEventListener(){},getContext:()=>context,querySelector:()=>element,querySelectorAll:()=>[],blur(){}};
-const store=new Map([['ecotank-dev',JSON.stringify({KINDS:{player:{speed:999}},CFG:{brickHp:2}})]]);
-const box={console,document:{getElementById:()=>({...element}),createElement:()=>({...element}),querySelectorAll:()=>[],createTextNode:text=>({textContent:text}),activeElement:element},window:{},innerWidth:960,innerHeight:640,addEventListener(){},requestAnimationFrame(){},performance:{now:()=>0},setTimeout(){},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)}};
-box.Audio=class {constructor(){this.handlers={};} addEventListener(name,fn){this.handlers[name]=fn;} play(){this.paused=false;return Promise.resolve();} pause(){this.paused=true;}};
+const fs = require('fs'),
+  vm = require('vm'),
+  assert = require('node:assert/strict');
+require('./checks/rules.cjs')(__dirname);
+require('./checks/menu.cjs')(__dirname);
+require('./checks/modules.cjs')(__dirname);
+require('./checks/audio.cjs')(__dirname);
+require('./checks/editors.cjs')(__dirname);
+require('./checks/defeat.cjs')(__dirname);
+require('./checks/victory.cjs')(__dirname);
+require('./checks/allies.cjs')(__dirname);
+require('./checks/gameplay.cjs')(__dirname);
+require('./checks/support.cjs')(__dirname);
+require('./checks/sappers.cjs')(__dirname);
+require('./checks/features.cjs')(__dirname);
+require('./checks/tactics.cjs')(__dirname);
+const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
+const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].map(([, attrs, inline]) => ({
+  src: attrs.match(/\bsrc="([^"]+)"/)?.[1],
+  inline,
+}));
+const code = scripts.map(s => (s.src ? fs.readFileSync(__dirname + '/' + s.src, 'utf8') : s.inline)).join('\n');
+const context = new Proxy({}, { get: (o, k) => (k in o ? o[k] : () => context) });
+context.globalAlpha = 1;
+context.arc = (x, y, r) => {
+  if (!Number.isFinite(r) || r < 0) throw Error('Invalid Canvas arc radius ' + r);
+};
+context.ellipse = (x, y, rx, ry) => {
+  if (!Number.isFinite(rx) || !Number.isFinite(ry) || rx < 0 || ry < 0) throw Error('Invalid Canvas ellipse radius');
+};
+const element = {
+  style: {},
+  classList: { toggle() {} },
+  addEventListener() {},
+  getContext: () => context,
+  querySelector: () => element,
+  querySelectorAll: () => [],
+  blur() {},
+};
+const store = new Map([['ecotank-dev', JSON.stringify({ KINDS: { player: { speed: 999 } }, CFG: { brickHp: 2 } })]]);
+const box = {
+  console,
+  document: {
+    getElementById: () => ({ ...element }),
+    createElement: () => ({ ...element }),
+    querySelectorAll: () => [],
+    createTextNode: text => ({ textContent: text }),
+    activeElement: element,
+  },
+  window: {},
+  innerWidth: 960,
+  innerHeight: 640,
+  addEventListener() {},
+  requestAnimationFrame() {},
+  performance: { now: () => 0 },
+  setTimeout() {},
+  localStorage: { getItem: k => store.get(k), setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k) },
+};
+box.Audio = class {
+  constructor() {
+    this.handlers = {};
+  }
+  addEventListener(name, fn) {
+    this.handlers[name] = fn;
+  }
+  play() {
+    this.paused = false;
+    return Promise.resolve();
+  }
+  pause() {
+    this.paused = true;
+  }
+};
 vm.createContext(box);
 // Use the same classic-script order as index.html, including file://-compatible modules.
-for(const script of scripts)vm.runInContext(script.src?fs.readFileSync(__dirname+'/'+script.src,'utf8'):script.inline,box,{filename:script.src||'index.html'});
-vm.runInContext(`
+for (const script of scripts)
+  vm.runInContext(script.src ? fs.readFileSync(__dirname + '/' + script.src, 'utf8') : script.inline, box, {
+    filename: script.src || 'index.html',
+  });
+vm.runInContext(
+  `
 muted=true;CFG.bomberChance=0;
 if(KINDS.player.speed!==60||KINDS.player.bulletSpeed!==1200||KINDS.heavy.hp!==3)throw Error('Defaults or legacy settings');
 player=makeTank(480,592,'player');player.turret=0;mouse.x=480;mouse.y=100;updatePlayer(.1);
@@ -37,7 +90,7 @@ if(grid[100]!==EMPTY||brickMask[100]!==0)throw Error('Final destruction');
 CFG.mapElements=0;genMap(1);if(grid.some(t=>t!==EMPTY))throw Error('Empty density');
 CFG.mapElements=180;for(let n=0;n<20;n++){genMap(1);if(!connected())throw Error('Disconnected dense map');}
 CFG.mapElements=42;genMap(1);if(!grid.some((t,i)=>t!==grid[Math.floor(i/COLS)*COLS+COLS-1-i%COLS]))throw Error('Symmetry');
-buildDev();draw();saveDev();if(!localStorage.getItem('ecotank-dev-v2'))throw Error('Persistence');
+buildDev();draw();saveDev();if(!localStorage.getItem('ecotank-settings-v3'))throw Error('Persistence');
 grid.fill(EMPTY);player=makeTank(400,400,'player');player.angle=Math.PI/2;keys.KeyW=true;
 updatePlayer(.1);if(Math.abs(player.x-400)>1e-6||player.y<=400)throw Error('Body-relative forward');
 keys.KeyW=false;keys.KeyS=true;const fy=player.y;updatePlayer(.1);if(player.y>=fy)throw Error('Reverse');
@@ -100,7 +153,9 @@ grid.fill(EMPTY);player.x=100;player.y=100;enemies=[];
 bullets=[{x:base.x,y:base.y-25,vx:0,vy:300,life:1,r:3,dmg:1,owner:'p'}];updateBullets(.1);if(base.hp!==4)throw Error('Friendly base damage');
 const h=makeTank(400,200,'heavy');bullets=[];fire(h);if(!bullets[0].armor||bullets[0].dmg!==2||Math.abs(Math.hypot(bullets[0].vx,bullets[0].vy)-3000)>1e-8)throw Error('Heavy AP');
 enemies=[h,makeTank(410,250,'scout'),makeTank(420,280,'soldier'),makeTank(440,300,'scout')];formColumns();if(enemies.filter(e=>e.leader===h).length!==2||h.leader)throw Error('Columns');
-if(enemyInterval('scout')!==1/.33||enemyInterval('soldier')!==2||enemyInterval('heavy')!==5)throw Error('Enemy rates');
+if(enemyInterval('scout')!==KINDS.scout.fireRate||enemyInterval('heavy')!==KINDS.heavy.fireRate||enemyInterval('moto')!==1)throw Error('Enemy rates come from KINDS');
+{const keepRate=KINDS.heavy.fireRate,keepSpeed=KINDS.heavy.bulletSpeed;KINDS.heavy.fireRate=3;KINDS.heavy.bulletSpeed=900;bullets=[];fire(h);
+if(enemyInterval('heavy')!==3||Math.abs(Math.hypot(bullets[0].vx,bullets[0].vy)-900)>1e-8)throw Error('Developer panel values drive heavy tank fire');KINDS.heavy.fireRate=keepRate;KINDS.heavy.bulletSpeed=keepSpeed;bullets=[];}
 enemies=[];toSpawn=['scout'];spawnTimer=0;updateSpawns(.1);if(enemies.length!==1||enemies[0].y>=0||!enemies[0].entering)throw Error('Offscreen entrance');
 const entrant=enemies[0];updateEnemy(entrant,.2);if(entrant.y<=-32||entrant.spawnT)throw Error('Rolling entrance');
 grid.fill(EMPTY);enemies=[];base=null;player=makeTank(300,176,'player');grid[5*COLS+5]=STEEL;
@@ -141,24 +196,24 @@ const flashes=parts.filter(p=>p.kind==='flash');if(flashes.length!==3||new Set(f
 base=null;grid.fill(EMPTY);grid[100]=TREE;foliageMask[100]=31;const oldLeaves=foliageMask[100];blastDamage(336,112,30);if(foliageMask[100]===oldLeaves)throw Error('Blast foliage');
 grid.fill(EMPTY);parts=[];const apSpark={x:400,y:300,vx:100,vy:0,r:3,armor:true,dmg:2,trail:[],owner:'p'},regularSpark={x:401,y:300,vx:-100,vy:0,r:3,dmg:1,owner:'e'};bullets=[apSpark,regularSpark];collideShells();if(!parts.some(p=>p.kind==='spark'&&p.size>2))throw Error('Shell sparks');
 const randomBirds=Math.random;Math.random=()=>.01;grid[100]=TREE;foliageMask[100]=31;parts=[];hitFoliage(10,3,336,112,{});Math.random=randomBirds;const flock=parts.filter(p=>p.kind==='bird'),whites=flock.filter(p=>p.color==='#f0f0e5');if(whites.length<1||whites.length>2||!flock.some(p=>p.color==='#1c2927'))throw Error('White birds');
-grid.fill(EMPTY);player=makeTank(600,400,'player');const idle=makeTank(400,300,'soldier');idle.cover={};idle.leader={};idle.retreat=true;
-reconsiderRoute(idle,4.9);if(idle.repaths)throw Error('Early repath');reconsiderRoute(idle,.11);if(idle.repaths!==1||idle.cover||idle.leader||idle.retreat||idle.detourTime<=0||Math.hypot(idle.tx-idle.x,idle.ty-idle.y)<10)throw Error('Idle repath');
+grid.fill(EMPTY);player=makeTank(600,400,'player');const idle=makeTank(400,300,'artillery');idle.leader={};
+reconsiderRoute(idle,4.9);if(idle.repaths)throw Error('Early repath');reconsiderRoute(idle,.11);if(idle.repaths!==1||idle.leader||idle.detourTime<=0||Math.hypot(idle.tx-idle.x,idle.ty-idle.y)<10)throw Error('Idle repath');
 idle.x+=10;reconsiderRoute(idle,.1);if(idle.idleTime!==0)throw Error('Idle move reset');drawTank(player);drawParts();
 player.boostLeft=2;if(boostProgress(player)!==1)throw Error('Full active boost');player.boostLeft=1;if(boostProgress(player)!==.5)throw Error('Boost consumption');player.boostLeft=0;player.boostCooldown=10;if(boostProgress(player)!==0)throw Error('Boost empty cooldown');
 startGame();grid.fill(EMPTY);enemies=[];base=null;parts=[];player.hp=1;player.inv=0;player.pw.shield=0;hitPlayer({x:player.x,y:player.y,dmg:1});
 const dyingPlayer=wrecks[0],fuse=dyingPlayer.detonateAt;updateWrecks(fuse+.001);if(dyingPlayer.blastCount!==1||dyingPlayer.exploded!==false)throw Error('First player blast');
 updateWrecks(.5);if(dyingPlayer.blastCount!==2)throw Error('Second player blast');updateWrecks(.5);if(dyingPlayer.blastCount!==3||!dyingPlayer.exploded)throw Error('Third player blast');
 const playerFlashes=parts.filter(p=>p.kind==='flash');if(playerFlashes.length!==3||playerFlashes.some(p=>p.size!==70))throw Error('Normal player blast size');
-const initialCols=COLS;CFG.mapSize=45;if(COLS!==initialCols)throw Error('Immediate map resize');
+const initialCols=COLS;PREFS.mapSize=45;if(COLS!==initialCols)throw Error('Immediate map resize');
 for(const size of [45,60,30]) {
-  CFG.mapSize=size;startGame();
+  PREFS.mapSize=size;startGame();
   if(COLS!==size||ROWS!==size*2/3||W!==size*T||cv.width!==W||cv.height!==H)throw Error('Map dimensions');
-  for(const arr of [grid,brickHp,brickMask,brickVariant,foliageMask,foliageShake,sand,flow])if(arr.length!==COLS*ROWS)throw Error('Map arrays');
+  for(const arr of [grid,brickHp,brickMask,brickVariant,foliageMask,foliageShake,sand,routeField(0,0)])if(arr.length!==COLS*ROWS)throw Error('Map arrays');
   if(!connected()||base.y+16!==H||Math.abs(base.x-W/2)>T||player.y!==H-48)throw Error('Dynamic map layout');
   const bc=Math.floor(COLS/2);if(grid[(ROWS-2)*COLS+bc]!==BRICK||grid[(ROWS-1)*COLS+bc]!==EMPTY)throw Error('Dynamic base walls');
   toSpawn=['scout'];enemies=[];spawnTimer=0;updateSpawns(.1);if(!enemies.length||enemies[0].x>=W)throw Error('Dynamic spawns');
   nextWave();if(COLS!==size||grid.length!==size*(size*2/3))throw Error('Map wave persistence');
-  buildFlow(Math.floor(base.x/T),Math.floor(base.y/T));draw();
+  goalField(base);draw();
 }
 const curves=[];roundedPolygon({moveTo(){},lineTo(){},closePath(){},quadraticCurveTo(...args){curves.push(args);}},[[-5,-12],[5,-12],[11,4],[7,12],[-7,12],[-11,4]],.22);if(curves.length!==6)throw Error('Rounded hexagon');
 grid.fill(EMPTY);const fragmentWall=5*COLS+5;grid[fragmentWall]=BRICK;brickHp[fragmentWall]=4;brickMask[fragmentWall]=1023;parts=[];
@@ -167,9 +222,9 @@ const removedBricks=masonry(0).filter((b,q)=>removed&(1<<q));
 if(chunks.length!==removedBricks.length*4)throw Error('Fragments per removed brick');
 for(const p of chunks)if(!removedBricks.some(b=>p.x>=160+b.x&&p.x<=160+b.x+b.w&&p.y>=160+b.y&&p.y<=168+b.y))throw Error('Fragment origin');
 updateParts(.2);if(chunks.some(p=>p.life>=p.max||p.life<=0))throw Error('Fragment fade');drawParts();updateParts(2);if(parts.some(p=>p.brickFragment))throw Error('Fragment cleanup');
-for(const size of [30,45,60]){CFG.mapSize=size;startGame();if(SPAWNS.length!==5||new Set(SPAWNS.map(s=>s.c)).size!==5||SPAWNS.some(s=>s.r!==1||s.c<1||s.c>COLS-2)||!connected())throw Error('Five spawn lanes');
+for(const size of [30,45,60]){PREFS.mapSize=size;startGame();if(SPAWNS.length!==5||new Set(SPAWNS.map(s=>s.c)).size!==5||SPAWNS.some(s=>s.r!==1||s.c<1||s.c>COLS-2)||!connected())throw Error('Five spawn lanes');
 const randomSpawn=Math.random;for(let k=0;k<5;k++){enemies=[];toSpawn=['scout'];spawnTimer=0;Math.random=()=>(k+.1)/5;updateSpawns(.1);if(enemies[0].x!==SPAWNS[k].c*T+16||enemies[0].y>=0)throw Error('All top lanes usable');}Math.random=randomSpawn;}
-CFG.mapSize=30;startGame();
+PREFS.mapSize=30;startGame();
 grid.fill(STEEL);grid[5*COLS+5]=EMPTY;grid[5*COLS+4]=EMPTY;grid[5*COLS+3]=EMPTY;
 for(let n=0;n<15;n++){const exit=fragmentEscape(176,176,1.4);if(Math.cos(exit.angle)>-.9||exit.clearance<60)throw Error('Fragments choose left opening');}
 grid[5*COLS+4]=STEEL;grid[5*COLS+3]=STEEL;grid[5*COLS+6]=EMPTY;grid[5*COLS+7]=EMPTY;
@@ -178,15 +233,15 @@ grid[5*COLS+5]=BRICK;brickMask[5*COLS+5]=1023;brickHp[5*COLS+5]=4;parts=[];hitBr
 const escapingChunks=parts.filter(p=>p.brickFragment);for(const chunk of escapingChunks){const clearance=fragmentEscape(chunk.x,chunk.y,1).clearance;if(Math.hypot(chunk.vx,chunk.vy)>clearance*2+10)throw Error('Fragment confined speed');}
 startGame();
 // Preset mode places whole groups, keeps the map passable and only switches on a new game.
-CFG.mapMode='preset01';if(mapMode!=='original')throw Error('Mode waits for new game');
-for(const size of [30,45,60]){CFG.mapSize=size;startGame();if(mapMode!=='preset01'||!connected()||!grid.some(t=>t!==EMPTY))throw Error('Preset map');}
-CFG.mapSize=30;startGame();CFG.mapElements=0;genMap(1);if(grid.some(t=>t!==EMPTY))throw Error('Preset empty density');
+PREFS.mapMode='preset01';if(mapMode!=='original')throw Error('Mode waits for new game');
+for(const size of [30,45,60]){PREFS.mapSize=size;startGame();if(mapMode!=='preset01'||!connected()||!grid.some(t=>t!==EMPTY))throw Error('Preset map');}
+PREFS.mapSize=30;startGame();CFG.mapElements=0;genMap(1);if(grid.some(t=>t!==EMPTY))throw Error('Preset empty density');
 CFG.mapElements=180;for(let n=0;n<20;n++){genMap(1);if(!connected())throw Error('Disconnected dense preset map');}
 for(const p of PREFABS){if(p.rows.some(r=>r.length!==p.rows[0].length||/[^BFSWTPbt. ]/.test(r)))throw Error('Prefab shape '+p.name);
 for(let n=0;n<8;n++){const {w,h,cells}=prefabCells(p);if(cells.some(([x,y])=>x<0||y<0||x>=w||y>=h)||w*h!==p.rows.length*p.rows[0].length)throw Error('Prefab transform '+p.name);}}
-CFG.mapElements=42;CFG.mapMode='original';startGame();
+CFG.mapElements=42;PREFS.mapMode='original';startGame();
 // Pause "new game" returns to the start screen with a preview of the chosen map.
-CFG.mapSize=45;toMenu();if(state!=='menu'||player||base||COLS!==45)throw Error('Back to menu');draw();CFG.mapSize=30;startGame();
+PREFS.mapSize=45;toMenu();if(state!=='menu'||player||base||COLS!==45)throw Error('Back to menu');draw();PREFS.mapSize=30;startGame();
 // Fence: auto shape (straight or one of four corners), narrow collision, one-hit destruction, AP passes through.
 grid.fill(EMPTY);enemies=[];base=null;player.x=700;player.y=500;
 const fence=(c,r)=>{grid[r*COLS+c]=FENCE;};
@@ -220,7 +275,7 @@ setFolded('mine',true);if(!JSON.parse(localStorage.getItem(FOLD_KEY)).includes('
 startEdit('mine',null,false);edit.name='Свёрнутый';edit.cells[0][0]='B';saveEdit();if(foldedPacks.has('mine'))throw Error('Unfold after save');closeEditor();
 if(!(prefabWeight({rows:['B']})>prefabWeight({rows:['BB','BB']})))throw Error('Weight by size');
 savePacks([{...defaultClaudePack(),enabled:false},{id:'canal',name:'Каналы',enabled:true,presets:[{name:'Канал',rows:['WWWWWWWWWWWW']}]}]);
-if(activePresets().length!==1)throw Error('Only enabled packs');CFG.mapMode='preset01';CFG.mapSize=60;let canal=false;
+if(activePresets().length!==1)throw Error('Only enabled packs');PREFS.mapMode='preset01';PREFS.mapSize=60;let canal=false;
 for(let n=0;n<5&&!canal;n++){startGame();for(let r=0;r<ROWS&&!canal;r++)for(let c=0;c<COLS&&!canal;c++){let hRun=0,vRun=0;while(tileAt(c+hRun,r)===WATER)hRun++;while(tileAt(c,r+vRun)===WATER)vRun++;canal=hRun>=12||vRun>=12;}}
 if(!canal)throw Error('Pack preset on map');
 savePacks([{...defaultClaudePack(),enabled:false}]);genMap(1);if(grid.some(t=>t!==EMPTY))throw Error('No enabled packs');
@@ -229,23 +284,23 @@ savePacks([{...defaultClaudePack(),enabled:false},{id:'dune',name:'Дюны',ena
 if(grid.some(t=>t!==EMPTY)||!connected())throw Error('Sand keeps tiles empty');let sandRun=false;
 for(let r=0;r<ROWS&&!sandRun;r++)for(let c=0;c<COLS&&!sandRun;c++){let hRun=0,vRun=0;while(sand[r*COLS+c+hRun]&&c+hRun<COLS)hRun++;while(r+vRun<ROWS&&sand[(r+vRun)*COLS+c])vRun++;sandRun=hRun>=12||vRun>=12;}
 if(!sandRun)throw Error('Preset sand on map');
-localStorage.removeItem(PACKS_KEY);CFG.mapMode='original';CFG.mapSize=30;
+localStorage.removeItem(PACKS_KEY);PREFS.mapMode='original';PREFS.mapSize=30;
 // Claude's maps from maps.js: valid, unique ids, passable.
 const cm=claudeMaps();if(cm.length<3||new Set(cm.map(m=>m.id)).size!==cm.length||cm.length!==window.ECOTANK_MAPS.length)throw Error('Claude maps valid');
 for(const m of cm)if(!mapPassable(m.cols,m.rows))throw Error('Claude map passable '+m.name);
 if(new Set(spawnCols(30)).size!==5||!reservedCell(30,15,19)||!reservedCell(30,1,0)||reservedCell(30,5,5))throw Error('Reserved layout');
 // Map mode: size and tiles come from the map, every wave restores it, reserved zones stay clear.
-for(const m of cm){CFG.mapMode='map';CFG.mapPick=m.id;startGame();
+for(const m of cm){PREFS.mapMode='map';PREFS.mapPick=m.id;startGame();
   if(COLS!==m.cols||mapMode!=='map'||!connected())throw Error('Map mode '+m.name);
   const center=Math.floor(COLS/2),baseWall=(c,r)=>r>=ROWS-2&&c>=center-1&&c<=center+1;
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const ch=m.rows[r][c],t=grid[r*COLS+c];
     if(baseWall(c,r))continue;
     if(reservedCell(COLS,c,r)){if(t!==EMPTY)throw Error('Reserved cleared '+m.name);continue;}
-    if('BFSWT.P'.includes(ch)&&t!==PREFAB_TILES[ch])throw Error('Map tile '+m.name+' '+c+','+r);
+    if('BFSWT.P'.includes(ch)&&t!==CELL_CATALOG[ch].tile)throw Error('Map tile '+m.name+' '+c+','+r);
     if(!!sand[r*COLS+c]!==(ch==='P'))throw Error('Map sand exactly as drawn');}
   const bi=grid.findIndex((t,i)=>t===BRICK&&m.rows[(i/COLS)|0][i%COLS]==='B'&&!reservedCell(COLS,i%COLS,(i/COLS)|0));
   if(bi>=0){hitBrick(bi%COLS,(bi/COLS)|0,99);nextWave();if(grid[bi]!==BRICK)throw Error('Map restored each wave');}draw();}
-CFG.mapPick='missing';startGame();if(mapMode!=='original'||activeMap)throw Error('Missing map fallback');
+PREFS.mapPick='missing';startGame();if(mapMode!=='original'||activeMap)throw Error('Missing map fallback');
 // Map editor: reserved cells locked, mirror, resize anchored at the base, passability and name checks, import.
 localStorage.removeItem(MAPS_KEY);openMapEditor();startMapEdit(null,false,30);
 paintMapCell(15,19,'S');paintMapCell(1,1,'S');if(mapEd.cells[19][15]!=='.'||mapEd.cells[1][1]!=='.')throw Error('Reserved locked');
@@ -268,28 +323,27 @@ placeStamp(15,19);if(mapEd.cells[18][14]!=='.')throw Error('Stamp reserved');
 const shape=()=>stampRows().join('|');turnStamp('turn');if(shape()!=='SS| S')throw Error('Stamp turn');turnStamp('flip');if(shape()!=='SS|S ')throw Error('Stamp flip visible');
 turnStamp('turn');if(shape()!=='SS| S')throw Error('Stamp turn after flip');turnStamp('turn');if(shape()!==' S|SS')throw Error('Stamp second turn after flip');
 mapHover=[10,10];drawMapEditor();renderMapEditor();mapStamp=null;mapHover=null;mapEd=null;localStorage.removeItem(PACKS_KEY);
-renderMapPick();CFG.mapMode='map';CFG.mapPick=saved.id;state='menu';closeMapEditor();if(activeMap.id!==saved.id||COLS!==30)throw Error('Play user map');
-localStorage.removeItem(MAPS_KEY);CFG.mapMode='original';CFG.mapPick='';CFG.mapSize=30;
+renderMapPick();PREFS.mapMode='map';PREFS.mapPick=saved.id;state='menu';closeMapEditor();if(activeMap.id!==saved.id||COLS!==30)throw Error('Play user map');
+localStorage.removeItem(MAPS_KEY);PREFS.mapMode='original';PREFS.mapPick='';PREFS.mapSize=30;
 // Campaign: ordered levels, locked starts, size change between levels, unlock on clear, victory, retry from the lost level.
 const realCampaign=window.ECOTANK_CAMPAIGN;
 if(!Array.isArray(realCampaign)||new Set(realCampaign).size!==realCampaign.length||realCampaign.some(id=>!cm.some(m=>m.id===id))||campaignMaps().length!==realCampaign.length)throw Error('maps.js campaign order');window.ECOTANK_CAMPAIGN=['claude-swamp','missing','claude-crossing'];
 if(campaignMaps().map(m=>m.id).join()!=='claude-swamp,claude-crossing')throw Error('Campaign order');
-localStorage.removeItem(CAMPAIGN_KEY);CFG.mapMode='campaign';CFG.campaignStart=1;startGame();
-if(!campaign||CFG.campaignStart!==0||wave!==1||activeMap.id!=='claude-swamp'||COLS!==45||mapMode!=='map')throw Error('Campaign locked start');
+localStorage.removeItem(CAMPAIGN_KEY);PREFS.mapMode='campaign';PREFS.campaignStart=1;startGame();
+if(!campaign||PREFS.campaignStart!==0||wave!==1||activeMap.id!=='claude-swamp'||COLS!==45||mapMode!=='map')throw Error('Campaign locked start');
 const clearLevel=()=>{toSpawn=[];enemies=[];wrecks=[];hitstop=0;update(.01);if(state!=='between')throw Error('Level clear');for(let t=0;t<40&&state==='between';t++)update(.1);};
 player.inv=99;clearLevel();
 if(campaignUnlocked()!==2||wave!==2||activeMap.id!=='claude-crossing'||COLS!==30||grid.length!==600||base.x!==BASE_POS.x||base.y!==H-16||player.y!==H-48)throw Error('Campaign next level');
 if(!connected())throw Error('Campaign level passable');draw();player.inv=99;clearLevel();
-if(state!=='over'||!victory||wave!==2||CFG.campaignStart!==0)throw Error('Campaign victory');draw();
-CFG.campaignStart=1;startGame();if(wave!==2||activeMap.id!=='claude-crossing'||victory)throw Error('Campaign start from unlocked level');
+if(state!=='over'||!victory||wave!==2||PREFS.campaignStart!==0)throw Error('Campaign victory');draw();
+PREFS.campaignStart=1;startGame();if(wave!==2||activeMap.id!=='claude-crossing'||victory)throw Error('Campaign start from unlocked level');
 toSpawn=[];enemies=[];player.inv=0;player.pw.shield=0;player.hp=1;hitPlayer({x:player.x,y:player.y,dmg:1});
-for(let t=0;t<200&&state!=='over';t++){hitstop=0;update(.05);}if(state!=='over'||victory||CFG.campaignStart!==1)throw Error('Campaign retry level');draw();
+for(let t=0;t<200&&state!=='over';t++){hitstop=0;update(.05);}if(state!=='over'||victory||PREFS.campaignStart!==1)throw Error('Campaign retry level');draw();
 window.ECOTANK_CAMPAIGN=undefined;if(campaignMaps().length!==claudeMaps().length)throw Error('Campaign fallback order');
-window.ECOTANK_CAMPAIGN=realCampaign;localStorage.removeItem(CAMPAIGN_KEY);CFG.mapMode='original';CFG.campaignStart=0;
+window.ECOTANK_CAMPAIGN=realCampaign;localStorage.removeItem(CAMPAIGN_KEY);PREFS.mapMode='original';PREFS.campaignStart=0;
 startGame();
 if(KINDS.player.hp!==3||ITEMS.armor||ITEMS.triple||!ITEMS.upgrade||!ITEMS.barrage)throw Error('New defaults and pickup catalog');
-applyDev({KINDS:{player:{hp:5}},CFG:{}});if(KINDS.player.hp!==3)throw Error('Legacy HP migration');
-CFG.mapMode='original';startGame();grid.fill(EMPTY);base=null;enemies=[];
+PREFS.mapMode='original';startGame();grid.fill(EMPTY);base=null;enemies=[];
 if(player.hp!==3||player.maxHp!==3)throw Error('Initial player health');
 items=[{x:player.x,y:player.y,type:'upgrade',life:10}];updateItems(.01);if(player.upgrade!==1||player.hp!==5||player.maxHp!==5||!player.armor)throw Error('IS-2 upgrade');
 nextWave();if(player.upgrade!==1||player.hp!==5)throw Error('IS-2 persists');
@@ -334,8 +388,19 @@ const savedRandom=Math.random;Math.random=()=>0;const dropVictim=makeTank(400,30
 artilleryShells=[];enemies=[makeTank(400,200,'heavy')];resetArtillery();callBarrage();for(let i=0;i<5;i++)updateArtilleryShells(0);const support=artilleryShells[0];if(support.delay<2||support.speed!==3000||support.damage!==2)throw Error('Barrage timing and damage');
 updateArtilleryShells(1.99);if(support.done||support.age>=support.delay)throw Error('Premature support launch');drawArtilleryShells();updateArtilleryShells(.02);if(support.done)throw Error('Premature support impact');
 updateArtilleryShells(support.duration);if(enemies[0].hp!==1)throw Error('Support damage 2');
-applyDev({KINDS:{artillery:{bulletSpeed:140,dmg:1}},CFG:{},balanceVersion:2});if(KINDS.artillery.bulletSpeed!==182||KINDS.artillery.dmg!==2)throw Error('Saved artillery defaults migration');
-applyDev(JSON.parse(DEV_DEFAULTS));if(KINDS.artillery.bulletSpeed!==182||KINDS.artillery.dmg!==2)throw Error('Reset artillery defaults');saveDev();applyDev(JSON.parse(localStorage.getItem('ecotank-dev-v2')));if(KINDS.artillery.bulletSpeed!==182)throw Error('Artillery migration is not repeated');
+// Saved settings hold only values that differ from config.js, so balance edits in the file reach every player.
+applyDev(JSON.parse(DEV_DEFAULTS));saveDev();
+{const saved=JSON.parse(localStorage.getItem('ecotank-settings-v3'));
+if(Object.keys(saved.KINDS).length||Object.keys(saved.CFG).length||saved.prefs.mapSize!==PREFS.mapSize)throw Error('Defaults are not stored as overrides');
+KINDS.scout.hp=2;CFG.powerupTime=12;saveDev();const changed=JSON.parse(localStorage.getItem('ecotank-settings-v3'));
+if(JSON.stringify(changed.KINDS)!=='{"scout":{"hp":2}}'||JSON.stringify(changed.CFG)!=='{"powerupTime":12}')throw Error('Only changed values are stored');
+applyDev(JSON.parse(DEV_DEFAULTS));loadSettings();if(KINDS.scout.hp!==2||CFG.powerupTime!==12)throw Error('Stored overrides are applied on load');
+applyDev({KINDS:{scout:{hp:'x',color:'#000',name:'hack'}},CFG:{nope:1}});if(KINDS.scout.hp!==2||KINDS.scout.color==='#000'||KINDS.scout.name==='hack'||'nope' in CFG)throw Error('Only tunable numeric fields are accepted');
+// The previous format stored whole tables and shadowed config.js: only the player's map choice is migrated.
+localStorage.removeItem('ecotank-settings-v3');localStorage.setItem('ecotank-dev-v2',JSON.stringify({KINDS:{scout:{hp:9}},CFG:{mapSize:45,mapMode:'preset01',powerupTime:55}}));
+applyDev(JSON.parse(DEV_DEFAULTS));const keepPrefs={...PREFS};loadSettings();
+if(KINDS.scout.hp!==1||CFG.powerupTime!==10||PREFS.mapSize!==45||PREFS.mapMode!=='preset01'||localStorage.getItem('ecotank-dev-v2'))throw Error('Legacy settings migration');
+Object.assign(PREFS,keepPrefs);saveDev();}
 musicOff=false;muted=false;state='menu';gameVolume=0;syncMusic();if(music.volume!==0)throw Error('Master volume mutes music');gameVolume=.5;musicLevel=.4;syncMusic();if(Math.abs(music.volume-.2)>1e-8)throw Error('Master volume scales music');muted=true;
 // The support volley does bounded work each simulation frame, independent of target count.
 const realSfx=sfx;
@@ -363,7 +428,7 @@ cannonNoiseLayers=heavyImpulse=noiseBuf=masterGain=null;heavyGunSound();const in
 actx=noiseBuf=masterGain=cannonNoiseLayers=heavyImpulse=heavyEcho=null;
 
 { // Check the exact travel limit on a field wide enough to contain 30 cells.
-CFG.mapSize=60;startGame();grid.fill(EMPTY);player.x=90;player.y=200;player.angle=0;bullets=[];
+PREFS.mapSize=60;startGame();grid.fill(EMPTY);player.x=90;player.y=200;player.angle=0;bullets=[];
 fireMachineGun(player,W-100,200);
 const mgRound=bullets[0], muzzleX=mgRound.x;
 mgRound.vx=MG_CONFIG.speed;mgRound.vy=0;
@@ -384,10 +449,9 @@ if(safeTank.dead||safeMine.done||player.hp!==safeHp)throw Error('Motorcycle blas
 }
 {const before=JSON.stringify({KINDS,CFG});const file=JSON.parse(JSON.stringify(devSettingsFile()));
 if(file.format!=='ecotank-dev-settings'||!file.KINDS.scout||!('tankBlastChance' in file.CFG))throw Error('Settings export');
-file.KINDS.scout.hp=7;file.KINDS.scout.speed=9999;file.CFG.enemyStandoff=200;file.CFG.godMode='yes';file.CFG.unknown=1;
-if(!importDevSettingsText(JSON.stringify(file))||KINDS.scout.hp!==7||KINDS.scout.speed!==400||CFG.enemyStandoff!==200||CFG.godMode!==false||'unknown' in CFG)throw Error('Settings import is clamped and typed');
+file.KINDS.scout.hp=7;file.KINDS.scout.speed=9999;file.CFG.enemySight=200;file.CFG.godMode='yes';file.CFG.unknown=1;
+if(!importDevSettingsText(JSON.stringify(file))||KINDS.scout.hp!==7||KINDS.scout.speed!==400||CFG.enemySight!==200||CFG.godMode!==false||'unknown' in CFG)throw Error('Settings import is clamped and typed');
 if(importDevSettingsText('{"KINDS":1}')||importDevSettingsText('nope')||importDevSettingsText('{"format":"other","KINDS":{},"CFG":{}}')||KINDS.scout.hp!==7)throw Error('Bad settings files are rejected');
-if(!importDevSettingsText(${JSON.stringify(fs.readFileSync(__dirname+'/settings/default.json','utf8'))})||KINDS.scout.hp!==1||CFG.tankBlastChance!==.25)throw Error('Bundled default settings import');
 applyDev(JSON.parse(before));saveDev();}
 {const e=makeTank(300,300,'scout');e.spawnT=0;e.tx=e.x;e.ty=e.y;const keepP={x:player.x,y:player.y,dead:player.dead};player.dead=false;player.x=360;player.y=300;
 enemies=[e];allies=[];e.cd=9;for(let i=0;i<40;i++){updateEnemyTactics(.05);updateEnemy(e,.05);}
@@ -401,7 +465,11 @@ if(h.x<=x0||Math.abs(h.y-y0)>4)throw Error('Hull drives along its axis after tur
 const s2=makeTank(200,200,'scout');s2.angle=0;driveHull(s2,170,200,KINDS.scout.speed,.1);
 if(s2.x>=200||Math.abs(angDiff(s2.angle,0))>1e-9)throw Error('Short move backwards uses reverse gear');}
 
-`,box);
-require('./check-raseiniai.cjs')(box);
-assert(!code.includes("tone(420, 110"));
-console.log('PASS: screenshot defaults, storage migration, turret rate/wrap, four-hit brick damage, density, 20 dense connected maps, asymmetry, render calls, settings persistence');
+`,
+  box,
+);
+require('./checks/raseiniai.cjs')(box);
+assert(!code.includes('tone(420, 110'));
+console.log(
+  'PASS: screenshot defaults, storage migration, turret rate/wrap, four-hit brick damage, density, 20 dense connected maps, asymmetry, render calls, settings persistence',
+);

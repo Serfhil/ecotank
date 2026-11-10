@@ -1,3 +1,12 @@
-# Git workflow
-- When the user says "стянуть с репозитория" (pull from the repository), the repository has priority: on conflicts or differences, keep the repository's version over local changes.
-- By default, push to `main`. Do not create a separate branch unless the user explicitly asks for one.
+# EcoTank — инструкции для Claude
+
+Все правила проекта записаны в `AGENTS.md` и подключены строкой ниже. Они непреложны и одинаковы для всех агентов. Этот файл своих правил не содержит: правило, записанное только здесь, не увидят другие агенты.
+
+@AGENTS.md
+
+## Порядок работы
+
+1. Перед первой правкой в сессии прочитать `AGENTS.md` целиком.
+2. Задачи искать в `prompts/`; порядок работы с ними — раздел 9 `AGENTS.md` и `prompts/README.md`. Задачу брать в работу только по прямому указанию пользователя.
+3. Если задача требует нарушить или изменить правило — остановиться и сообщить пользователю (раздел 0 `AGENTS.md`).
+4. Перед сдачей: `node check.cjs`, `node checks/integration.cjs`, обновить статус и «Итог» задачи в `prompts/`.
